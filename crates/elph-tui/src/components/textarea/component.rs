@@ -1,6 +1,6 @@
 //! iocraft [`Textarea`] — thin shell around [`TextareaState`] + direct render.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use super::TextareaProps;
@@ -9,8 +9,8 @@ use super::input::{TextareaInputContext, TextareaInputResult};
 use super::layout::{layout_cursor_for_viewport, layout_metrics_from_wrapped, layout_textarea_measured};
 use super::state::{TextareaState, selection_display_rows};
 use crate::clipboard::{
-    ClipboardNotice, ImageAttachment, copy_to_clipboard, read_from_clipboard, remove_image_attachments,
-    save_clipboard_image,
+    ClipboardNotice, ImageAttachment, ImagePasteDialogState, copy_to_clipboard, read_from_clipboard,
+    remove_image_attachments, save_clipboard_image,
 };
 use crate::components::scroll_bar::VerticalScrollbar;
 use crate::components::theme::resolve_ui_theme;
@@ -216,6 +216,87 @@ fn prune_removed_image_attachments(text: &str, attachments: &mut Vec<ImageAttach
     remove_image_attachments(&removed);
 }
 
+fn next_image_id(text: &str) -> usize {
+    (1..)
+        .find(|id| {
+            let marker = format!("[Image #{id}]");
+            !text.contains(&marker)
+        })
+        .unwrap_or(usize::MAX)
+}
+
+#[derive(Debug)]
+enum BackgroundPasteResult {
+    Image(ImageAttachment),
+    Text(String),
+    Unsupported,
+    Failed(String),
+}
+
+fn render_image_paste_dialog(
+    state: &ImagePasteDialogState,
+    width: u16,
+    theme: crate::components::theme::UiTheme,
+) -> AnyElement<'static> {
+    let (title, body, footer, color) = match state {
+        ImagePasteDialogState::Loading => (
+            "Pasting image".to_string(),
+            "Reading the clipboard and preparing an attachment…".to_string(),
+            "Please wait".to_string(),
+            theme.warning,
+        ),
+        ImagePasteDialogState::Preview(attachment) => (
+            format!("Image #{}", attachment.id),
+            format!(
+                "Preview ready · {}×{}\n{}",
+                attachment.width,
+                attachment.height,
+                attachment
+                    .path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("attachment.png")
+            ),
+            "Enter/Esc close · image is attached to this prompt".to_string(),
+            theme.success,
+        ),
+        ImagePasteDialogState::Unsupported => (
+            "Image input unavailable".to_string(),
+            "The selected model does not support vision or image input.".to_string(),
+            "Enter/Esc close".to_string(),
+            theme.warning,
+        ),
+        ImagePasteDialogState::Failed(detail) => (
+            "Could not paste image".to_string(),
+            detail.clone(),
+            "Enter/Esc close".to_string(),
+            theme.error,
+        ),
+    };
+    let dialog_width = width.saturating_sub(4).clamp(32, 72);
+    element! {
+        View(
+            position: Position::Absolute,
+            top: 0,
+            left: 1,
+            width: dialog_width,
+            padding_left: theme.padding_md,
+            padding_right: theme.padding_md,
+            padding_top: theme.padding_sm,
+            padding_bottom: theme.padding_sm,
+            flex_direction: FlexDirection::Column,
+            border_style: BorderStyle::Round,
+            border_color: color,
+            background_color: theme.surface,
+        ) {
+            Text(content: title, color: color, weight: Weight::Bold, wrap: TextWrap::NoWrap)
+            Text(content: body, color: theme.text_primary, wrap: TextWrap::Wrap)
+            Text(content: footer, color: theme.text_muted, wrap: TextWrap::Wrap)
+        }
+    }
+    .into()
+}
+
 fn apply_palette_draft_to_editor(ed: &mut TextareaState, external: &str, forced_cursor: Option<usize>) {
     ed.sync_external_with_cursor(external, forced_cursor);
 }
@@ -263,7 +344,9 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     let mut scroll_row = hooks.use_ref(|| 0u16);
     let mut layout_cache = hooks.use_ref(|| None::<TextareaLayoutCache>);
     let mut viewport_cache = hooks.use_ref(|| None::<ViewportRenderCache>);
-    let mut image_counter = hooks.use_ref(|| 0usize);
+    let image_paste_result = hooks.use_ref(|| Arc::new(Mutex::new(None::<BackgroundPasteResult>)));
+    let image_paste_busy = hooks.use_ref(|| false);
+    let image_paste_dialog = hooks.use_state(|| None::<ImagePasteDialogState>);
     let mut generation = hooks.use_state(|| 0u32);
     let on_submit = props.on_submit.take();
     let on_escape = props.on_escape.take();
@@ -273,6 +356,85 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     let clipboard_toast = props.clipboard_toast;
     let image_attachment_dir = props.image_attachment_dir.clone();
     let image_attachments = props.image_attachments;
+    let supports_images = props.supports_images;
+
+    {
+        let result_slot = image_paste_result.read().clone();
+        let mut image_paste_busy = image_paste_busy;
+        let mut image_paste_dialog = image_paste_dialog;
+        let mut editor = editor;
+        let mut value = value;
+        let mut layout_cache = layout_cache;
+        let mut viewport_cache = viewport_cache;
+        let mut generation = generation;
+        hooks.use_future(async move {
+            loop {
+                smol::Timer::after(Duration::from_millis(32)).await;
+                let result = result_slot.lock().ok().and_then(|mut slot| slot.take());
+                let Some(result) = result else {
+                    continue;
+                };
+                image_paste_busy.set(false);
+                match result {
+                    BackgroundPasteResult::Image(saved) => {
+                        let Some(mut attachment_ref) = image_attachments else {
+                            remove_image_attachments(&[saved]);
+                            image_paste_dialog.set(Some(ImagePasteDialogState::Failed(
+                                "The prompt is no longer available.".to_string(),
+                            )));
+                            continue;
+                        };
+                        let mut attachments = attachment_ref.write();
+                        let next_id = {
+                            let ed = editor.read();
+                            next_image_id(&ed.text)
+                        };
+                        let attachment = ImageAttachment { id: next_id, ..saved };
+                        attachments.push(attachment.clone());
+                        editor.write().insert_image_marker(next_id);
+                        let ed = editor.read();
+                        value.set(ed.text.clone());
+                        if let Some(mut live) = live_draft {
+                            live.set(ed.text.clone());
+                        }
+                        if let Some(mut cursor_ref) = live_cursor {
+                            cursor_ref.set(ed.cursor);
+                        }
+                        if let Some(mut mirror) = prompt_editor_mirror {
+                            mirror.set((ed.text.clone(), ed.cursor));
+                        }
+                        image_paste_dialog.set(Some(ImagePasteDialogState::Preview(attachment)));
+                        layout_cache.set(None);
+                        viewport_cache.set(None);
+                        generation.set(generation.get().wrapping_add(1));
+                    }
+                    BackgroundPasteResult::Text(text) => {
+                        let mut ed = editor.write();
+                        ed.apply_paste(&text);
+                        if let Some(mut live) = live_draft {
+                            live.set(ed.text.clone());
+                        }
+                        if let Some(mut cursor_ref) = live_cursor {
+                            cursor_ref.set(ed.cursor);
+                        }
+                        if let Some(mut mirror) = prompt_editor_mirror {
+                            mirror.set((ed.text.clone(), ed.cursor));
+                        }
+                        value.set(ed.text.clone());
+                        layout_cache.set(None);
+                        viewport_cache.set(None);
+                        generation.set(generation.get().wrapping_add(1));
+                    }
+                    BackgroundPasteResult::Unsupported => {
+                        image_paste_dialog.set(Some(ImagePasteDialogState::Unsupported));
+                    }
+                    BackgroundPasteResult::Failed(detail) => {
+                        image_paste_dialog.set(Some(ImagePasteDialogState::Failed(detail)));
+                    }
+                }
+            }
+        });
+    }
 
     // Flush raw paste-burst buffers after a typing gap so rapid keys are not lost when the
     // user stops (merge used to run only on the *next* keypress).
@@ -335,7 +497,6 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                 remove_image_attachments(&pending);
                 attachments.set(Vec::new());
             }
-            image_counter.set(0);
             ed.clear_after_submit();
             if let Some(mut signal) = force_clear {
                 signal.set(false);
@@ -473,12 +634,14 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
         let mut on_submit = on_submit;
         let mut on_escape = on_escape;
         let mut on_file_picker_key = on_file_picker_key;
-        let mut image_counter = image_counter;
         let mut pending_esc = pending_esc;
         let mut paste_burst = paste_burst;
         let mut last_key_at = last_key_at;
         let submit_on_enter = props.submit_on_enter;
         let image_attachment_dir = image_attachment_dir.clone();
+        let image_paste_result = image_paste_result.read().clone();
+        let mut image_paste_busy = image_paste_busy;
+        let mut image_paste_dialog = image_paste_dialog;
         let input_width = layout.input_width;
         move |event| {
             if !has_focus {
@@ -489,6 +652,28 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                 let ed = editor.read();
                 if let Some(mut mirror) = prompt_editor_mirror {
                     mirror.set((ed.text.clone(), ed.cursor));
+                }
+            }
+
+            let dialog = image_paste_dialog.read().clone();
+            if let Some(dialog) = dialog {
+                match dialog {
+                    ImagePasteDialogState::Loading => return,
+                    ImagePasteDialogState::Preview(_)
+                    | ImagePasteDialogState::Unsupported
+                    | ImagePasteDialogState::Failed(_) => {
+                        if let TerminalEvent::Key(KeyEvent {
+                            code: KeyCode::Enter | KeyCode::Esc,
+                            kind: KeyEventKind::Press,
+                            modifiers,
+                            ..
+                        }) = event
+                            && modifiers.is_empty()
+                        {
+                            image_paste_dialog.set(None);
+                        }
+                        return;
+                    }
                 }
             }
 
@@ -582,6 +767,10 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
 
             match result {
                 TextareaInputResult::Submit(draft) => {
+                    if !supports_images && image_attachments.is_some_and(|attachments| !attachments.read().is_empty()) {
+                        image_paste_dialog.set(Some(ImagePasteDialogState::Unsupported));
+                        return;
+                    }
                     sync_live_draft(&draft, editor.read().cursor);
                     if !on_submit.is_default() {
                         on_submit(draft);
@@ -593,7 +782,6 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                         remove_image_attachments(&pending);
                         attachments.set(Vec::new());
                     }
-                    image_counter.set(0);
                     sync_live_draft("", 0);
                     value.set(String::new());
                     if let Some(mut kind) = input_prefix_kind {
@@ -654,31 +842,40 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                     generation.set(generation.get().wrapping_add(1));
                 }
                 TextareaInputResult::PasteImage => {
-                    let next_id = image_counter.get().saturating_add(1);
-                    let image = image_attachment_dir
-                        .as_deref()
-                        .and_then(|dir| save_clipboard_image(dir, next_id).ok());
-                    if let Some(attachment) = image {
-                        if let Some(mut attachments) = image_attachments {
-                            attachments.write().push(attachment);
-                            image_counter.set(next_id);
-                            editor.write().insert_image_marker(next_id);
-                            let ed = editor.read();
-                            sync_live_draft(&ed.text, ed.cursor);
-                            value.set(ed.text.clone());
-                            layout_cache.set(None);
-                            viewport_cache.set(None);
-                            generation.set(generation.get().wrapping_add(1));
-                        }
-                    } else if let Ok(text) = read_from_clipboard() {
-                        let mut ed = editor.write();
-                        ed.apply_paste(&text);
-                        sync_live_draft(&ed.text, ed.cursor);
-                        value.set(ed.text.clone());
-                        layout_cache.set(None);
-                        viewport_cache.set(None);
-                        generation.set(generation.get().wrapping_add(1));
+                    if image_paste_busy.get() {
+                        return;
                     }
+                    image_paste_busy.set(true);
+                    image_paste_dialog.set(Some(ImagePasteDialogState::Loading));
+                    if let Ok(mut slot) = image_paste_result.lock() {
+                        *slot = None;
+                    }
+                    let attachment_dir = image_attachment_dir.clone();
+                    let result_slot = image_paste_result.clone();
+                    smol::spawn(async move {
+                        let result = smol::unblock(move || {
+                            if !supports_images {
+                                return match read_from_clipboard() {
+                                    Ok(text) if !text.is_empty() => BackgroundPasteResult::Text(text),
+                                    Ok(_) | Err(_) => BackgroundPasteResult::Unsupported,
+                                };
+                            }
+                            if let Some(dir) = attachment_dir.as_deref()
+                                && let Ok(image) = save_clipboard_image(dir, 0)
+                            {
+                                return BackgroundPasteResult::Image(image);
+                            }
+                            match read_from_clipboard() {
+                                Ok(text) => BackgroundPasteResult::Text(text),
+                                Err(err) => BackgroundPasteResult::Failed(err.to_string()),
+                            }
+                        })
+                        .await;
+                        if let Ok(mut slot) = result_slot.lock() {
+                            *slot = Some(result);
+                        }
+                    })
+                    .detach();
                 }
                 TextareaInputResult::Ignored => {}
             }
@@ -695,10 +892,19 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
 
     let theme = resolve_ui_theme(&hooks, props.theme);
     let scrollbar_style = props.scrollbar_style.unwrap_or_else(|| theme.scrollbar_style());
-    let outer_viewport = layout.viewport_height;
+    let image_paste_dialog_active = image_paste_dialog.read().is_some();
+    let outer_viewport = if image_paste_dialog_active {
+        layout.viewport_height.max(4)
+    } else {
+        layout.viewport_height
+    };
     let text_color = props.text_color.unwrap_or_else(|| theme.input_text_color(has_focus));
     let cursor_color = props.cursor_color.unwrap_or_else(|| theme.input_cursor_color());
     let border_inset = if show_border { theme.input_inset() } else { 0 };
+    let image_paste_dialog_view = image_paste_dialog
+        .read()
+        .as_ref()
+        .map(|state| render_image_paste_dialog(state, props.width, theme));
 
     element! {
         View(
@@ -805,6 +1011,7 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
             } else {
                 None
             })
+            #(image_paste_dialog_view)
         }
     }
 }
@@ -825,6 +1032,13 @@ mod tests {
         let mut ed = TextareaState::from_text("/goal args".into());
         sync_editor_from_parent(&mut ed, "/goal ", true);
         assert_eq!(ed.text, "/goal args");
+    }
+
+    #[test]
+    fn next_image_id_reuses_first_free_id_in_current_prompt() {
+        assert_eq!(next_image_id("[Image #2]"), 1);
+        assert_eq!(next_image_id(""), 1);
+        assert_eq!(next_image_id("[Image #1] [Image #2]"), 3);
     }
 
     #[test]

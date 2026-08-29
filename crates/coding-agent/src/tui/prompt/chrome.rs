@@ -118,6 +118,7 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                         clipboard_toast: props.clipboard_toast,
                         image_attachment_dir: props.image_attachment_dir.clone(),
                         image_attachments: props.image_attachments,
+                        supports_images: props.supports_images,
                         on_submit: props.on_submit.take(),
                         on_escape: if props.slash_palette_snapshot.visible
                             || props.file_picker_snapshot.visible

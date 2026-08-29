@@ -55,6 +55,8 @@ pub struct EditorProps {
     pub image_attachment_dir: Option<std::path::PathBuf>,
     /// Pending clipboard images paired with `[Image #N]` markers.
     pub image_attachments: Option<Ref<Vec<elph_tui::ImageAttachment>>>,
+    /// Whether the active model accepts image input.
+    pub supports_images: bool,
     /// Shown centered when the editor is blocked by an inline dialog.
     pub blocked_hint: Option<String>,
     /// Native terminal text-select mode (mouse capture off). Prompt stays focused/interactive;
@@ -161,6 +163,7 @@ pub fn Editor(props: &mut EditorProps) -> impl Into<AnyElement<'static>> {
                     clipboard_toast: props.clipboard_toast,
                     image_attachment_dir: props.image_attachment_dir.clone(),
                     image_attachments: props.image_attachments,
+                    supports_images: props.supports_images,
                     submit_on_enter: true,
                     on_submit: props.on_submit.take(),
                     on_escape: props.on_escape.take(),

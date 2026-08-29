@@ -81,9 +81,16 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 
 Interactive Ctrl/Cmd+V image pastes are written as PNG files in
 `APP_DATA/attachments/` and shown in the prompt as atomic `[Image #N]` markers.
+Clipboard reading and file staging run in the background, so the prompt remains
+responsive while an image is being prepared. A preview dialog shows the image
+dimensions and staged filename when it is ready; `Enter` or `Esc` closes it.
 On submit, Elph base64-encodes the staged files into `ImageContent` blocks for the
 model request, then removes the temporary files. Removing a marker or submitting
-a local/slash/shell command also removes its staged file.
+a local/slash/shell command also removes its staged file. Attachment filenames are
+reserved atomically and receive a suffix if an existing file has the same name.
+Image pastes are rejected with an explanatory dialog when the selected model does
+not support vision/image input. Marker numbers are selected from the current
+prompt state, so an empty prompt starts again at `[Image #1]`.
 
 ### Storage roles
 

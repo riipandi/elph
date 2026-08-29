@@ -21,6 +21,15 @@ pub struct ImageAttachment {
     pub height: u32,
 }
 
+/// State shown by the prompt while a clipboard image is being staged.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImagePasteDialogState {
+    Loading,
+    Preview(ImageAttachment),
+    Unsupported,
+    Failed(String),
+}
+
 /// Probe whether the system clipboard can be opened (no read/write).
 pub fn clipboard_available() -> bool {
     ClipboardContext::new().is_ok()
@@ -79,10 +88,11 @@ pub fn save_clipboard_image(dir: &Path, id: usize) -> Result<ImageAttachment> {
         .unwrap_or_default()
         .as_nanos();
     let counter = IMAGE_FILE_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let path = dir.join(format!("clipboard-{timestamp}-{counter}.png"));
-    image
-        .save_to_path(&path.to_string_lossy())
-        .map_err(|err| anyhow::anyhow!("save clipboard image: {err}"))?;
+    let path = reserve_image_path(dir, timestamp, counter)?;
+    if let Err(err) = image.save_to_path(&path.to_string_lossy()) {
+        let _ = std::fs::remove_file(&path);
+        return Err(anyhow::anyhow!("save clipboard image: {err}"));
+    }
     let (width, height) = image.get_size();
     Ok(ImageAttachment {
         id,
@@ -90,6 +100,23 @@ pub fn save_clipboard_image(dir: &Path, id: usize) -> Result<ImageAttachment> {
         width,
         height,
     })
+}
+
+fn reserve_image_path(dir: &Path, timestamp: u128, counter: u64) -> Result<PathBuf> {
+    for suffix in 0..u64::MAX {
+        let name = if suffix == 0 {
+            format!("clipboard-{timestamp}-{counter}.png")
+        } else {
+            format!("clipboard-{timestamp}-{counter}-{suffix}.png")
+        };
+        let path = dir.join(name);
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
+            Ok(_) => return Ok(path),
+            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(err) => return Err(err.into()),
+        }
+    }
+    bail!("could not allocate a unique clipboard image path")
 }
 
 /// Remove staged attachment files. Missing files are already consumed/cleaned.
@@ -201,5 +228,25 @@ mod tests {
         assert!(!ok.is_error());
         assert_eq!(ok.announcement(), "Copied selection (4 chars)");
         assert!(ClipboardNotice::failed("x").is_error());
+    }
+
+    #[test]
+    fn reserve_image_path_never_reuses_an_existing_attachment() {
+        let dir = std::env::temp_dir().join(format!(
+            "elph-clipboard-test-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).expect("create temporary attachment directory");
+        let existing = dir.join("clipboard-7-3.png");
+        std::fs::write(&existing, b"existing").expect("write existing attachment");
+
+        let reserved = reserve_image_path(&dir, 7, 3).expect("reserve attachment path");
+        assert_ne!(reserved, existing);
+        assert!(reserved.exists());
+
+        std::fs::remove_dir_all(dir).expect("remove temporary attachment directory");
     }
 }

@@ -70,6 +70,8 @@ pub struct TextareaProps {
     pub image_attachment_dir: Option<std::path::PathBuf>,
     /// Pending image files keyed by the atomic markers in the editor.
     pub image_attachments: Option<Ref<Vec<ImageAttachment>>>,
+    /// Whether the active model accepts image input.
+    pub supports_images: bool,
 }
 
 use crate::clipboard::ImageAttachment;
