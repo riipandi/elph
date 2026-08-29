@@ -264,13 +264,12 @@ Mapping: `@earendil-works/pi-ai` → `crates/elph-ai`, `@earendil-works/pi-agent
 | Fresh routing session IDs        | v0.82.0               | `CheckpointTail` mechanism               | **[Parity]** |
 | Split-turn summary serialization | `harness/compaction/` | `src/compaction/compact.rs`              | **[Parity]** |
 
-### Elph-only Extensions (not in pi-agent-core)
+### Elph-only Capabilities (not in pi-agent-core)
 
 | Feature                  | Location                            | Description                                                   |
 | ------------------------ | ----------------------------------- | ------------------------------------------------------------- |
 | Goals                    | `src/goals/`                        | Goal tracking with progress, budget, and completion criteria  |
 | Subagent                 | `src/agent/subagent/`               | Subagent spawning and coordination                            |
-| Plugins (WASM)           | `src/plugins/`                      | wasmi core-Wasm plugins (`extensions` feature)                |
 | MCP client               | `src/tools/mcp/`                    | Full MCP integration: stdio/SSE/HTTP transports, auth, crypto |
 | Collaboration modes      | `src/collaboration/`                | Plan mode, default mode, tool blocking                        |
 | Datastore                | `src/datastore/`                    | Turso database management and migrations                      |

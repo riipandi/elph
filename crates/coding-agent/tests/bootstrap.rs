@@ -32,7 +32,6 @@ async fn ensure_creates_full_home() {
     assert!(paths.bundled_dir().join("skills").is_dir());
     assert!(paths.bundled_dir().join("user-guide").is_dir());
     assert!(paths.agents_dir().is_dir());
-    assert!(paths.hooks_dir().is_dir());
     assert!(paths.prompts_dir().is_dir());
     assert!(paths.providers_dir().is_dir());
     // Built-in provider catalogs unpacked as kebab-case JSON (never overwrites).
@@ -50,7 +49,7 @@ async fn ensure_creates_full_home() {
         "bootstrap should unpack create-skill"
     );
     assert!(!paths.config_dir().join("AGENTS.md").exists());
-    assert!(!paths.project_extensions_dir().exists());
+    assert!(!paths.project_hooks_config_path().exists());
     assert!(!paths.plans_dir().exists());
     assert!(paths.host_mcp_cache_dir().is_dir());
     assert!(paths.sessions_dir().is_dir());
@@ -61,7 +60,6 @@ async fn ensure_creates_full_home() {
     assert!(paths.logs_dir().is_dir());
     assert!(paths.mcp_logs_dir().is_dir());
     assert!(paths.vendor_dir().is_dir());
-    assert!(paths.global_extensions_dir().is_dir());
 
     // Runtime layout is under APP_DATA/, not CONFIG_DIR.
     assert!(paths.host_mcp_cache_dir().starts_with(paths.data_dir()));

@@ -504,7 +504,7 @@ pub fn trust_slash_message(paths: &Paths, cwd: &Path) -> Result<String, String> 
          Directory  {key}\n\
          Store      {}\n\
          \n\
-         Project-local extensions under .elph/extensions/ may load in trusted workspaces.",
+         Project-local hooks under .elph/hooks.json may load in trusted workspaces.",
         paths.trust_path().display()
     ))
 }

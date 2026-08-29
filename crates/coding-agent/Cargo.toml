@@ -45,7 +45,6 @@ elph-agent = { workspace = true, features = [
   "builtin-tools",
   "mcp",
   "prompt-templates",
-  "extensions",
   "tools-shell-use",
   "backend-turso",
 ] }
@@ -54,6 +53,7 @@ elph-tui = { workspace = true }
 floppy = { workspace = true, features = ["full"] }
 git2 = { workspace = true, features = ["cred"] }
 inquire.workspace = true
+jsonschema.workspace = true
 iocraft.workspace = true
 log.workspace = true
 memorable-ids.workspace = true

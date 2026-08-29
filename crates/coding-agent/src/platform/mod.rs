@@ -4,7 +4,7 @@ mod app;
 pub mod bootstrap;
 pub mod datastore;
 pub mod exit_message;
-mod hooks;
+pub mod hooks;
 mod interrupt;
 pub mod mcp;
 pub mod migrations;

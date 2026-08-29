@@ -104,8 +104,7 @@ fn completions_generates_bash_script() {
     assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("elph"), "missing bin name in:\n{stdout}");
-    assert!(stdout.contains("extensions"), "missing extensions in:\n{stdout}");
-    assert!(stdout.contains("ext"), "missing ext alias in:\n{stdout}");
+    assert!(stdout.contains("provider"), "missing provider command in:\n{stdout}");
 }
 
 #[test]

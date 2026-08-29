@@ -2,7 +2,7 @@
 
 Elph is a local AI coding agent harness. It runs as an interactive TUI (`elph`), as a headless prompt (`elph run`), and as an ACP server for editors (`elph acp --stdio`).
 
-The core harness follows [Pi](https://pi.dev/docs/latest): a small session loop, tools, providers, and a terminal UI you can extend. Elph keeps that model and adds a local project store, floppy memory, worktrees, MCP, WASM extensions, Plan vs Build, and Claude/Codex import.
+The core harness follows [Pi](https://pi.dev/docs/latest): a small session loop, tools, providers, and a terminal UI you can extend. Elph keeps that model and adds a local project store, floppy memory, worktrees, MCP, native lifecycle hooks, Plan vs Build, and Claude/Codex import.
 
 You bring the model. Sessions and memory stay on disk in the project `.elph/` store. There is no required cloud agent backend.
 
@@ -20,7 +20,7 @@ Elph is **pre-alpha**. Breaking changes and bugs are expected. Check [GitHub Rel
 
 - Config: `~/.config/elph/` (`ELPH_HOME`)
 - Data: `~/.local/share/elph/` (`ELPH_DATA_DIR`)
-- Project: `<cwd>/.elph/` — memory (`store.db`). `.elph/extensions/` and `.elph/plans/` are created only when you install a project extension or save a plan. Global `AGENTS.md` is optional and is not written on first run.
+- Project: `<cwd>/.elph/` — memory (`store.db`) and optional project hooks (`hooks.json`). `.elph/plans/` is created when you save a plan. Global `AGENTS.md` is optional and is not written on first run.
 
 ## Start here
 

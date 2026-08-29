@@ -8,7 +8,7 @@ User preferences live in JSON. The host (`elph`) maps them into `elph-agent` / `
 | --- | --- | --- |
 | Settings | `CONFIG_DIR/settings.json` + `<cwd>/.elph/settings.json` | UI, models, memory, notifications, compaction, session, workers, resources, logging |
 | MCP | `CONFIG_DIR/mcp.json` + `<cwd>/.elph/mcp.json` | Servers, policy, **cache TTL / max entries** |
-| Trust | `CONFIG_DIR/trust.json` | Trusted directories + `defaultProjectTrust` (WASM extensions only) |
+| Trust | `CONFIG_DIR/trust.json` | Trusted directories + `defaultProjectTrust` (project hooks only) |
 | Auth | `CONFIG_DIR/auth.json` | Credentials (`schemas/auth-schema.json`) |
 
 Merge for settings and MCP: defaults ← home ← **project always** (nested objects deep-merge; arrays replace). Runtime `Settings::save` writes **home** only.
@@ -129,4 +129,4 @@ See [elph-agent observability](../crates/elph-agent/docs/observability.md).
 ## Not in settings.json
 
 - **MCP cache** — `mcp.json` keys `cacheTtlSecs` (default 60) and `cacheMaxEntries` (default 2048). Per-server `cacheTtlMs` still wins.
-- **Trust** — `trust.json` keys `directories` and `defaultProjectTrust` (`ask` / `always` / `never`). Only gates **project WASM extensions**. `ask` has no prompt yet and behaves like `never`.
+- **Trust** — `trust.json` keys `directories` and `defaultProjectTrust` (`ask` / `always` / `never`). Only gates **project hooks**. `ask` has no prompt yet and behaves like `never`.

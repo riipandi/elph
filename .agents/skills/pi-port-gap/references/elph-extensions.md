@@ -1,4 +1,4 @@
-# Elph extension scan hints
+# Elph product-delta scan hints
 
 Starting checklist for **Phase 3 (Elph implementation delta)**. Always verify in
 code; the list grows over time. These are **not** port gaps.
@@ -44,7 +44,7 @@ copy pi JSON or reintroduce `--catalog-dir` / pi npm chat generation.
 - **Resilience** — circuit breaker / rate limit stack under `src/resilience/`
 - **OAuth set** — Anthropic, GitHub Copilot, OpenAI Codex, OpenRouter, Hyper, Kimi, xAI, … (`src/auth/oauth/`)
 
-## elph-agent (product / runtime extensions)
+## elph-agent (product / runtime additions)
 
 - **MCP client** — `src/tools/mcp/`
     - config merge (home + project), schema validate
@@ -55,13 +55,12 @@ copy pi JSON or reintroduce `--catalog-dir` / pi npm chat generation.
     - tool names: `mcp_{server}__{tool}`
 - **Goals** — `src/goals/`
 - **Subagent** — `src/subagent/`
-- **Plugins (WASM)** — `src/plugins/` (feature `extensions`)
 - **Built-in tools** — `src/tools/` (read, shell_exec, grep, web, …)
 - **Mode / plan** — `src/mode/`
 - **Sandbox** — `src/sandbox/`
 - **Datastore / Turso** — `src/datastore/`, session Turso backends
 - **Prompt encoding (TOON)** — `src/runtime/` / prompt encoding env
-- **Harness extras** — richer than pi-agent-core (session hooks, compaction wiring)
+- **Harness extras** — richer than pi-agent-core (lifecycle hooks, compaction wiring)
 - **Skills / prompt templates** — `src/skills/`, `src/prompt_templates/`
 
 ## elph product (only if scope expands to coding-agent)

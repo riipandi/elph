@@ -20,11 +20,12 @@ Important config files:
 | `bundled/`               | Built-in agents, skills, user-guide |
 | `AGENTS.md`              | Optional global agent instructions (not created on first run) |
 
-Project overrides: `<project>/.elph/settings.json`, `mcp.json`, `skills/`, `prompts/`.
+Project overrides: `<project>/.elph/settings.json`, `mcp.json`, `hooks.json`,
+`skills/`, `prompts/`.
 
 ## Settings merge
 
-Home settings are always merged with project `.elph/settings.json` (project wins; arrays replace). MCP cache is in `mcp.json`. Project WASM extensions are gated by `trust.json` (`/trust` or `defaultProjectTrust: always`).
+Home settings are always merged with project `.elph/settings.json` (project wins; arrays replace). MCP cache is in `mcp.json`. Project hooks in `.elph/hooks.json` are gated by `trust.json` (`defaultProjectTrust: always`).
 
 `models.defaultModel` and `models.defaultThinkingLevel` seed **new** sessions only;
 live model, thinking level, and agent mode are per-session (not shared settings).

@@ -151,7 +151,7 @@ loaded handlers from that file to run.
             "matcher": {
                 "toolNames": ["write_file", "apply_patch"]
             },
-            "command": ".elph/hooks/protect-sensitive-files",
+            "command": "hooks/protect-sensitive-files",
             "args": [],
             "timeoutMs": 5000,
             "enabled": true
@@ -342,7 +342,7 @@ documentation must state this directly.
   the new set.
 
 Generalize extension-specific trust identifiers and methods directly. Do not retain aliases such as
-`project_extensions_allowed`.
+`project_hooks_allowed`.
 
 ## Product behavior
 

@@ -3,7 +3,6 @@
 use crate::agent::{MAX_PALETTE_DESCRIPTION_CHARS, parse_skill_slash, skill_slash_name, truncate_palette_description};
 use crate::types::{SlashCommand, SlashCommandKind};
 use elph_agent::harness::{PromptTemplate, Skill};
-use elph_agent::plugins::ExtensionRegistry;
 
 #[derive(Debug, Clone)]
 pub struct BuiltinSlashCommand {
@@ -74,7 +73,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("resume", "Resume a different session"),
         builtin("workers", "List live multi-worker peers"),
         builtin("intercom", "Open worker chat (Alt+M)"),
-        builtin("reload", "Reload providers, settings, skills, templates, extensions"),
+        builtin("reload", "Reload providers, settings, skills, and templates"),
         builtin("quit", "Quit Elph"),
         builtin_with_args("memory", "Agent memory store (floppy)"),
         builtin("feedback", "Report a bug or join community"),
@@ -92,15 +91,13 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
 }
 
 pub fn slash_commands_for_palette(
-    extensions: Option<&ExtensionRegistry>,
     prompt_templates: Option<&[PromptTemplate]>,
     skills: Option<&[Skill]>,
 ) -> Vec<SlashCommand> {
-    slash_commands_for_palette_with(extensions, prompt_templates, skills, true)
+    slash_commands_for_palette_with(prompt_templates, skills, true)
 }
 
 pub fn slash_commands_for_palette_with(
-    extensions: Option<&ExtensionRegistry>,
     prompt_templates: Option<&[PromptTemplate]>,
     skills: Option<&[Skill]>,
     enable_skill_commands: bool,
@@ -122,16 +119,6 @@ pub fn slash_commands_for_palette_with(
         .collect();
     let builtin_names: std::collections::HashSet<String> = commands.iter().map(|cmd| cmd.name.clone()).collect();
 
-    if let Some(registry) = extensions {
-        for cmd in registry.commands() {
-            if !builtin_names.contains(&cmd.name) {
-                commands.push(SlashCommand::new(
-                    cmd.name,
-                    truncate_palette_description(&cmd.description, None),
-                ));
-            }
-        }
-    }
     if let Some(templates) = prompt_templates {
         for template in templates {
             if !builtin_names.contains(&template.name) {
@@ -220,10 +207,6 @@ pub enum SlashDispatch {
         args: String,
     },
     Reload,
-    Extension {
-        name: String,
-        args: String,
-    },
     PromptTemplate {
         name: String,
         args: String,
@@ -317,12 +300,8 @@ pub fn slash_unimplemented_message(command: &str) -> String {
     format!("{name} not yet implemented")
 }
 
-pub fn format_help_message(
-    extensions: Option<&ExtensionRegistry>,
-    prompt_templates: Option<&[PromptTemplate]>,
-    skills: Option<&[Skill]>,
-) -> String {
-    let commands = slash_commands_for_palette(extensions, prompt_templates, skills);
+pub fn format_help_message(prompt_templates: Option<&[PromptTemplate]>, skills: Option<&[Skill]>) -> String {
+    let commands = slash_commands_for_palette(prompt_templates, skills);
     let mut lines = vec!["Slash commands:".to_string()];
     for cmd in commands.into_iter().filter(|cmd| !cmd.hidden) {
         // `/help` is rendered as plain text (no box), so cap the description here.
@@ -739,16 +718,14 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
 
 pub fn dispatch_slash_command(
     input: &str,
-    extensions: Option<&ExtensionRegistry>,
     prompt_templates: Option<&[PromptTemplate]>,
     skills: Option<&[Skill]>,
 ) -> Option<SlashDispatch> {
-    dispatch_slash_command_with(input, extensions, prompt_templates, skills, true)
+    dispatch_slash_command_with(input, prompt_templates, skills, true)
 }
 
 pub fn dispatch_slash_command_with(
     input: &str,
-    extensions: Option<&ExtensionRegistry>,
     prompt_templates: Option<&[PromptTemplate]>,
     skills: Option<&[Skill]>,
     enable_skill_commands: bool,
@@ -774,12 +751,6 @@ pub fn dispatch_slash_command_with(
 
     if let Some(dispatch) = builtin_dispatch(&name, args.clone()) {
         return Some(dispatch);
-    }
-
-    if let Some(registry) = extensions
-        && registry.commands().iter().any(|cmd| cmd.name == name)
-    {
-        return Some(SlashDispatch::Extension { name, args });
     }
 
     if let Some(templates) = prompt_templates
@@ -821,17 +792,17 @@ mod tests {
     #[test]
     fn provider_connect_dispatch() {
         assert_eq!(
-            dispatch_slash_command("/provider connect", None, None, None),
+            dispatch_slash_command("/provider connect", None, None),
             Some(SlashDispatch::ProviderConnect { provider_id: None })
         );
         assert_eq!(
-            dispatch_slash_command("/provider connect anthropic", None, None, None),
+            dispatch_slash_command("/provider connect anthropic", None, None),
             Some(SlashDispatch::ProviderConnect {
                 provider_id: Some("anthropic".to_string())
             })
         );
         assert_eq!(
-            dispatch_slash_command("/provider", None, None, None),
+            dispatch_slash_command("/provider", None, None),
             Some(SlashDispatch::ProviderConnect { provider_id: None })
         );
     }
@@ -839,21 +810,18 @@ mod tests {
     #[test]
     fn mcp_auth_dispatch() {
         assert_eq!(
-            dispatch_slash_command("/mcp auth", None, None, None),
+            dispatch_slash_command("/mcp auth", None, None),
             Some(SlashDispatch::McpAuth { server_name: None })
         );
         assert_eq!(
-            dispatch_slash_command("/mcp auth figma", None, None, None),
+            dispatch_slash_command("/mcp auth figma", None, None),
             Some(SlashDispatch::McpAuth {
                 server_name: Some("figma".to_string())
             })
         );
+        assert_eq!(dispatch_slash_command("/mcp list", None, None), Some(SlashDispatch::McpList));
         assert_eq!(
-            dispatch_slash_command("/mcp list", None, None, None),
-            Some(SlashDispatch::McpList)
-        );
-        assert_eq!(
-            dispatch_slash_command("/mcp logout figma", None, None, None),
+            dispatch_slash_command("/mcp logout figma", None, None),
             Some(SlashDispatch::McpLogout {
                 server_name: Some("figma".to_string())
             })
@@ -863,27 +831,27 @@ mod tests {
     #[test]
     fn transfer_dispatch_and_completions() {
         assert_eq!(
-            dispatch_slash_command("/transfer claude", None, None, None),
+            dispatch_slash_command("/transfer claude", None, None),
             Some(SlashDispatch::Transfer { args: "claude".into() })
         );
         assert_eq!(
-            dispatch_slash_command("/transfer claude latest", None, None, None),
+            dispatch_slash_command("/transfer claude latest", None, None),
             Some(SlashDispatch::Transfer {
                 args: "claude latest".into()
             })
         );
         assert_eq!(
-            dispatch_slash_command("/transfer codex", None, None, None),
+            dispatch_slash_command("/transfer codex", None, None),
             Some(SlashDispatch::Transfer { args: "codex".into() })
         );
         assert_eq!(
-            dispatch_slash_command("/transfer", None, None, None),
+            dispatch_slash_command("/transfer", None, None),
             Some(SlashDispatch::Transfer { args: String::new() })
         );
         let completions = slash_arg_completions("transfer").expect("transfer completions");
         assert!(completions.iter().any(|c| c.value == "claude"));
         assert!(completions.iter().any(|c| c.value == "codex"));
-        let commands = slash_commands_for_palette(None, None, None);
+        let commands = slash_commands_for_palette(None, None);
         let transfer = commands.iter().find(|cmd| cmd.name == "transfer").expect("transfer");
         assert_eq!(transfer.args_hint.as_deref(), Some("[args]"));
         assert!(!transfer.hidden);
@@ -891,118 +859,97 @@ mod tests {
 
     #[test]
     fn wired_commands_dispatch() {
-        assert_eq!(dispatch_slash_command("/exit", None, None, None), Some(SlashDispatch::Quit));
+        assert_eq!(dispatch_slash_command("/exit", None, None), Some(SlashDispatch::Quit));
         assert_eq!(
-            dispatch_slash_command("/compact", None, None, None),
+            dispatch_slash_command("/compact", None, None),
             Some(SlashDispatch::Compact {
                 options: CompactOptions::default()
             })
         );
+        assert_eq!(dispatch_slash_command("/continue", None, None), Some(SlashDispatch::Continue));
+        assert_eq!(dispatch_slash_command("/cont", None, None), Some(SlashDispatch::Continue));
         assert_eq!(
-            dispatch_slash_command("/continue", None, None, None),
-            Some(SlashDispatch::Continue)
-        );
-        assert_eq!(dispatch_slash_command("/cont", None, None, None), Some(SlashDispatch::Continue));
-        assert_eq!(
-            dispatch_slash_command("/goal pause", None, None, None),
+            dispatch_slash_command("/goal pause", None, None),
             Some(SlashDispatch::Goal { args: "pause".into() })
         );
-        assert_eq!(dispatch_slash_command("/help", None, None, None), Some(SlashDispatch::Help));
+        assert_eq!(dispatch_slash_command("/help", None, None), Some(SlashDispatch::Help));
         assert_eq!(
-            dispatch_slash_command("/aside is this safe?", None, None, None),
+            dispatch_slash_command("/aside is this safe?", None, None),
             Some(SlashDispatch::Aside {
                 question: "is this safe?".into()
             })
         );
         assert_eq!(
-            dispatch_slash_command("/aside", None, None, None),
+            dispatch_slash_command("/aside", None, None),
             Some(SlashDispatch::Aside {
                 question: String::new()
             })
         );
         assert_eq!(
-            dispatch_slash_command("/tools", None, None, None),
+            dispatch_slash_command("/tools", None, None),
             Some(SlashDispatch::Tools { args: String::new() })
         );
         assert_eq!(
-            dispatch_slash_command("/tools table", None, None, None),
+            dispatch_slash_command("/tools table", None, None),
             Some(SlashDispatch::Tools { args: "table".into() })
         );
         assert_eq!(
-            dispatch_slash_command("/tools list", None, None, None),
+            dispatch_slash_command("/tools list", None, None),
             Some(SlashDispatch::Tools { args: "list".into() })
         );
         assert_eq!(
-            dispatch_slash_command("/system-prompt", None, None, None),
+            dispatch_slash_command("/system-prompt", None, None),
             Some(SlashDispatch::SystemPrompt)
         );
-        assert_eq!(
-            dispatch_slash_command("/prompt", None, None, None),
-            Some(SlashDispatch::SystemPrompt)
-        );
-        assert_eq!(dispatch_slash_command("/reload", None, None, None), Some(SlashDispatch::Reload));
-        assert_eq!(
-            dispatch_slash_command("/new", None, None, None),
-            Some(SlashDispatch::NewSession)
-        );
+        assert_eq!(dispatch_slash_command("/prompt", None, None), Some(SlashDispatch::SystemPrompt));
+        assert_eq!(dispatch_slash_command("/reload", None, None), Some(SlashDispatch::Reload));
+        assert_eq!(dispatch_slash_command("/new", None, None), Some(SlashDispatch::NewSession));
     }
 
     #[test]
     fn overlay_commands_dispatch() {
         assert_eq!(
-            dispatch_slash_command("/model", None, None, None),
+            dispatch_slash_command("/model", None, None),
             Some(SlashDispatch::OverlayNeeded(OverlayCommand::Model { filter: String::new() }))
         );
         assert_eq!(
-            dispatch_slash_command("/model ", None, None, None),
+            dispatch_slash_command("/model ", None, None),
             Some(SlashDispatch::OverlayNeeded(OverlayCommand::Model { filter: String::new() }))
         );
         assert_eq!(
-            dispatch_slash_command("/model opus", None, None, None),
+            dispatch_slash_command("/model opus", None, None),
             Some(SlashDispatch::OverlayNeeded(OverlayCommand::Model { filter: "opus".into() }))
         );
         assert_eq!(
-            dispatch_slash_command("/tree", None, None, None),
+            dispatch_slash_command("/tree", None, None),
             Some(SlashDispatch::Tree { args: String::new() })
         );
         assert_eq!(
-            dispatch_slash_command("/tree abc --summary", None, None, None),
+            dispatch_slash_command("/tree abc --summary", None, None),
             Some(SlashDispatch::Tree {
                 args: "abc --summary".into()
             })
         );
         assert_eq!(
-            dispatch_slash_command("/resume", None, None, None),
+            dispatch_slash_command("/resume", None, None),
             Some(SlashDispatch::Resume { args: String::new() })
         );
         assert_eq!(
-            dispatch_slash_command("/resume abc123", None, None, None),
+            dispatch_slash_command("/resume abc123", None, None),
             Some(SlashDispatch::Resume { args: "abc123".into() })
         );
+        assert_eq!(dispatch_slash_command("/thinking", None, None), Some(SlashDispatch::Thinking));
+        assert_eq!(dispatch_slash_command("/think", None, None), Some(SlashDispatch::Thinking));
+        assert_eq!(dispatch_slash_command("/workers", None, None), Some(SlashDispatch::Workers));
+        assert_eq!(dispatch_slash_command("/intercom", None, None), Some(SlashDispatch::WorkerChat));
         assert_eq!(
-            dispatch_slash_command("/thinking", None, None, None),
-            Some(SlashDispatch::Thinking)
-        );
-        assert_eq!(
-            dispatch_slash_command("/think", None, None, None),
-            Some(SlashDispatch::Thinking)
-        );
-        assert_eq!(
-            dispatch_slash_command("/workers", None, None, None),
-            Some(SlashDispatch::Workers)
-        );
-        assert_eq!(
-            dispatch_slash_command("/intercom", None, None, None),
-            Some(SlashDispatch::WorkerChat)
-        );
-        assert_eq!(
-            dispatch_slash_command("/intercom calm-fox", None, None, None),
+            dispatch_slash_command("/intercom calm-fox", None, None),
             Some(SlashDispatch::WorkerChat)
         );
     }
 
     #[test]
-    fn template_dispatch_when_no_extension() {
+    fn template_dispatch_without_dynamic_command() {
         let templates = vec![PromptTemplate {
             name: "review".into(),
             description: "Review code".into(),
@@ -1011,7 +958,7 @@ mod tests {
             file_path: "/tmp/review.md".into(),
         }];
         assert_eq!(
-            dispatch_slash_command("/review main.rs", None, Some(&templates), None),
+            dispatch_slash_command("/review main.rs", Some(&templates), None),
             Some(SlashDispatch::PromptTemplate {
                 name: "review".into(),
                 args: "main.rs".into()
@@ -1024,14 +971,14 @@ mod tests {
         let skills = vec![sample_skill()];
         // Legacy `/skill:name` prefix still works.
         assert_eq!(
-            dispatch_slash_command("/skill:code-review src/", None, None, Some(&skills)),
+            dispatch_slash_command("/skill:code-review src/", None, Some(&skills)),
             Some(SlashDispatch::Skill {
                 name: "code-review".into(),
                 args: "src/".into()
             })
         );
         assert_eq!(
-            dispatch_slash_command("/skill:missing", None, None, Some(&skills)),
+            dispatch_slash_command("/skill:missing", None, Some(&skills)),
             Some(SlashDispatch::Unimplemented("/skill:missing".into()))
         );
     }
@@ -1040,14 +987,14 @@ mod tests {
     fn skill_dispatch_by_raw_name() {
         let skills = vec![sample_skill()];
         assert_eq!(
-            dispatch_slash_command("/code-review src/", None, None, Some(&skills)),
+            dispatch_slash_command("/code-review src/", None, Some(&skills)),
             Some(SlashDispatch::Skill {
                 name: "code-review".into(),
                 args: "src/".into()
             })
         );
         assert_eq!(
-            dispatch_slash_command("/code-review", None, None, Some(&skills)),
+            dispatch_slash_command("/code-review", None, Some(&skills)),
             Some(SlashDispatch::Skill {
                 name: "code-review".into(),
                 args: String::new()
@@ -1058,12 +1005,12 @@ mod tests {
     #[test]
     fn palette_lists_skill_commands_without_prefix() {
         let skills = vec![sample_skill()];
-        let names: Vec<_> = slash_commands_for_palette(None, None, Some(&skills))
+        let names: Vec<_> = slash_commands_for_palette(None, Some(&skills))
             .into_iter()
             .map(|cmd| cmd.name)
             .collect();
         assert!(names.contains(&"code-review".to_string()));
-        let skill = slash_commands_for_palette(None, None, Some(&skills))
+        let skill = slash_commands_for_palette(None, Some(&skills))
             .into_iter()
             .find(|cmd| cmd.name == "code-review")
             .expect("skill command");
@@ -1074,7 +1021,7 @@ mod tests {
 
     #[test]
     fn palette_includes_tools_without_args() {
-        let commands = slash_commands_for_palette(None, None, None);
+        let commands = slash_commands_for_palette(None, None);
         let tools = commands.iter().find(|cmd| cmd.name == "tools").expect("tools");
         assert_eq!(tools.args_hint, None);
         assert_eq!(tools.palette_command_label(), "/tools");
@@ -1108,7 +1055,7 @@ mod tests {
 
     #[test]
     fn mcp_palette_args_hint() {
-        let commands = slash_commands_for_palette(None, None, None);
+        let commands = slash_commands_for_palette(None, None);
         let mcp = commands.iter().find(|cmd| cmd.name == "mcp").expect("mcp");
         assert_eq!(mcp.args_hint.as_deref(), Some("[args]"));
         assert_eq!(mcp.palette_command_label(), "/mcp [args]");
@@ -1116,22 +1063,19 @@ mod tests {
 
     #[test]
     fn session_and_rename_dispatch() {
+        assert_eq!(dispatch_slash_command("/session", None, None), Some(SlashDispatch::SessionInfo));
         assert_eq!(
-            dispatch_slash_command("/session", None, None, None),
-            Some(SlashDispatch::SessionInfo)
-        );
-        assert_eq!(
-            dispatch_slash_command("/rename", None, None, None),
+            dispatch_slash_command("/rename", None, None),
             Some(SlashDispatch::Rename { args: String::new() })
         );
         assert_eq!(
-            dispatch_slash_command("/rename Fix login", None, None, None),
+            dispatch_slash_command("/rename Fix login", None, None),
             Some(SlashDispatch::Rename {
                 args: "Fix login".into()
             })
         );
         assert_eq!(
-            dispatch_slash_command("/name My title", None, None, None),
+            dispatch_slash_command("/name My title", None, None),
             Some(SlashDispatch::Rename {
                 args: "My title".into()
             })
@@ -1141,23 +1085,23 @@ mod tests {
     #[test]
     fn hidden_commands_dispatch_but_skip_palette() {
         assert_eq!(
-            dispatch_slash_command("/confetti", None, None, None),
+            dispatch_slash_command("/confetti", None, None),
             Some(SlashDispatch::Confetti { args: String::new() })
         );
         assert_eq!(
-            dispatch_slash_command("/confetti firework", None, None, None),
+            dispatch_slash_command("/confetti firework", None, None),
             Some(SlashDispatch::Confetti {
                 args: "firework".into()
             })
         );
         assert_eq!(
-            dispatch_slash_command("/conffety", None, None, None),
+            dispatch_slash_command("/conffety", None, None),
             Some(SlashDispatch::Confetti { args: String::new() })
         );
         assert_eq!(confetti_mode_from_args(""), "confetti");
         assert_eq!(confetti_mode_from_args("fireworks"), "firework");
 
-        let commands = slash_commands_for_palette(None, None, None);
+        let commands = slash_commands_for_palette(None, None);
         let confetti = commands.iter().find(|cmd| cmd.name == "confetti");
         // Kept in the registry (so Tab can match), but marked hidden for empty `/` + help.
         assert!(
@@ -1165,7 +1109,7 @@ mod tests {
             "hidden commands stay in registry for Tab"
         );
 
-        let help = format_help_message(None, None, None);
+        let help = format_help_message(None, None);
         assert!(!help.contains("/confetti"));
     }
 
@@ -1178,7 +1122,7 @@ mod tests {
             argument_hint: None,
             file_path: "/tmp/help.md".into(),
         }];
-        let names: Vec<_> = slash_commands_for_palette(None, Some(&templates), None)
+        let names: Vec<_> = slash_commands_for_palette(Some(&templates), None)
             .into_iter()
             .map(|cmd| cmd.name)
             .collect();

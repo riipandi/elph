@@ -19,6 +19,7 @@ use crate::platform::acp::mcp;
 use crate::platform::acp::replay;
 use crate::platform::acp::state::{AcpAgentState, AcpSessionState, MessageIds, lookup_session, session_key};
 use crate::platform::acp::updates::send_update;
+use crate::platform::hooks::HookHost;
 
 /// A non-absolute workspace root is a caller mistake: report `invalid_params`
 /// (-32602), not `internal_error`.
@@ -269,6 +270,10 @@ pub(super) async fn open_or_create(
     // (`incoming_transport_closed` on `session/new`). Run retention from the TUI / cron instead.
     settings.session.gc_on_open = false;
 
+    let hook_host = HookHost::new();
+    if let Err(error) = hook_host.reload(&paths) {
+        log::warn!("load hooks: {error:#}");
+    }
     if let Some(id) = resume_id {
         let manager = crate::agent::SessionManager::new(&paths, cwd)?;
         if let Some(meta) = manager.find_metadata(id).await? {
@@ -298,7 +303,7 @@ pub(super) async fn open_or_create(
             defer_session_gc: false,
             defer_memory_warm: false,
             headless: true,
-            extension_host: None,
+            hook_host: Some(&hook_host),
         }),
     )
     .await

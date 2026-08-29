@@ -8,8 +8,8 @@ use std::time::Instant;
 use crate::agent::goal_slash::handle_goal_slash;
 use crate::agent::{AgentUiEvent, CodingAgentSession, QueuedPromptItem, QueuedPromptKind};
 use crate::agent::{SlashDispatch, SubagentUiPhase};
-use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
+use crate::platform::hooks::HookHost;
 
 use super::activity::normalize_agent_status;
 use super::chrome::format_elapsed_secs;
@@ -142,7 +142,7 @@ impl SlashDispatcher {
     pub fn spawn(
         session: Arc<CodingAgentSession>,
         dispatch: SlashDispatch,
-        extension_host: Option<ExtensionHost>,
+        hook_host: Option<HookHost>,
         paths: Option<Paths>,
         cwd: Option<PathBuf>,
     ) {
@@ -180,15 +180,17 @@ impl SlashDispatcher {
                         empty
                     };
 
-                    if let Some(host) = extension_host.as_ref()
+                    if let Some(host) = hook_host.as_ref()
                         && let Some(paths) = paths.as_ref()
                     {
-                        match crate::platform::Settings::load(paths) {
-                            Ok(settings) => match host.reload(paths, &settings) {
-                                Ok(_) => report.push_summary("Extensions reloaded."),
-                                Err(err) => report.push_summary(format!("Extension reload failed: {err}")),
-                            },
-                            Err(err) => report.push_summary(format!("Extension reload failed: {err}")),
+                        match host.reload(paths) {
+                            Ok(_) => {
+                                report.push_summary("Hooks reloaded.");
+                                for diagnostic in &host.status().diagnostics {
+                                    report.push_notice(format!("Hook: {diagnostic}"));
+                                }
+                            }
+                            Err(err) => report.push_summary(format!("Hook reload failed: {err}")),
                         }
                     }
 
@@ -196,19 +198,6 @@ impl SlashDispatcher {
                     for notice in report.notices {
                         let _ = ui_tx.send(AgentUiEvent::TranscriptNotice(notice));
                     }
-                }
-                SlashDispatch::Extension { name, args } => {
-                    let status = if let Some(host) = extension_host.as_ref() {
-                        match host.dispatch_slash(&name, &args) {
-                            Some(Ok(result)) if result.is_error => format!("Extension error: {}", result.message),
-                            Some(Ok(result)) => result.message,
-                            Some(Err(err)) => format!("Extension error: {err}"),
-                            None => format!("Extension command not found: /{name}"),
-                        }
-                    } else {
-                        "Extension host unavailable.".into()
-                    };
-                    let _ = ui_tx.send(AgentUiEvent::Status(status));
                 }
                 SlashDispatch::PromptTemplate { name, args } => {
                     if let Err(err) = session.prompt_from_template(&name, &args).await {

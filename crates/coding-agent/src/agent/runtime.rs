@@ -63,8 +63,8 @@ pub struct CreateSessionOptions<'a> {
     /// Whether the session runs in headless mode (`elph run`). Relaxes some tool
     /// defaults (e.g. no background-task timeout by default).
     pub headless: bool,
-    /// WASM extension host; bound to the harness after restore when present.
-    pub extension_host: Option<&'a crate::extensions::ExtensionHost>,
+    /// Native command hook host; bound to the harness after restore when present.
+    pub hook_host: Option<&'a crate::platform::hooks::HookHost>,
 }
 
 pub async fn create_coding_session_with_events(
@@ -568,7 +568,7 @@ pub async fn create_coding_session_with_events(
         log::warn!("automatic memory hooks: {err:#}");
     }
 
-    if let Some(host) = options.extension_host {
+    if let Some(host) = options.hook_host {
         host.bind_to_harness(&harness).await;
     }
 

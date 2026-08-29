@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn description_truncated_to_single_line() {
-        let desc = "Reload extensions and prompt templates from disk";
+        let desc = "Reload hooks and prompt templates from disk";
         let width = palette_desc_width(40, palette_command_column_width(&[], 40));
         let lines = wrap_palette_description(desc, width);
         assert_eq!(lines.len(), 1, "description is truncated to a single line");

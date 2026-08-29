@@ -2,7 +2,7 @@
 
 ## Workspace trust
 
-Trusted workspace directories are recorded in `CONFIG_DIR/trust.json`. Use `/trust` in the TUI to mark the current workspace. Project-local extensions under `.elph/extensions/` load only after trust.
+Trusted workspace directories are recorded in `CONFIG_DIR/trust.json`. Use `/trust` in the TUI to mark the current workspace. Project-local hooks under `.elph/hooks.json` load only after trust.
 
 ## Tool policy
 

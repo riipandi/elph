@@ -5,8 +5,8 @@
 Trusted workspace directories are recorded in `CONFIG_DIR/trust.json` (typically
 `~/.config/elph/trust.json`). Use `/trust` in the TUI to mark the current
 workspace; the path is stored under the `directories` map (absolute or
-`~`/`$HOME` forms). Project-local extensions under `.elph/extensions/` load only
-after trust.
+`~`/`$HOME` forms). Project-local hooks under `.elph/hooks.json` load only after
+trust.
 
 ## Tool policy
 

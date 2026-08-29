@@ -33,7 +33,7 @@ impl DefaultProjectTrust {
 pub struct TrustStore {
     #[serde(default)]
     pub directories: BTreeMap<String, bool>,
-    /// When no directory decision applies: load project WASM extensions (`always`) or skip (`ask`/`never`).
+    /// When no directory decision applies: load executable project resources (`always`) or skip (`ask`/`never`).
     /// `ask` has no prompt UI yet and behaves like `never`.
     #[serde(default)]
     pub default_project_trust: DefaultProjectTrust,
@@ -106,8 +106,8 @@ impl TrustStore {
         Ok(false)
     }
 
-    /// Whether project-local WASM extensions may load.
-    pub fn project_extensions_allowed<P: AppPaths>(paths: &P, cwd: &Path) -> Result<bool> {
+    /// Whether project-local hook commands may load.
+    pub fn project_hooks_allowed<P: AppPaths>(paths: &P, cwd: &Path) -> Result<bool> {
         if Self::is_trusted(paths, cwd)? {
             return Ok(true);
         }

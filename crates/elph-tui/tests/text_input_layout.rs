@@ -22,7 +22,7 @@ fn display_text_for_row_range_slices_viewport() {
     assert!(slice.lines().count() <= 2);
 }
 
-const ELPH_PASTE: &str = "**Elph** is a Rust workspace for AI agent applications: a coding agent CLI, shared agent runtime libraries, and terminal UI components. It is a port of the [pi](https://pi.dev) TypeScript ecosystem to Rust, with additional MCP (Model Context Protocol) support, WASM extensions, and an iocraft-based interactive TUI.";
+const ELPH_PASTE: &str = "**Elph** is a Rust workspace for AI agent applications: a coding agent CLI, shared agent runtime libraries, and terminal UI components. It is a port of the [pi](https://pi.dev) TypeScript ecosystem to Rust, with additional MCP (Model Context Protocol) support, native hooks, and an iocraft-based interactive TUI.";
 const BULLET_PASTE: &str = "- **TOON Encoding** — Optional structured-data encoding for tool results (reduces token usage on tabular payloads).\n- **MCP** — Model Context Protocol client supporting stdio, streamable HTTP, and SSE transports with OAuth 2.1 and AES-256-GCM credential encryption.\n- **Agent** — `elph::agent` wraps `elph-agent`'s `AgentHarness` with session orchestration for the coding use case.\n";
 
 fn assert_extend_matches_full(width: u16, base: &str, suffix: &str) {
@@ -92,7 +92,7 @@ fn wrap_width_reserves_cursor_column() {
 
 #[test]
 fn overlay_editor_eof_cursor_on_last_wrapped_row() {
-    let text = "**Elph** is a Rust workspace for AI agent applications: a coding agent CLI, shared agent runtime libraries, and terminal UI components. It is a port of the [pi](https://pi.dev) TypeScript ecosystem to Rust, with additional MCP (Model Context Protocol) support, WASM extensions, and an iocraft-based interactive TUI.";
+    let text = "**Elph** is a Rust workspace for AI agent applications: a coding agent CLI, shared agent runtime libraries, and terminal UI components. It is a port of the [pi](https://pi.dev) TypeScript ecosystem to Rust, with additional MCP (Model Context Protocol) support, native hooks, and an iocraft-based interactive TUI.";
     let layout = WrappedTextLayout::new_for_overlay_editor(text, 72);
     let (row, _) = layout.row_column_for_offset(text, text.len());
     assert_eq!(row, layout.row_count().saturating_sub(1));

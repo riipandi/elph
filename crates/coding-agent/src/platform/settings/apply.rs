@@ -3,34 +3,14 @@
 use std::path::{Path, PathBuf};
 
 use elph_agent::harness::{PromptTemplate, Skill};
-use elph_agent::plugins::ExtensionsSettings;
 
 use super::Settings;
 use super::patterns::model_matches;
 
 impl Settings {
-    /// Extra + disabled extension names for the WASM host.
-    pub fn extensions_settings(&self) -> ExtensionsSettings {
-        ExtensionsSettings {
-            disabled: self.resources.disabled_extensions.clone(),
-            extra_paths: self
-                .resources
-                .extensions
-                .iter()
-                .filter(|p| !p.starts_with('!') && !p.starts_with('-'))
-                .map(|p| expand_user_path(p))
-                .collect(),
-        }
-    }
-
     /// Project skill/prompt directories are always scanned (same as settings merge).
     pub fn include_project_resources(&self) -> bool {
         true
-    }
-
-    /// Project WASM extensions require `/trust` or `trust.json` `defaultProjectTrust: always`.
-    pub fn include_project_extensions(&self, paths: &crate::platform::Paths) -> bool {
-        crate::platform::scaffold::TrustStore::project_extensions_allowed(paths, paths.project_dir()).unwrap_or(false)
     }
 
     /// Filter discovered skills by disabled names and ordered `resources.skills` patterns.

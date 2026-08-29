@@ -174,7 +174,7 @@ where
     /// appended — an already-active tool is left untouched. The updated set is
     /// persisted durably the same way [`Self::set_active_tools`] does (pending
     /// write while a turn is active), and emits a `ToolsUpdate` event so guests
-    /// (UI, extensions) observe the activation.
+    /// (UI and host integrations) observe the activation.
     pub(crate) async fn activate_lazy_tools(&self, names: &[String]) -> HarnessOpResult<()> {
         // Snapshot registry then release the tools lock. This method runs from
         // `after_tool_call` (nested under the agent turn); re-locking `tools` while

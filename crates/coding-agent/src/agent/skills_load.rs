@@ -193,7 +193,7 @@ mod tests {
 
     #[test]
     fn truncate_some_caps_to_width() {
-        let desc = "Reload extensions and prompt templates from disk after editing skill definitions";
+        let desc = "Reload hooks and prompt templates from disk after editing skill definitions";
         assert!(elph_tui::utils::display_width(desc) > MAX_PALETTE_DESCRIPTION_CHARS);
         let out = truncate_palette_description(desc, Some(MAX_PALETTE_DESCRIPTION_CHARS));
         assert!(elph_tui::utils::display_width(&out) <= MAX_PALETTE_DESCRIPTION_CHARS);

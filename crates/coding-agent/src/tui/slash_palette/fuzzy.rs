@@ -138,7 +138,7 @@ mod tests {
             SlashCommand::new("compact", "Compact conversation history"),
             SlashCommand::new("goal", "Manage session goals"),
             SlashCommand::new("model", "Select model"),
-            SlashCommand::new("reload", "Reload extensions and prompt templates"),
+            SlashCommand::new("reload", "Reload hooks and prompt templates"),
             SlashCommand::new("rust-verify-harden", "Run make check/lint/test and audit Rust changes"),
             SlashCommand::new("tui-design", "Guide terminal UI development with iocraft"),
             SlashCommand::new("confetti", "Confetti celebration").with_hidden(true),

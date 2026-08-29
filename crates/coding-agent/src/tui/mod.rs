@@ -77,7 +77,7 @@ impl Drop for ShellUseTeardownGuard {
 }
 
 use crate::agent::{load_resources, resolve_provider_and_model, slash_commands_for_palette_with};
-use crate::extensions::ExtensionHost;
+use crate::platform::hooks::HookHost;
 use crate::platform::{Paths, Settings};
 use crate::tui::transcript::LogDensity;
 use crate::types::{AgentMode, ThinkingLevel};
@@ -104,11 +104,9 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         options.resume_id.as_deref().unwrap_or("new")
     );
 
-    let extension_host = ExtensionHost::new();
-    if let Err(err) = ExtensionHost::ensure_dirs(&paths) {
-        log::warn!("extension dirs unavailable: {err}");
-    } else if let Err(err) = extension_host.reload(&paths, &settings) {
-        log::warn!("extension reload failed: {err}");
+    let hook_host = HookHost::new();
+    if let Err(err) = hook_host.reload(&paths) {
+        log::warn!("hook reload failed: {err}");
     }
 
     let cwd = paths.project_dir().clone();
@@ -120,7 +118,6 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
     let prompt_templates = bootstrap_resources.resources.prompt_templates.clone();
     let skills = bootstrap_resources.resources.skills.clone();
     let slash_commands = slash_commands_for_palette_with(
-        Some(extension_host.registry().as_ref()),
         Some(&prompt_templates),
         Some(&skills),
         settings.resources.enable_skill_commands,
@@ -162,7 +159,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
             .is_none()
             .then(|| boot_thinking_level.label().to_string()),
         preloaded_resources: bootstrap_resources,
-        extension_host: extension_host.clone(),
+        hook_host: hook_host.clone(),
     };
 
     let model_label = model_footer_label(Some(&boot_provider), Some(&boot_model_id));
@@ -191,7 +188,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         density: LogDensity::from_setting(&settings.ui.density),
         agent_session: None,
         ui_events: None,
-        extension_host: extension_host,
+        hook_host: hook_host,
         slash_commands: slash_commands,
         prompt_templates: prompt_templates,
         skills: skills,
