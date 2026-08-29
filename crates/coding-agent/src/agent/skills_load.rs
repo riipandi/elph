@@ -99,7 +99,7 @@ pub async fn load_workspace_skills(env: &LocalExecutionEnv, paths: &Paths, setti
     }
 
     let mut skills: Vec<Skill> = skills_by_name.into_values().collect();
-    skills = settings.filter_skills(skills);
+    skills = settings.filter_skills_for_project(skills, paths.project_dir());
     skills.sort_by(|left, right| left.name.cmp(&right.name));
     conflicts.sort_by(|left, right| left.name.cmp(&right.name));
 
