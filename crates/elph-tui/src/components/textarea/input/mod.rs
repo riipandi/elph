@@ -5,8 +5,8 @@ mod submit;
 mod wire_edit;
 
 /// Commit an idle raw paste burst before palette handlers read the buffer.
-pub(crate) fn flush_idle_burst(state: &mut TextareaState, burst: &mut PasteBurstState) -> bool {
-    paste_burst::merge_idle_burst(burst, state)
+pub(crate) fn flush_idle_burst(state: &mut TextareaState, burst: &mut PasteBurstState, atomic: bool) -> bool {
+    paste_burst::merge_idle_burst(burst, state, atomic)
 }
 
 use std::time::Instant;
@@ -45,6 +45,7 @@ pub struct TextareaInputContext<'a> {
     pub has_focus: bool,
     pub input_width: u16,
     pub submit_on_enter: bool,
+    pub atomic_paste: bool,
     pub suppress_enter_newline: Option<Ref<bool>>,
     pub slash_palette_active: Option<Ref<bool>>,
     pub file_picker_active: Option<Ref<bool>>,
@@ -65,7 +66,7 @@ pub fn handle_textarea_terminal_event(
     }
 
     if let TerminalEvent::Paste(data) = event {
-        return paste_burst::handle_bracketed_paste(&data, state, ctx.paste_burst, ctx.last_key_at);
+        return paste_burst::handle_bracketed_paste(&data, state, ctx.paste_burst, ctx.last_key_at, ctx.atomic_paste);
     }
 
     let TerminalEvent::Key(KeyEvent {
@@ -132,8 +133,9 @@ pub fn handle_textarea_terminal_event(
     let continues_burst = in_burst
         && crate::paste::raw_burst_accepts_key(code, kind, modifiers, true)
         && (!plain_submit_enter || raw_paste_blocks_submit);
-    let merged_idle_burst =
-        ctx.paste_burst.active && !continues_burst && paste_burst::merge_idle_burst(ctx.paste_burst, state);
+    let merged_idle_burst = ctx.paste_burst.active
+        && !continues_burst
+        && paste_burst::merge_idle_burst(ctx.paste_burst, state, ctx.atomic_paste);
 
     if (ctx.slash_palette_active.is_some_and(|active| active.get())
         || ctx.file_picker_active.is_some_and(|active| active.get()))
@@ -173,6 +175,18 @@ pub fn handle_textarea_terminal_event(
         };
     }
 
+    if kind != KeyEventKind::Release
+        && modifiers == KeyModifiers::CONTROL
+        && code == KeyCode::Char('o')
+        && state.expand_atomic_paste_at_cursor()
+    {
+        return TextareaInputResult::Changed;
+    }
+
+    if plain_submit_enter && state.expand_atomic_paste_at_cursor() {
+        return TextareaInputResult::Changed;
+    }
+
     if plain_submit_enter
         && let Some(result) = submit::handle_enter_key(submit::EnterKey {
             code,
@@ -198,6 +212,7 @@ pub fn handle_textarea_terminal_event(
         state,
         burst: ctx.paste_burst,
         last_key_at: ctx.last_key_at,
+        atomic: ctx.atomic_paste,
     }) {
         return result;
     }
@@ -267,6 +282,7 @@ mod tests {
             has_focus: true,
             input_width: 20,
             submit_on_enter,
+            atomic_paste: false,
             suppress_enter_newline: None,
             slash_palette_active: None,
             file_picker_active: None,
@@ -290,6 +306,24 @@ mod tests {
             handle_textarea_terminal_event(key_press(KeyCode::Enter), &mut state, ctx),
             TextareaInputResult::Submit("hi".into())
         );
+    }
+
+    #[test]
+    fn atomic_marker_enter_expands_instead_of_submitting() {
+        let mut state = TextareaState::default();
+        let pasted = "one\ntwo\nthree\nfour";
+        state.apply_paste_with_atomic(pasted, true);
+        let mut esc = false;
+        let mut burst = PasteBurstState::default();
+        let mut last = None;
+        let mut on_escape = HandlerMut::default();
+        let mut ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
+        ctx.atomic_paste = true;
+        assert_eq!(
+            handle_textarea_terminal_event(key_press(KeyCode::Enter), &mut state, ctx),
+            TextareaInputResult::Changed
+        );
+        assert_eq!(state.text, pasted);
     }
 
     #[test]
@@ -389,6 +423,7 @@ mod tests {
                 has_focus: true,
                 input_width: 40,
                 submit_on_enter: false,
+                atomic_paste: false,
                 suppress_enter_newline: None,
                 slash_palette_active: None,
                 file_picker_active: None,
@@ -409,6 +444,7 @@ mod tests {
             has_focus: true,
             input_width: 40,
             submit_on_enter: false,
+            atomic_paste: false,
             suppress_enter_newline: None,
             slash_palette_active: None,
             file_picker_active: None,

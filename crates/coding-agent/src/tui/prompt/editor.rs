@@ -57,6 +57,9 @@ pub struct EditorProps {
     pub image_attachments: Option<Ref<Vec<elph_tui::ImageAttachment>>>,
     /// Whether the active model accepts image input.
     pub supports_images: bool,
+    pub atomic_paste: bool,
+    pub atomic_pastes: Option<Ref<Vec<elph_tui::AtomicPaste>>>,
+    pub temporary_dir: Option<std::path::PathBuf>,
     /// Shown centered when the editor is blocked by an inline dialog.
     pub blocked_hint: Option<String>,
     /// Native terminal text-select mode (mouse capture off). Prompt stays focused/interactive;
@@ -163,6 +166,9 @@ pub fn Editor(props: &mut EditorProps) -> impl Into<AnyElement<'static>> {
                     image_attachment_dir: props.image_attachment_dir.clone(),
                     image_attachments: props.image_attachments,
                     supports_images: props.supports_images,
+                    atomic_paste: props.atomic_paste,
+                    atomic_pastes: props.atomic_pastes,
+                    temporary_dir: props.temporary_dir.clone(),
                     submit_on_enter: true,
                     on_submit: props.on_submit.take(),
                     on_escape: props.on_escape.take(),

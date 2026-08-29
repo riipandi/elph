@@ -37,6 +37,7 @@ pub(crate) fn build_shell_view(
         execution_env,
         extension_host,
         fallback_model_label,
+        atomic_paste,
         mut file_picker_active,
         mut file_picker_index,
         file_picker_key_handled,
@@ -95,6 +96,7 @@ pub(crate) fn build_shell_view(
         mut pending_user_question,
         mut pre_echoed_user_prompts,
         mut prompt_editor_mirror,
+        atomic_pastes,
         mut prompt_history,
         mut prompt_history_index,
         mut prompt_history_open,
@@ -1317,6 +1319,9 @@ pub(crate) fn build_shell_view(
                 turn: chrome.turn_count,
                 model_label: model_label.clone(),
                 supports_images: supports_images,
+                atomic_paste: atomic_paste,
+                atomic_pastes: Some(atomic_pastes),
+                temporary_dir: Some(paths.read().temp_dir()),
                 colored_status_footer: colored_status_footer,
                 worker_live_count: agent_session
                     .as_ref()

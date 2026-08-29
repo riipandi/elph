@@ -6,11 +6,6 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
-        "$schema": {
-            "type": "string",
-            "const": "https://elph.space/auth-schema.json",
-            "description": "JSON Schema URL (editor autocompletion). Ignored at runtime."
-        },
         "provider": {
             "type": "object",
             "description": "Map of provider id (kebab-case) → API key or env:VAR. Secrets are stored as enc:… after save.",

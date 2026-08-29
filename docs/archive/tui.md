@@ -179,8 +179,8 @@ When expanded, the body appears inside a background box colored by status:
 
 - Green tint (success), red tint (error), amber tint (warning), blue tint (running).
 - Detail titles use plain text (no background); the hint row is clickable for detail blocks.
-- `Ctrl+O` toggles the most recent collapsible block in the session (unless the input has a
-  collapsed paste token or the paste editor is open — then **Ctrl+O** handles paste preview first).
+- `Ctrl+O` toggles the most recent collapsible block in the session (unless the input caret is
+  touching an atomic `[Paste#N: N lines]` marker — then **Ctrl+O** expands that marker first).
 
 ### Slash command palette
 
@@ -246,20 +246,23 @@ Terminals that emit raw CSI for **Cmd+Delete** (e.g. Ghostty `\x1b[3;9~`) are ha
 
 ### Long text paste
 
-When **Ctrl+V** / **Cmd+V** pastes plain text (not an image), long payloads collapse so the input
-stays readable. Thresholds: **≥ 4 lines** or **≥ 400 runes**. The textarea stores an internal token
-(`[[paste:id]]`); the UI shows **`[Pasted: N lines]`**. On submit, tokens expand to the full text
-sent to the agent.
+When **Ctrl+V** / **Cmd+V** pastes plain text (not an image), `ui.atomicPaste` controls
+whether long payloads collapse so the input stays readable. It defaults to `true`.
+When enabled, the threshold is **at least four lines or 400 runes**. Elph stores
+the payload in `APP_DATA/temp/` and shows the atomic marker
+**`[Paste#N: N lines]`** in the prompt.
 
-| UI element   | Behavior                                                                 |
-| ------------ | ------------------------------------------------------------------------ |
-| Hint row     | `Pasted block · N lines · ctrl+o to preview/edit` when a token is active |
-| **Ctrl+O**   | Opens a full-screen paste editor overlay (when input has a paste token)  |
-| Editor keys  | **Ctrl+J** / **Shift+Enter** — newline; **Ctrl+O** or **Esc** — save     |
-| After paste  | Cursor moves to the end of the paste token                               |
-| After editor | Main input cursor restores to the pre-edit line/column                   |
+| UI element | Behavior |
+| --- | --- |
+| Marker | The marker is one cursor, backspace, delete, and selection unit |
+| Preview | Appears above the textarea only while the caret touches the marker |
+| **Enter** / **Ctrl+O** | Expand the marker into editable text |
+| Submit | Any remaining markers expand automatically before the agent receives the prompt |
+| Cleanup | Temporary payload files are removed when expanded, deleted, submitted, or discarded |
 
-Paste collapse is always applied for long text payloads (no settings toggle).
+Moving the caret away closes the preview. Marker indices are allocated from the
+current prompt state, so a new empty prompt starts at `[Paste#1: ...]`. With
+`ui.atomicPaste: false`, clipboard text is inserted normally.
 
 ---
 

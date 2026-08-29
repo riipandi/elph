@@ -182,6 +182,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         model_label: model_label,
         context_limit: context_limit,
         supports_images: supports_images,
+        atomic_paste: settings.ui.atomic_paste,
         footer_token_display: settings.ui.footer_token_display.clone(),
         colored_status_footer: settings.ui.colored_status_footer,
         sticky_scroll: settings.ui.sticky_scroll,

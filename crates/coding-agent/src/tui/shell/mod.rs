@@ -331,6 +331,7 @@ pub struct MainShellProps {
     pub model_label: String,
     pub context_limit: u64,
     pub supports_images: bool,
+    pub atomic_paste: bool,
     pub footer_token_display: String,
     pub colored_status_footer: bool,
     pub sticky_scroll: bool,
@@ -365,6 +366,7 @@ impl Default for MainShellProps {
             model_label: String::new(),
             context_limit: 200_000,
             supports_images: false,
+            atomic_paste: false,
             footer_token_display: "both".to_string(),
             colored_status_footer: true,
             sticky_scroll: false,
@@ -482,6 +484,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let pending_mode_change = hooks.use_ref(|| None::<PendingModeChange>);
     let pending_retry_prompt = hooks.use_ref(|| None::<String>);
     let prompt_editor_mirror = hooks.use_ref(|| (String::new(), 0usize));
+    let atomic_pastes = hooks.use_ref(Vec::<elph_tui::AtomicPaste>::new);
     let styled_content = hooks.use_ref(String::new);
     let mention_index = hooks.use_ref(|| None::<Arc<MentionSearchIndex>>);
     let mention_index_requested = hooks.use_ref(|| false);
@@ -696,6 +699,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         fallback_model_label,
         fallback_model_label_for_chrome,
         fallback_supports_images,
+        atomic_paste: props.atomic_paste,
         file_picker_active,
         file_picker_index,
         file_picker_key_handled,
@@ -768,6 +772,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         pending_user_question,
         pre_echoed_user_prompts,
         prompt_editor_mirror,
+        atomic_pastes,
         prompt_history,
         prompt_history_index,
         prompt_history_open,

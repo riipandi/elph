@@ -15,7 +15,7 @@ pub use layout::{
     compute_viewport_height, display_row_count, layout_cursor_for_viewport, layout_textarea, layout_textarea_measured,
 };
 pub use layout::{logical_line_count, visible_row_count};
-pub use state::{TextareaState, image_marker_id_at_cursor};
+pub use state::{AtomicPaste, TextareaState, atomic_paste_id_at_cursor, image_marker_id_at_cursor};
 
 /// Props for [`Textarea`].
 #[derive(Default, Props)]
@@ -72,6 +72,12 @@ pub struct TextareaProps {
     pub image_attachments: Option<Ref<Vec<ImageAttachment>>>,
     /// Whether the active model accepts image input.
     pub supports_images: bool,
+    /// Replace long clipboard text with an atomic marker.
+    pub atomic_paste: bool,
+    /// Mirror of atomic paste payloads for the preview dialog.
+    pub atomic_pastes: Option<Ref<Vec<AtomicPaste>>>,
+    /// Temporary directory for atomic paste payloads.
+    pub temporary_dir: Option<std::path::PathBuf>,
 }
 
 use crate::clipboard::ImageAttachment;

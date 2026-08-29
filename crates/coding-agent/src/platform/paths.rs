@@ -192,6 +192,7 @@ mod tests {
         assert_eq!(paths.hooks_dir(), config.join("hooks"));
         assert_eq!(paths.host_mcp_cache_dir(), data.join("mcp_cache"));
         assert_eq!(paths.worktrees_dir(), data.join("worktrees"));
+        assert_eq!(paths.temp_dir(), data.join("temp"));
         assert_eq!(paths.sessions_dir(), data.join("sessions"));
         assert_eq!(paths.models_dir(), data.join("models"));
         assert_eq!(paths.session_artifact_dir("abc123"), data.join("sessions").join("abc123"));
@@ -200,10 +201,10 @@ mod tests {
             paths.mcp_tool_stderr_log_path("my server", "tool/name"),
             data.join("logs/mcp/my_server/tool_name.stderr.log")
         );
-        // 3 bundled + 14 standard (sessions, no projects) = 17
-        // + config + data + global_ext + project_elph = 17+2+1+1 = 21
-        assert_eq!(paths.standard_required_dirs().len(), 17);
-        assert_eq!(paths.required_dirs().len(), 21);
+        // 3 bundled + 15 standard (sessions, no projects) = 18
+        // + config + data + global_ext + project_elph = 18+2+1+1 = 22
+        assert_eq!(paths.standard_required_dirs().len(), 18);
+        assert_eq!(paths.required_dirs().len(), 22);
     }
 
     #[test]

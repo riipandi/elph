@@ -21,14 +21,24 @@ use crate::text_editing::paste_echo_guard_duration;
 const RAW_BURST_LIVE_SYNC_MAX_CHARS: usize = 48;
 
 /// Commit an idle raw burst (gap since last key) before normal key dispatch.
-pub(crate) fn merge_idle_burst(burst: &mut PasteBurstState, state: &mut TextareaState) -> bool {
-    merge_burst_into_state(burst, state)
+pub(crate) fn merge_idle_burst(burst: &mut PasteBurstState, state: &mut TextareaState, atomic: bool) -> bool {
+    merge_burst_into_state(burst, state, atomic)
 }
 
-fn merge_burst_into_state(burst: &mut PasteBurstState, state: &mut TextareaState) -> bool {
+fn merge_burst_into_state(burst: &mut PasteBurstState, state: &mut TextareaState, atomic: bool) -> bool {
+    let anchor_text = burst.anchor_text.clone();
+    let anchor_cursor = burst.anchor_cursor;
+    let buffer = burst.buffer.clone();
     let Some((text, cursor)) = paste_burst_finish(burst) else {
         return false;
     };
+    if atomic && crate::paste::should_atomicize(&buffer) {
+        state.text = anchor_text;
+        state.cursor = anchor_cursor;
+        state.clear_selection();
+        state.apply_paste_with_atomic(&buffer, true);
+        return true;
+    }
     if state.text.len() > text.len() && state.text.starts_with(&text) {
         state.cursor = state.cursor.max(cursor).min(state.text.len());
     } else if state.text.len() == text.len() && state.text == text {
@@ -61,6 +71,7 @@ pub(crate) fn handle_bracketed_paste(
     state: &mut TextareaState,
     burst: &mut PasteBurstState,
     last_key_at: &mut Option<Instant>,
+    atomic: bool,
 ) -> TextareaInputResult {
     log::debug!(
         "bracketed paste chars={} newlines={}",
@@ -68,7 +79,7 @@ pub(crate) fn handle_bracketed_paste(
         crate::paste::newline_count(data)
     );
     paste_burst_reset(burst);
-    state.apply_paste(data);
+    state.apply_paste_with_atomic(data, atomic);
     *last_key_at = None;
     let now = Instant::now();
     let echo_guard = paste_echo_guard_duration(data.len());
@@ -88,6 +99,7 @@ pub(crate) struct RawBurstKey<'a> {
     pub state: &'a mut TextareaState,
     pub burst: &'a mut PasteBurstState,
     pub last_key_at: &'a mut Option<Instant>,
+    pub atomic: bool,
 }
 
 /// Raw paste burst from rapid key events (terminals without bracketed paste).
@@ -126,9 +138,27 @@ pub(crate) fn handle_raw_burst_key(key: RawBurstKey<'_>) -> Option<TextareaInput
         // Bulk paste: buffer only; idle timer / next non-burst key commits.
         return Some(TextareaInputResult::Consumed);
     }
-    if merge_burst_into_state(key.burst, key.state) {
+    if merge_burst_into_state(key.burst, key.state, key.atomic) {
         return Some(TextareaInputResult::Changed);
     }
 
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn long_raw_burst_commits_as_atomic_marker_when_enabled() {
+        let mut state = TextareaState::default();
+        let mut burst = PasteBurstState::default();
+        let payload = "one\ntwo\nthree\nfour";
+        paste_burst_begin_with_rewind(&mut burst, "", 0);
+        burst.buffer = payload.to_string();
+
+        assert!(merge_idle_burst(&mut burst, &mut state, true));
+        assert_eq!(state.text, "[Paste#1: 4 lines]");
+        assert_eq!(state.atomic_pastes[0].text, payload);
+    }
 }

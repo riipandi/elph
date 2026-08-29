@@ -6,11 +6,6 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
-        "$schema": {
-            "type": "string",
-            "const": "https://elph.space/elph-schema.json",
-            "description": "JSON Schema URL (editor autocompletion). Ignored at runtime."
-        },
         "preferredChatLanguage": {
             "type": "string",
             "default": "english",
@@ -182,6 +177,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "When true (default), show a dimmed per-turn stats card under the last assistant reply after each completed turn: duration, tokens in/out, cached tokens (when reported), and provider/model."
+                },
+                "atomicPaste": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Replace long clipboard text with an atomic [Paste#N: N lines] marker. Enter or Ctrl+O on the marker expands it."
                 }
             }
         },

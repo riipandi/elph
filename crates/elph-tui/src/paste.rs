@@ -6,6 +6,16 @@ pub fn newline_count(text: &str) -> usize {
     text.chars().filter(|&c| c == '\n').count()
 }
 
+/// Count logical lines in normalized paste text.
+pub fn line_count(text: &str) -> usize {
+    if text.is_empty() { 0 } else { newline_count(text) + 1 }
+}
+
+/// Whether pasted content is large enough to benefit from an atomic marker.
+pub fn should_atomicize(text: &str) -> bool {
+    line_count(text) >= 4 || text.chars().count() >= 400
+}
+
 /// Normalize clipboard text to Unix newlines for the editor buffer.
 pub fn normalize_paste_text(raw: &str) -> String {
     if !raw.contains('\r') {
@@ -206,6 +216,13 @@ mod tests {
     #[test]
     fn apply_paste_at_cursor_inserts_at_offset() {
         assert_eq!(apply_paste_at_cursor("hi", 2, " there"), ("hi there".into(), 8));
+    }
+
+    #[test]
+    fn atomic_threshold_uses_lines_or_runes() {
+        assert!(!should_atomicize("one\ntwo\nthree"));
+        assert!(should_atomicize("one\ntwo\nthree\nfour"));
+        assert!(should_atomicize(&"x".repeat(400)));
     }
 
     #[test]

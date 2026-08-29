@@ -2,7 +2,7 @@
 
 use elph_tui::PaletteKeyInput;
 use elph_tui::components::UiTheme;
-use elph_tui::{ImageAttachment, InputPrefixKind, image_marker_id_at_cursor};
+use elph_tui::{AtomicPaste, ImageAttachment, InputPrefixKind, atomic_paste_id_at_cursor, image_marker_id_at_cursor};
 use iocraft::prelude::*;
 
 use crate::tui::labels::GitFooterInfo;
@@ -39,8 +39,8 @@ fn render_image_preview_dialog(
                 width: width,
                 padding_left: theme.padding_md,
                 padding_right: theme.padding_md,
-                padding_top: theme.padding_sm,
-                padding_bottom: theme.padding_sm,
+                padding_top: 0,
+                padding_bottom: 0,
                 flex_direction: FlexDirection::Column,
                 border_style: BorderStyle::Round,
                 border_color: theme.accent,
@@ -60,11 +60,68 @@ fn render_image_preview_dialog(
                     color: theme.text_primary,
                     wrap: TextWrap::Wrap,
                 )
+                View(margin_top: 1, flex_shrink: 0f32) {
+                    Text(
+                        content: "Move the cursor away to close preview",
+                        color: theme.text_muted,
+                        wrap: TextWrap::NoWrap,
+                    )
+                }
+            }
+        }
+    }
+    .into()
+}
+
+fn render_atomic_paste_preview_dialog(
+    paste: &AtomicPaste,
+    width: u16,
+    bottom: u16,
+    theme: UiTheme,
+) -> AnyElement<'static> {
+    let line_count = elph_tui::paste::line_count(&paste.text);
+    let mut preview = paste.text.lines().take(8).collect::<Vec<_>>().join("\n");
+    if paste.text.lines().count() > 8 {
+        preview.push_str("\n…");
+    }
+    element! {
+        View(
+            width: width,
+            position: Position::Absolute,
+            left: 0,
+            bottom: bottom,
+            flex_shrink: 0f32,
+            align_items: AlignItems::FlexStart,
+        ) {
+            View(
+                width: width,
+                padding_left: theme.padding_md,
+                padding_right: theme.padding_md,
+                padding_top: 0,
+                padding_bottom: 0,
+                flex_direction: FlexDirection::Column,
+                border_style: BorderStyle::Round,
+                border_color: theme.accent,
+                background_color: theme.surface,
+            ) {
                 Text(
-                    content: "Move the cursor away to close preview",
-                    color: theme.text_muted,
+                    content: format!("Paste #{} · {line_count} lines", paste.id),
+                    color: theme.accent,
+                    weight: Weight::Bold,
                     wrap: TextWrap::NoWrap,
                 )
+                Text(
+                    content: preview,
+                    color: theme.text_primary,
+                    wrap: TextWrap::Wrap,
+                )
+                View(margin_top: 1, flex_shrink: 0f32) {
+                    Text(
+                        content: "Enter or Ctrl+O to expand · move the cursor away to close preview",
+                        color: theme.text_muted,
+                        wrap: TextWrap::Wrap,
+                    )
+                }
             }
         }
     }
@@ -83,6 +140,9 @@ pub struct PromptChromeProps {
     pub turn: u32,
     pub model_label: String,
     pub supports_images: bool,
+    pub atomic_paste: bool,
+    pub atomic_pastes: Option<Ref<Vec<AtomicPaste>>>,
+    pub temporary_dir: Option<std::path::PathBuf>,
     /// When false, footer accents use dimmed grey only.
     pub colored_status_footer: bool,
     pub chrome_revision: u64,
@@ -165,6 +225,30 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
     let image_preview_view = image_preview.as_ref().map(|attachment| {
         render_image_preview_dialog(attachment, props.screen_width, palette_anchor, UiTheme::default())
     });
+    let atomic_preview = if image_preview.is_none()
+        && props.has_focus
+        && !props.hide_editor
+        && !props.slash_palette_snapshot.visible
+        && !props.file_picker_snapshot.visible
+        && !props.prompt_history_snapshot.visible
+        && props.editor_overlay.is_none()
+    {
+        let cursor = props
+            .live_cursor
+            .as_ref()
+            .map(|cursor| cursor.get())
+            .unwrap_or(draft_text.len());
+        atomic_paste_id_at_cursor(&draft_text, cursor).and_then(|(_, _, id)| {
+            props
+                .atomic_pastes
+                .and_then(|pastes| pastes.read().iter().find(|paste| paste.id == id).cloned())
+        })
+    } else {
+        None
+    };
+    let atomic_preview_view = atomic_preview
+        .as_ref()
+        .map(|paste| render_atomic_paste_preview_dialog(paste, props.screen_width, palette_anchor, UiTheme::default()));
 
     // Editor + palettes are dropped while an overlay (e.g. `/aside`) owns the bottom
     // band; the footer below always renders. Build the subtree first so we can skip it.
@@ -203,6 +287,9 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                         image_attachment_dir: props.image_attachment_dir.clone(),
                         image_attachments: props.image_attachments,
                         supports_images: props.supports_images,
+                        atomic_paste: props.atomic_paste,
+                        atomic_pastes: props.atomic_pastes,
+                        temporary_dir: props.temporary_dir.clone(),
                         on_submit: props.on_submit.take(),
                         on_escape: if props.slash_palette_snapshot.visible
                             || props.file_picker_snapshot.visible
@@ -257,6 +344,7 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                         .into()
                     }))
                     #(image_preview_view)
+                    #(atomic_preview_view)
                 }
             }
             .into(),

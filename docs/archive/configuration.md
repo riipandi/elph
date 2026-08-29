@@ -41,6 +41,7 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 ~/.local/share/elph/                         # APP_DATA
 ├── auth.lock                # Wrapped AES-256 master key (machine-bound)
 ├── attachments/             # Pasted / uploaded images
+├── temp/                    # Temporary atomic text-paste payloads
 ├── downloads/               # Downloaded files + update artifacts
 ├── logs/
 │   ├── elph.jsonl           # Rolling app log (logforth; daily rotation)
@@ -101,6 +102,15 @@ a vector attachment; SVG clipboard content that is exposed only as text or HTML 
 fall back to ordinary text paste. The prompt editor has no hard four-image limit;
 provider/model request limits still apply.
 
+When `ui.atomicPaste` is enabled in `settings.json`, long text pastes (at least four
+lines or 400 runes) are staged as text files in `APP_DATA/temp/` and represented
+in the prompt by an atomic `[Paste#N: N lines]` marker. Cursor movement,
+backspace, delete, and selection treat the marker as one unit. The preview appears
+only while the caret touches the marker; `Enter` or `Ctrl+O` expands it in place,
+and submission expands any remaining markers automatically. Staged files are
+removed when their marker is expanded, deleted, submitted, or discarded. The
+default is `true`; set `ui.atomicPaste` to `false` to keep ordinary pastes inline.
+
 ### Storage roles
 
 | Store                  | Path                                      | Contents                                                                                               |
@@ -110,6 +120,7 @@ provider/model request limits still apply.
 | Host MCP cache         | `APP_DATA/mcp_cache/`                     | CLI MCP ops when no session is active (JSONL tool result cache)                                        |
 | App / crash / MCP logs | `APP_DATA/logs/`                          | Rolling JSONL, dated crash logs, MCP stderr                                                            |
 | Clipboard attachments  | `APP_DATA/attachments/`                  | Temporary PNG files staged by Ctrl/Cmd+V until the prompt is submitted or discarded                   |
+| Atomic paste staging   | `APP_DATA/temp/`                         | Temporary text files for long clipboard pastes when `ui.atomicPaste` is enabled                     |
 | MCP client stderr      | `APP_DATA/logs/mcp.log`                   | Raw fd 2 from the MCP (rmcp) client, redirected out of the TUI (suppression)                           |
 | Config files           | `CONFIG_DIR/*.json`                       | Settings, auth, trust, MCP, providers                                                                  |
 | Provider catalogs      | `CONFIG_DIR/providers/*.json`             | Disk model overlays (see below)                                                                        |
@@ -210,7 +221,8 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
         "density": "compact",
         "filePicker": { "showHiddenFiles": false },
         "allowModeChangeWhileBusy": true,
-        "turnStats": true
+        "turnStats": true,
+        "atomicPaste": true
     },
     // turnStats (default true): a dimmed stats line (duration · tokens in/out/cached ·
     // cost · provider/model) is rendered under the assistant reply after each real
@@ -270,7 +282,7 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
 | **`simplifiedTechnicalEnglish`** | (top-level, default `true`)                                                                                                                                                                            | Follow Simplified Technical English (ASD-STE100) in every response (chat replies + files written by the agent). `false` → plain style rules only.   |
 | **`maxRetries`**                 | (top-level)                                                                                                                                                                                            | LLM HTTP retries on 5xx / network errors                                                                                                            |
 | **`defaultTimeout`**             | (top-level)                                                                                                                                                                                            | LLM stream inactivity / SSE stall limit (e.g. `120s`)                                                                                               |
-| **`ui`**                         | `theme`, `themes`, `showThinking`, `autoExpandThinking`, `stickyScroll`, `footerTokenDisplay`, `coloredStatusFooter`, `density`, `allowModeChangeWhileBusy`, `turnStats`, `filePicker.showHiddenFiles` | Appearance + transcript / chrome                                                                                                                    |
+| **`ui`**                         | `theme`, `themes`, `showThinking`, `autoExpandThinking`, `stickyScroll`, `footerTokenDisplay`, `coloredStatusFooter`, `density`, `allowModeChangeWhileBusy`, `turnStats`, `atomicPaste`, `filePicker.showHiddenFiles` | Appearance + transcript / chrome; `atomicPaste` (default `true`) collapses long clipboard text into markers with preview/expand support and stores payloads in `APP_DATA/temp/` |
 | **`models`**                     | `defaultModel`, `defaultThinkingLevel`, `sessionTitleModel`, `compactionModel`, `treeBranchSummaries`, `scopedModels`, `showConfiguredOnly`, **`embed`** (`model`, `quantized`)                        | Seeds for **new** sessions + catalog prefs + **local embedding** (floppy memory). **Not** live chat model/mode/thinking                             |
 | **`promptEncoding`**             | `mode`, `minBytes`, `minSavingsRatio`, `delimiter`, `tabularDelimiter`, `targets`, `preamble`                                                                                                          | TOON encoding of model-visible tool results (optional; absent/`null` → `ELPH_PROMPT_ENCODING*` env vars)                                            |
 | **`memory`**                     | `enabled`, `autoRecall`, `autoCaptureWork`, `autoCaptureExploration`, `topK`, `contextBudgetChars`, `minQueryLength`                                                                                   | Floppy memory hooks + retrieval (see [memory.md](./memory.md)); embed model is under `models.embed`                                                 |

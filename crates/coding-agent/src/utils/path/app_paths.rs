@@ -75,6 +75,11 @@ pub trait AppPaths {
         self.data_dir().join("attachments")
     }
 
+    /// Temporary files used while preparing atomic clipboard pastes.
+    fn temp_dir(&self) -> PathBuf {
+        self.data_dir().join("temp")
+    }
+
     fn downloads_dir(&self) -> PathBuf {
         self.data_dir().join("downloads")
     }
@@ -170,6 +175,7 @@ pub trait AppPaths {
             self.skills_dir(),
             self.worktrees_dir(),
             self.attachments_dir(),
+            self.temp_dir(),
             self.downloads_dir(),
             self.logs_dir(),
             self.mcp_logs_dir(),
