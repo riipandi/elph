@@ -13,7 +13,7 @@ The user-facing outcome: toggling Plan is a real phase; when the agent proposes 
 
 ## Current Elph vs Grok (what we keep / skip)
 
-```
+```text
 Elph today                              Grok Build
 ──────────────────────────────────      ──────────────────────────────────
 CollaborationMode::Plan / Default       PlanModeTracker: Inactive/Pending/
@@ -62,7 +62,7 @@ No /view-plan                           /view-plan reopens preview
 
 When `PlanConfirmationRequired` fires, replace the compact select-list with an **inline plan review** (same chrome family as tool-approval / ask-user — `InlineDialogShell` above the prompt, not a new fullscreen app).
 
-```
+```text
 ╭─ Review plan · .elph/plans/plan-20260818_1430.md ──────────────╮
 │  12  ## Step 1                                                 │
 │  13▸ Use a new auth middleware                            [c]  │
@@ -103,7 +103,7 @@ When `PlanConfirmationRequired` fires, replace the compact select-list with an *
 
 Reuse Grok’s quoting format, adapted to Elph’s inline plan (not `@plan.md:`):
 
-```
+```text
 Plan revision requested.
 
 Proposed plan line 13:

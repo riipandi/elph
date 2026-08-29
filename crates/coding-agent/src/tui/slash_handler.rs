@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use elph_agent::harness::{PromptTemplate, Skill};
-use elph_agent::plugins::ExtensionRegistry;
 
 use crate::agent::RETRY_CONTINUE_PROMPT;
 use crate::agent::{
@@ -14,8 +13,8 @@ use crate::agent::{
     system_prompt_slash_message, tools_slash_message, tree_slash_message, trust_slash_message, workers_slash_message,
 };
 use crate::agent::{OverlayCommand, SlashDispatch, TransferError, TransferSession, spawn_aside};
-use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
+use crate::platform::hooks::HookHost;
 use crate::tui::confetti::confetti_mode_from_slash_args;
 use crate::utils::path::AppPaths;
 
@@ -177,11 +176,10 @@ pub enum SlashOutcome {
 
 pub struct SlashContext<'a> {
     pub input: &'a str,
-    pub extensions: Option<&'a ExtensionRegistry>,
     pub prompt_templates: Option<&'a [PromptTemplate]>,
     pub skills: Option<&'a [Skill]>,
     pub agent_session: Option<Arc<crate::agent::CodingAgentSession>>,
-    pub extension_host: Option<&'a ExtensionHost>,
+    pub hook_host: Option<&'a HookHost>,
     pub paths: Option<&'a Paths>,
     pub cwd: Option<&'a Path>,
 }
@@ -365,7 +363,7 @@ fn emit_transfer_status(session: &crate::agent::CodingAgentSession, message: Str
 }
 
 pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
-    let Some(dispatch) = dispatch_slash_command(ctx.input, ctx.extensions, ctx.prompt_templates, ctx.skills) else {
+    let Some(dispatch) = dispatch_slash_command(ctx.input, ctx.prompt_templates, ctx.skills) else {
         return SlashOutcome::SpawnAgentTurn;
     };
 
@@ -394,9 +392,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             // Quiet: do not echo `/aside …` as a user prompt card.
             SlashOutcome::BackgroundTaskQuiet
         }
-        SlashDispatch::Help => {
-            SlashOutcome::Status(format_help_message(ctx.extensions, ctx.prompt_templates, ctx.skills))
-        }
+        SlashDispatch::Help => SlashOutcome::Status(format_help_message(ctx.prompt_templates, ctx.skills)),
         SlashDispatch::Tools { .. } => match tools_slash_message(ctx.agent_session.as_ref()) {
             Ok(text) => SlashOutcome::OpenToolsDialog { text },
             Err(message) => SlashOutcome::Status(message),
@@ -644,8 +640,8 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             let session = ctx.agent_session.clone().expect("checked above");
             let paths = ctx.paths.cloned();
             let cwd = ctx.cwd.map(|path| path.to_path_buf());
-            let extension_host = ctx.extension_host.cloned();
-            SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
+            let hook_host = ctx.hook_host.cloned();
+            SlashDispatcher::spawn(session, dispatch, hook_host, paths, cwd);
             // `/compact` must not echo a "/compact" user prompt card — the compaction
             // notice already communicates it.
             SlashOutcome::SpawnAgentTurnQuiet
@@ -657,20 +653,20 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             let session = ctx.agent_session.clone().expect("checked above");
             let paths = ctx.paths.cloned();
             let cwd = ctx.cwd.map(|path| path.to_path_buf());
-            let extension_host = ctx.extension_host.cloned();
             let name = name.clone();
-            SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
+            let hook_host = ctx.hook_host.cloned();
+            SlashDispatcher::spawn(session, dispatch, hook_host, paths, cwd);
             SlashOutcome::SpawnAgentTurnPromptTemplate { name }
         }
-        SlashDispatch::Goal { .. } | SlashDispatch::Reload | SlashDispatch::Extension { .. } => {
+        SlashDispatch::Goal { .. } | SlashDispatch::Reload => {
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }
             let session = ctx.agent_session.clone().expect("checked above");
             let paths = ctx.paths.cloned();
             let cwd = ctx.cwd.map(|path| path.to_path_buf());
-            let extension_host = ctx.extension_host.cloned();
-            SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
+            let hook_host = ctx.hook_host.cloned();
+            SlashDispatcher::spawn(session, dispatch, hook_host, paths, cwd);
             // Quiet background work: no slash input echo, no prompt-history entry.
             // The task reports via AgentUiEvent (Status / notices), and the agent
             // loop derives busy state — a failure never strands a stale busy UI.
@@ -689,9 +685,9 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             let session = ctx.agent_session.clone().expect("checked above");
             let paths = ctx.paths.cloned();
             let cwd = ctx.cwd.map(|path| path.to_path_buf());
-            let extension_host = ctx.extension_host.cloned();
             let name = name.clone();
-            SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
+            let hook_host = ctx.hook_host.cloned();
+            SlashDispatcher::spawn(session, dispatch, hook_host, paths, cwd);
             SlashOutcome::SpawnAgentTurnSkill { name }
         }
     }
@@ -936,11 +932,10 @@ mod tests {
     fn bare_model_slash_opens_selector() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/model",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -954,11 +949,10 @@ mod tests {
     fn scoped_models_slash_opens_editor() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/scoped-models",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -969,11 +963,10 @@ mod tests {
     fn thinking_slash_opens_selector() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/thinking",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -984,11 +977,10 @@ mod tests {
     fn model_slash_opens_selector() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/model opus",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1028,11 +1020,10 @@ mod tests {
     fn tools_junk_arg_returns_dialog_without_session() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/tools json",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1050,11 +1041,10 @@ mod tests {
     fn tools_returns_dialog_without_session() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/tools",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1072,11 +1062,10 @@ mod tests {
     fn system_prompt_without_session_returns_status() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/system-prompt",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1091,11 +1080,10 @@ mod tests {
     fn session_without_session_returns_status() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/session",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1110,11 +1098,10 @@ mod tests {
     fn rename_without_session_returns_status() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/rename",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1129,11 +1116,10 @@ mod tests {
     fn continue_without_session_returns_status() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/continue",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1165,11 +1151,10 @@ mod tests {
     fn confetti_opens_rain_overlay() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/confetti",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1183,11 +1168,10 @@ mod tests {
     fn confetti_firework_mode() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/confetti firework",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1201,11 +1185,10 @@ mod tests {
     fn help_returns_status_without_session() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/help",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1216,11 +1199,10 @@ mod tests {
     fn unknown_slash_is_unimplemented() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/not-a-real-command",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1241,11 +1223,10 @@ mod tests {
         };
         let outcome = handle_slash_submit(SlashContext {
             input: "/skill:debug src/main.rs",
-            extensions: None,
             prompt_templates: None,
             skills: Some(&[skill]),
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1267,11 +1248,10 @@ mod tests {
         };
         let outcome = handle_slash_submit(SlashContext {
             input: "/code-review",
-            extensions: None,
             prompt_templates: None,
             skills: Some(&[skill]),
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1294,11 +1274,10 @@ mod tests {
         let paths = temp_paths();
         let outcome = handle_slash_submit(SlashContext {
             input: "/provider update anthropic",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: Some(&paths),
             cwd: None,
         });
@@ -1320,11 +1299,10 @@ mod tests {
         let paths = temp_paths();
         let outcome = handle_slash_submit(SlashContext {
             input: "/provider update not-a-real-provider",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: Some(&paths),
             cwd: None,
         });
@@ -1338,11 +1316,10 @@ mod tests {
     fn transfer_codex_without_session_returns_status() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/transfer codex",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1357,11 +1334,10 @@ mod tests {
     fn transfer_missing_tool_shows_usage() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/transfer",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });
@@ -1375,11 +1351,10 @@ mod tests {
     fn transfer_unknown_tool_shows_usage() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/transfer cursor",
-            extensions: None,
             prompt_templates: None,
             skills: None,
             agent_session: None,
-            extension_host: None,
+            hook_host: None,
             paths: None,
             cwd: None,
         });

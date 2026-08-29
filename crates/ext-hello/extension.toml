@@ -1,6 +1,0 @@
-name = "say-hello"
-version = "0.1.0"
-description = "Adds /say-hello and a shell_exec rm -rf confirm gate"
-wasm = "plugin.wasm"
-enabled = true
-trusted = true

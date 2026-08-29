@@ -133,7 +133,7 @@ Unsupported transports (including ACP-over-MCP) are ignored with a warning. A fa
 
 ## Later / client limitations
 
-- **Extensions** — WASM extension slash commands are not listed in `available_commands_update`.
+- **Hooks** — local hook commands are host-side automation and are not exposed as ACP slash commands.
 - **Client `terminal/*`** — not used. Local shell + display-only terminal updates only.
 - **In-band OAuth on `authenticate`** — not used. First-run uses **Terminal Auth** (`elph acp --setup` → `elph provider connect`). After that, `authenticate` / `auth/login` with `existing-credentials` (or a provider id) checks env/`auth.json`.
 

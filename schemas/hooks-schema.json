@@ -1,0 +1,95 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://elph.space/hooks-schema.json",
+    "title": "Elph lifecycle hooks configuration",
+    "description": "Native command hooks for Elph. Home: CONFIG_DIR/hooks.json; project override: <project>/.elph/hooks.json.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["hooks"],
+    "properties": {
+        "$schema": {
+            "type": "string",
+            "format": "uri-reference",
+            "description": "JSON Schema URL for editor completion. Ignored at runtime."
+        },
+        "hooks": {
+            "type": "array",
+            "default": [],
+            "items": { "$ref": "#/definitions/hook" }
+        }
+    },
+    "definitions": {
+        "event": {
+            "type": "string",
+            "enum": [
+                "sessionStart",
+                "userPromptSubmit",
+                "beforeAgent",
+                "preToolUse",
+                "postToolUse",
+                "postToolUseFailure",
+                "preCompact",
+                "postCompact",
+                "stop",
+                "sessionEnd"
+            ]
+        },
+        "matcher": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "toolNames": {
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 },
+                    "minItems": 1
+                }
+            }
+        },
+        "hook": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "event", "command"],
+            "allOf": [
+                {
+                    "if": { "required": ["matcher"] },
+                    "then": {
+                        "properties": {
+                            "event": {
+                                "enum": ["preToolUse", "postToolUse", "postToolUseFailure"]
+                            }
+                        }
+                    }
+                }
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+                },
+                "event": { "$ref": "#/definitions/event" },
+                "matcher": { "$ref": "#/definitions/matcher" },
+                "command": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Executable path or program name. Elph never invokes a shell implicitly."
+                },
+                "args": {
+                    "type": "array",
+                    "default": [],
+                    "items": { "type": "string" }
+                },
+                "timeoutMs": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 60000,
+                    "default": 10000
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "default": true
+                }
+            }
+        }
+    }
+}

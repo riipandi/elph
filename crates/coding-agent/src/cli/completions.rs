@@ -65,7 +65,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn bash_completion_includes_subcommands_and_ext_alias() {
+    fn bash_completion_includes_subcommands() {
         let mut cmd = Cli::command();
         let bin_name = cmd.get_name().to_string();
         let mut script = Vec::new();
@@ -73,8 +73,7 @@ mod tests {
 
         let script = String::from_utf8(script).expect("utf8");
         assert!(script.contains("elph"), "expected bin name in script:\n{script}");
-        assert!(script.contains("extensions"), "expected extensions subcommand:\n{script}");
-        assert!(script.contains("ext"), "expected ext alias:\n{script}");
+        assert!(script.contains("provider"), "expected provider subcommand:\n{script}");
         assert!(script.contains("memory"), "expected memory subcommand:\n{script}");
     }
 }

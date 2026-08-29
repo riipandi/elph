@@ -59,8 +59,6 @@ impl SelectItem {
 pub enum SlashCommandKind {
     /// Built-in command such as `/help`, `/model`, `/exit`.
     Builtin,
-    /// Extension command registered by an extension host.
-    Extension,
     /// Skill invoked as `/skill:<name>`.
     Skill,
     /// Loaded prompt template such as `/review`.

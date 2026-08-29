@@ -10,6 +10,7 @@ use serde::Serialize;
 
 use super::style::{self, CliStyle, S_ERR, S_MUTED, S_OK, S_WARN};
 use super::version::{self, BuildIdentity};
+use crate::platform::hooks::HookHost;
 use crate::platform::scaffold::TrustStore;
 use crate::platform::{self, EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths, Settings};
 use crate::utils::path::AppPaths;
@@ -214,7 +215,9 @@ struct ResourcesSection {
     skill_conflicts: usize,
     template_conflicts: usize,
     agent_conflicts: usize,
-    project_extensions_allowed: bool,
+    project_hooks_allowed: bool,
+    active_hooks: usize,
+    hook_diagnostics: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     load_error: Option<String>,
 }
@@ -679,8 +682,33 @@ fn mcp_section(paths: &Paths, checks: &mut Vec<Check>) -> McpSection {
 }
 
 fn resources_section(paths: &Paths, checks: &mut Vec<Check>) -> ResourcesSection {
-    let project_extensions_allowed =
-        TrustStore::project_extensions_allowed(paths, paths.project_dir()).unwrap_or(false);
+    let project_hooks_allowed = TrustStore::project_hooks_allowed(paths, paths.project_dir()).unwrap_or(false);
+    let hook_host = HookHost::new();
+    let (active_hooks, hook_diagnostics) = match hook_host.reload(paths) {
+        Ok(()) => {
+            let status = hook_host.status();
+            (status.active.len(), status.diagnostics.len())
+        }
+        Err(error) => {
+            checks.push(Check {
+                id: "hooks.load".into(),
+                status: CheckStatus::Warn,
+                summary: "hook configuration load failed".into(),
+                detail: Some(error.to_string()),
+                remediation: Some("Fix JSON in CONFIG_DIR/hooks.json or .elph/hooks.json.".into()),
+            });
+            (0, 1)
+        }
+    };
+    if hook_diagnostics > 0 {
+        checks.push(Check {
+            id: "hooks.config".into(),
+            status: CheckStatus::Warn,
+            summary: format!("{hook_diagnostics} hook configuration issue(s)"),
+            detail: None,
+            remediation: Some("Inspect hook paths and validate hooks.json against schemas/hooks-schema.json.".into()),
+        });
+    }
     let settings = Settings::load(paths).unwrap_or_else(|_| Settings::defaults());
     let env = LocalExecutionEnv::new(paths.project_dir());
     match elph_agent::runtime::try_block_on(crate::agent::load_resources(paths, paths.project_dir(), &env, &settings)) {
@@ -723,7 +751,9 @@ fn resources_section(paths: &Paths, checks: &mut Vec<Check>) -> ResourcesSection
                 skill_conflicts,
                 template_conflicts,
                 agent_conflicts,
-                project_extensions_allowed,
+                project_hooks_allowed,
+                active_hooks,
+                hook_diagnostics,
                 load_error: None,
             }
         }
@@ -742,7 +772,9 @@ fn resources_section(paths: &Paths, checks: &mut Vec<Check>) -> ResourcesSection
                 skill_conflicts: 0,
                 template_conflicts: 0,
                 agent_conflicts: 0,
-                project_extensions_allowed,
+                project_hooks_allowed,
+                active_hooks,
+                hook_diagnostics,
                 load_error: Some(err.to_string()),
             }
         }
@@ -1093,7 +1125,9 @@ fn format_human(report: &DoctorReport) -> String {
     style::kv(&mut out, sty, "Skills", report.resources.skills);
     style::kv(&mut out, sty, "Templates", report.resources.prompt_templates);
     style::kv(&mut out, sty, "Agents", report.resources.agents);
-    style::kv(&mut out, sty, "WASM ext.", yn(report.resources.project_extensions_allowed));
+    style::kv(&mut out, sty, "Project hooks", yn(report.resources.project_hooks_allowed));
+    style::kv(&mut out, sty, "Active hooks", report.resources.active_hooks);
+    style::kv(&mut out, sty, "Hook diagnostics", report.resources.hook_diagnostics);
 
     let _ = writeln!(out);
     style::section(&mut out, sty, "Store & logs");

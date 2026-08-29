@@ -22,7 +22,7 @@
 - Fresh routing session IDs for compaction — **[Parity]**
 - `BeforeToolCallResult.terminate` batch early-termination hint (before-hook path) — **[Parity]**
 - `Agent.reset()` idle-guard — **[Parity]** (Result return; bails if a run is in flight)
-- Goals / MCP / subagent / plugins / tools — **[Elph delta]** (product modules; not pi-agent gaps)
+- Goals / MCP / subagent / tools — **[Elph delta]** (product modules; not pi-agent gaps)
 
 ---
 
@@ -121,4 +121,4 @@ pi v0.84.0 rewrites the session layer around a **lane-based** model (`packages/a
 
 Modules under `elph-agent` that pi-agent-core does not ship as library surface:
 
-`goals/`, `agent/subagent/`, `plugins/`, `tools/` (incl. `tools/mcp/`), `collaboration/`, `datastore/`, session_dir + Turso backends, `prompt/encoding/` (TOON), richer harness wiring for product hosts.
+`goals/`, `agent/subagent/`, `tools/` (incl. `tools/mcp/`), `collaboration/`, `datastore/`, session_dir + Turso backends, `prompt/encoding/` (TOON), richer harness wiring for product hosts. Native command hooks are owned by `crates/coding-agent`, not this crate.

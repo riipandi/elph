@@ -34,11 +34,6 @@ pub trait AppPaths {
         self.config_dir().join("agents")
     }
 
-    /// User hooks (`CONFIG_DIR/hooks/`).
-    fn hooks_dir(&self) -> PathBuf {
-        self.config_dir().join("hooks")
-    }
-
     /// Host-level MCP cache when no session is active (CLI `mcp` commands).
     fn host_mcp_cache_dir(&self) -> PathBuf {
         self.data_dir().join("mcp_cache")
@@ -167,7 +162,6 @@ pub trait AppPaths {
         let mut dirs = self.bundled_content_dirs().into_iter().collect::<Vec<_>>();
         dirs.extend([
             self.agents_dir(),
-            self.hooks_dir(),
             self.prompts_dir(),
             self.providers_dir(),
             self.host_mcp_cache_dir(),

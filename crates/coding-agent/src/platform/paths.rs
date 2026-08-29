@@ -59,19 +59,18 @@ impl Paths {
     pub fn required_dirs(&self) -> Vec<PathBuf> {
         let mut dirs = vec![self.config_dir().clone(), self.data_dir().clone()];
         dirs.extend(self.standard_required_dirs());
-        dirs.push(self.global_extensions_dir());
         dirs.push(self.project_elph_dir());
         dirs
     }
 
-    /// `CONFIG_DIR/extensions/`
-    pub fn global_extensions_dir(&self) -> PathBuf {
-        elph_agent::plugins::global_extensions_dir(self.config_dir())
+    /// Home lifecycle hooks: `CONFIG_DIR/hooks.json`.
+    pub fn global_hooks_config_path(&self) -> PathBuf {
+        self.config_dir().join("hooks.json")
     }
 
-    /// `<project>/.elph/extensions/`
-    pub fn project_extensions_dir(&self) -> PathBuf {
-        elph_agent::plugins::project_extensions_dir(&self.project_elph_dir())
+    /// Project lifecycle hooks: `<project>/.elph/hooks.json`.
+    pub fn project_hooks_config_path(&self) -> PathBuf {
+        self.project_elph_dir().join("hooks.json")
     }
 
     /// Project MCP override: `<project>/.elph/mcp.json` (merged over home `mcp.json`).
@@ -187,9 +186,10 @@ mod tests {
         assert_eq!(paths.project_gitignore_path(), project.join(".elph/.gitignore"));
         assert_eq!(paths.project_settings_path(), project.join(".elph/settings.json"));
         assert_eq!(paths.project_mcp_config_path(), project.join(".elph/mcp.json"));
+        assert_eq!(paths.global_hooks_config_path(), config.join("hooks.json"));
+        assert_eq!(paths.project_hooks_config_path(), project.join(".elph/hooks.json"));
         assert_eq!(paths.bundled_manifest_path(), config.join("bundled/manifest.json"));
         assert_eq!(paths.agents_dir(), config.join("agents"));
-        assert_eq!(paths.hooks_dir(), config.join("hooks"));
         assert_eq!(paths.host_mcp_cache_dir(), data.join("mcp_cache"));
         assert_eq!(paths.worktrees_dir(), data.join("worktrees"));
         assert_eq!(paths.temp_dir(), data.join("temp"));
@@ -201,10 +201,10 @@ mod tests {
             paths.mcp_tool_stderr_log_path("my server", "tool/name"),
             data.join("logs/mcp/my_server/tool_name.stderr.log")
         );
-        // 3 bundled + 15 standard (sessions, no projects) = 18
-        // + config + data + global_ext + project_elph = 18+2+1+1 = 22
-        assert_eq!(paths.standard_required_dirs().len(), 18);
-        assert_eq!(paths.required_dirs().len(), 22);
+        // 3 bundled + 14 standard (sessions, no projects) = 17
+        // + config + data + project_elph = 17+2+1 = 20
+        assert_eq!(paths.standard_required_dirs().len(), 17);
+        assert_eq!(paths.required_dirs().len(), 20);
     }
 
     #[test]

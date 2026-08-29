@@ -26,7 +26,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut ephemeral_banner,
         mut ephemeral_banner_generation,
         ephemeral_expire,
-        extension_host,
+        hook_host,
         mut file_picker_active,
         file_picker_index,
         mut file_picker_key_handled,
@@ -127,7 +127,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     } = ctx;
     let paths = paths.read().clone();
     let agent_session = agent_session.clone();
-    let extension_host_for_keys = extension_host.clone();
+    let hook_host_for_keys = hook_host.clone();
     let cwd_for_keys = cwd.clone();
     let mut messages = messages;
     let mut messages_revision = messages_revision;
@@ -3451,7 +3451,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     }
                 };
 
-                let ext_registry = extension_host_for_keys.registry();
                 let templates = prompt_templates.read().clone();
                 let loaded_skills = skills.read().clone();
 
@@ -3461,11 +3460,10 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
 
                 let outcome = handle_slash_submit(SlashContext {
                     input: &slash_input,
-                    extensions: Some(ext_registry.as_ref()),
                     prompt_templates: Some(&templates),
                     skills: Some(&loaded_skills),
                     agent_session: agent_session.clone(),
-                    extension_host: Some(&extension_host_for_keys),
+                    hook_host: Some(&hook_host_for_keys),
                     paths: Some(&paths),
                     cwd: Some(&cwd_for_keys),
                 });

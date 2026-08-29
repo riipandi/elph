@@ -13,7 +13,7 @@
 | Topic                   | File                                                                 |
 | ----------------------- | -------------------------------------------------------------------- |
 | Agent flow & sessions   | [agent-runtime.md](./agent-runtime.md)                               |
-| WASM extensions         | [extensions.md](./extensions.md)                                     |
+| Native lifecycle hooks  | [../hooks.md](../hooks.md)                                           |
 | `elph` crate layout     | [codebase-layout.md](./codebase-layout.md)                           |
 | Tool catalog            | [tools.md](./tools.md)                                               |
 | Configuration & paths   | [configuration.md](./configuration.md)                               |
@@ -57,10 +57,10 @@ Living **gap logs** for the TypeScript → Rust port (timestamps, pi vs elph mat
 | Agent loop + tools          | Done        | `elph-agent` harness; `builtin-tools` feature |
 | Goals + nested subagents    | Done        | Codex-style goals, depth-3 subagents          |
 | MCP → agent loop            | Done        | `mcp_{server}__{tool}` registry               |
-| WASM extensions (phase 1)   | In progress | Slash/tools/events via wasmi core Wasm        |
+| Native lifecycle hooks      | Done        | JSON-configured command hooks                 |
 | `elph` crate layout         | Done        | `agent/`, `cli/`, `platform/`, `shell/`       |
 | Elph TUI + coding agent     | In progress | Shell wired; overlays partially stubbed       |
-| Elph slash commands         | In progress | Built-ins + `/goal`; extension commands       |
+| Elph slash commands         | In progress | Built-ins + `/goal`; custom slash commands out of scope |
 | Prompt templates            | Planned     | Format and dirs designed                      |
 | Provider / MCP / server CLI | Planned     | Commands defined, incomplete                  |
 | Memory CLI                  | Done        | Inspect and maintain store                    |

@@ -33,7 +33,7 @@ Elph re-implements these concepts in Rust with the following key differences:
 - **Memory store**: Turso-backed vector embeddings for lifelong agent context
 - **MCP**: Built-in Model Context Protocol client integration
 - **Subagents**: Built-in sub-agent orchestration (spawn, steer, resume)
-- **Extension system (planned)**: WASM instead of npm packages
+- **Lifecycle hooks**: native command hooks configured through JSON
 
 The architectural design — tool system, provider abstraction, streaming event model,
 session tree structure, and overall API shape — is derived from the original pi project.

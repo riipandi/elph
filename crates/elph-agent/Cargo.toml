@@ -77,7 +77,6 @@ turso = { workspace = true, optional = true }
 url.workspace = true
 urlencoding.workspace = true
 walkdir = { workspace = true, optional = true }
-wasmi = { workspace = true, optional = true }
 yaml_serde.workspace = true
 
 [target.'cfg(unix)'.dependencies]
@@ -85,10 +84,9 @@ rustix = { workspace = true }
 
 [features]
 default = []
-full = ["mcp", "prompt-templates", "extensions", "builtin-tools", "backend-turso"]
+full = ["mcp", "prompt-templates", "builtin-tools", "backend-turso"]
 backend-turso = ["dep:turso"]
 builtin-tools = ["tools-edit", "tools-search", "tools-web", "tools-collaboration"]
-extensions = ["dep:wasmi", "dep:walkdir"]
 mcp = ["dep:rmcp"]
 prompt-templates = []
 tools-collaboration = []
@@ -269,7 +267,6 @@ httpmock.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tokio-util = { workspace = true }
-wat.workspace = true
 
 [[test]]
 name = "tracing_http"
@@ -318,8 +315,3 @@ linker_messages = "allow"
 name = "tracing_integration"
 path = "tests/tracing_integration.rs"
 required-features = ["tracing"]
-
-[[test]]
-name = "plugins"
-path = "tests/plugins.rs"
-required-features = ["extensions"]

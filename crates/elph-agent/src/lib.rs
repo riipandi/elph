@@ -15,7 +15,7 @@
 //! Identity is not process-global.
 //!
 //! MSRV is Rust **1.89** (edition 2024). Cargo features: `mcp`, `builtin-tools`,
-//! `extensions`, `prompt-templates`, `tracing`, `backend-turso`; bundle with `full`.
+//! `prompt-templates`, `tracing`, `backend-turso`; bundle with `full`.
 //!
 //! Consumer notes: <https://github.com/riipandi/elph/blob/main/docs/elph-agent.md>
 //!
@@ -35,8 +35,6 @@ pub mod messages;
 
 pub mod collaboration;
 pub mod exec;
-#[cfg(feature = "extensions")]
-pub mod plugins;
 pub mod prompt;
 
 pub mod runtime;

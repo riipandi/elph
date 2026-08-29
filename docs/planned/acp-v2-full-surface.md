@@ -158,7 +158,7 @@ After `session/new` and `session/resume`, send `available_commands_update`.
 
 Advertise every command the ACP session can actually run:
 
-- Builtins that produce text or session actions: `help`, `tools`, `session`, `rename`, `compact`, `continue`, `reload`, `goal`, `settings`, `changelog`, `hotkeys`, `workers`, `tree`, `export`, `import`, `trust`, `fork`, `clone`, `aside`, `mcp` (list/logout), `provider` (list), plus **skills / prompt templates / extensions** (they already load via `create_coding_session_with_events`).
+- Builtins that produce text or session actions: `help`, `tools`, `session`, `rename`, `compact`, `continue`, `reload`, `goal`, `settings`, `changelog`, `hotkeys`, `workers`, `tree`, `export`, `import`, `trust`, `fork`, `clone`, `aside`, `mcp` (list/logout), `provider` (list), plus **skills / prompt templates** (they already load via `create_coding_session_with_events`).
 - `input: { type: "text", hint }` when the command takes args (v2 discriminator is required).
 
 Do **not** advertise TUI-only commands: confetti, overlays, `/intercom`, `/feedback`, `/provider connect|disconnect|update`, `/mcp auth`, `/transfer`, `/new`, `/resume` (clients have `session/new` / `session/resume`).
@@ -214,7 +214,7 @@ URL mode: use only if advertised, and only for real out-of-band OAuth (`/mcp aut
 
 Rewrite in place:
 
-```
+```text
 crates/coding-agent/src/platform/acp/
   mod.rs           Agent.v2() registration, run_agent_stdio
   capabilities.rs  info + advertised capabilities (from client init)

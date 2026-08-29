@@ -209,8 +209,8 @@ only when that header is absent. Provider-specific formats include:
 | OpenRouter | `x-session-id` |
 
 Affinity improves routing but does not replace prefix equality. Changes to the
-model, system prompt, tools, extensions, mode, or compaction state legitimately
-invalidate a provider prefix.
+model, system prompt, tools, mode, or compaction state legitimately invalidate a
+provider prefix.
 
 ## Usage and cost accounting
 
@@ -258,7 +258,7 @@ The following are expected cache invalidation boundaries:
 - model changes;
 - system-prompt changes;
 - tool activation or removal;
-- extension reloads;
+- provider, MCP, skill, template, or hook reloads;
 - compaction;
 - branch changes.
 

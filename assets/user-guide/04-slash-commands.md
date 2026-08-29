@@ -3,9 +3,8 @@
 Type `/` in the prompt to open the command palette. Dispatch order:
 
 1. Built-in commands
-2. Extension (WASM) commands
-3. Prompt templates (`*.md` under prompts dirs)
-4. Skills (by skill name)
+2. Prompt templates (`*.md` under prompts dirs)
+3. Skills (by skill name)
 
 ## Built-in (selected)
 
@@ -15,7 +14,7 @@ Type `/` in the prompt to open the command palette. Dispatch order:
 | `/model`   | Open model selector                      |
 | `/goal`    | Manage session goals                     |
 | `/compact` | Compact conversation history             |
-| `/reload`  | Reload extensions and resources          |
+| `/reload`  | Reload hooks and resources               |
 | `/commit`  | Commit message helper for staged changes |
 | `/exit`    | Quit                                     |
 

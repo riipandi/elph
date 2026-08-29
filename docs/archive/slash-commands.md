@@ -5,7 +5,7 @@ Design for `/`-prefixed commands in the TUI input.
 Dispatch order:
 
 1. **Built-in commands** (this table)
-2. **Extension commands** from WASM bundles — see [extensions.md](./extensions.md)
+2. **Extension commands** from WASM bundles — historical only; see the [current native hook design](../hooks.md)
 3. **Prompt templates** — `/name` from Markdown files ([prompt-templates.md](./prompt-templates.md))
 
 Built-in commands always win over extension and template names.
@@ -153,7 +153,7 @@ Paths: `<workDir>/.elph/metadata/<sess_id>/` — see [configuration.md](./config
 
 ## Related
 
-- [extensions.md](./extensions.md)
+- [hooks.md](../hooks.md)
 - [prompt-templates.md](./prompt-templates.md)
 - [tui.md](./tui.md)
 - [tools.md](./tools.md)

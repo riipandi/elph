@@ -6,7 +6,6 @@
 # rustup target add x86_64-unknown-linux-musl
 # rustup target add aarch64-pc-windows-msvc
 # rustup target add x86_64-pc-windows-gnu
-# rustup target add wasm32-unknown-unknown
 
 [toolchain]
 channel = "1.97"
@@ -22,5 +21,4 @@ components = ["clippy", "rustfmt", "rust-analysis", "rust-analyzer"]
 #   "x86_64-pc-windows-gnu",
 #   "aarch64-pc-windows-msvc",
 #   "x86_64-pc-windows-msvc",
-#   "wasm32-unknown-unknown",
 # ]

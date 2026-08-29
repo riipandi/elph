@@ -18,7 +18,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 MSRV is **Rust 1.89**. Set [`HostIdentity`](src/types/mod.rs) on `AgentOptions` for a non-Elph env prefix. See [the consumer contract](../../docs/elph-agent.md).
 
-Cargo features: `mcp`, `prompt-templates`, `builtin-tools`, `extensions`, `backend-turso` (none on by default). Bundle with `full`.
+Cargo features: `mcp`, `prompt-templates`, `builtin-tools`, `backend-turso` (none on by default). Bundle with `full`.
 Default system prompt: `elph_agent::DEFAULT_SYSTEM_PROMPT`.
 
 ## Quick Start
@@ -506,7 +506,6 @@ Set provider API keys via environment variables (`BRAVE_SEARCH_API_KEY`, `EXA_AP
 | `tools-web`           | no      | `web_search`, `web_fetch`, `web_extract`                                                      |
 | `tools-collaboration` | no      | `spawn_agent`, `send_message`, …                                                               |
 | `mcp`                 | yes     | MCP client                                                                                     |
-| `extensions`          | yes     | WASM extension host                                                                            |
 | `tracing`             | no      | `fastrace` instrumentation                                                                     |
 
 ```sh
@@ -514,7 +513,7 @@ Set provider API keys via environment variables (`BRAVE_SEARCH_API_KEY`, `EXA_AP
 cargo build -p elph-agent --no-default-features
 
 # Full coding agent stack (as used by elph)
-cargo build -p elph-agent --features "mcp,extensions,builtin-tools"
+cargo build -p elph-agent --features "mcp,builtin-tools"
 ```
 
 See [docs/tools.md](./docs/tools.md) for parameters, output formats, truncation limits, and examples.
@@ -598,7 +597,7 @@ These low-level streams are observational. They preserve event order, but they d
 
 ## AgentHarness
 
-`AgentHarness` is the session-backed orchestration layer above the low-level agent loop. It owns session persistence, runtime configuration, resource resolution, compaction, tree navigation, and extension hooks.
+`AgentHarness` is the session-backed orchestration layer above the low-level agent loop. It owns session persistence, runtime configuration, resource resolution, compaction, tree navigation, and lifecycle hooks.
 
 ```rust
 use elph_agent::{AgentHarness, AgentHarnessOptions, AgentHarnessResources, AgentThinkingLevel};

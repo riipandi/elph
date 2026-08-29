@@ -19,11 +19,7 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 │   │   ├── README.md
 │   │   └── 01-….md …
 │   └── manifest.json        # Version + checksums for newly written bundled files
-├── extensions/              # Global WASM extension bundles (placeholder / installed)
-│   └── <name>/
-│       ├── extension.toml
-│       └── plugin.wasm
-├── hooks/                   # User hooks
+├── hooks.json               # Global native command hooks
 ├── prompts/
 │   └── *.md                 # Global templates → /name
 ├── providers/
@@ -76,7 +72,7 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 ├── store.db                 # Unified store (Turso) — sessions, goals, memory, transcript
 ├── plans/plan-*.md
 ├── prompts/*.md
-├── extensions/              # Project-local WASM bundles (after trust)
+├── hooks.json               # Project-local native command hooks (after trust)
 └── skills/<name>/SKILL.md
 ```
 
@@ -122,7 +118,7 @@ default is `true`; set `ui.atomicPaste` to `false` to keep ordinary pastes inlin
 | Clipboard attachments  | `APP_DATA/attachments/`                  | Temporary PNG files staged by Ctrl/Cmd+V until the prompt is submitted or discarded                   |
 | Atomic paste staging   | `APP_DATA/temp/`                         | Temporary text files for long clipboard pastes when `ui.atomicPaste` is enabled                     |
 | MCP client stderr      | `APP_DATA/logs/mcp.log`                   | Raw fd 2 from the MCP (rmcp) client, redirected out of the TUI (suppression)                           |
-| Config files           | `CONFIG_DIR/*.json`                       | Settings, auth, trust, MCP, providers                                                                  |
+| Config files           | `CONFIG_DIR/*.json`                       | Settings, auth, trust, MCP, hooks, providers                                                           |
 | Provider catalogs      | `CONFIG_DIR/providers/*.json`             | Disk model overlays (see below)                                                                        |
 | Bundled assets         | `CONFIG_DIR/bundled/{user-guide,skills}/` | Embedded in the binary; extracted on bootstrap if missing                                              |
 
@@ -178,6 +174,43 @@ Common keys: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENCODE_API_KEY`, `DEEPSEE
 ## JSON
 
 Settings and providers use standard JSON (pretty-printed on save).
+
+### `hooks.json`
+
+Schema: [schemas/hooks-schema.json](../../schemas/hooks-schema.json)
+(`https://elph.space/hooks-schema.json`).
+
+Elph loads the home hook file at `CONFIG_DIR/hooks.json` and the optional
+project file at `<project>/.elph/hooks.json`. The home file is loaded first;
+project hooks are appended only when the project is trusted for executable
+resources. Hook ids must be unique across both files, and a malformed file is
+ignored as a unit.
+
+Hooks are direct child processes. Each hook receives one
+event-specific JSON payload on stdin and returns an optional JSON outcome on
+stdout. Elph does not implicitly invoke a shell. Relative commands resolve
+against the directory containing their defining config file, while the process
+working directory is the active project directory.
+
+Supported events are `sessionStart`, `userPromptSubmit`, `beforeAgent`,
+`preToolUse`, `postToolUse`, `postToolUseFailure`, `preCompact`, `postCompact`,
+and `stop`. `userPromptSubmit`, `postCompact`, and `stop` are observation-only;
+`sessionEnd` is reserved in the schema but is not emitted by current session
+owners. Tool events may use `matcher.toolNames` with exact, `prefix*`, or
+`*suffix` patterns. Handlers run serially in configuration order. Native
+approval and tool-schema validation remain authoritative.
+
+The default hook timeout is 10 seconds (maximum 60 seconds). Input is limited
+to 128 KiB, command output to 64 KiB, and returned context to 32 KiB. Spawn
+failures, timeouts, non-zero exits, malformed JSON, and limit violations are
+diagnosed and fail open for the current operation. Hook commands inherit no
+provider credentials or auth-store values.
+
+Use `/reload` to replace active hook handlers after editing either file.
+Hooks cannot register tools, providers, UI, or slash commands. Use MCP for
+dynamic tools, skills and prompt templates for workflows, and
+`CONFIG_DIR/providers/*.json` for custom provider catalogs supported by an
+existing API adapter.
 
 ## `auth.json`
 
@@ -468,8 +501,8 @@ Manual refresh: `elph provider update`.
 
 ## Related
 
-- [cli.md](./cli.md) — `provider`, `memory`, `plugin`
-- [extensions.md](./extensions.md) — WASM extension paths
+- [cli.md](./cli.md) — `provider`, `memory`
+- [../hooks.md](../hooks.md) — native command hooks
 - [memory.md](./memory.md) — floppy store
 - [agent-runtime.md](./agent-runtime.md) — session logging
   d) — session logging

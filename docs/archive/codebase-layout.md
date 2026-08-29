@@ -103,14 +103,14 @@ crates/elph-agent/src/
 │   └── mod.rs               # Message bridge (convert_to_llm, custom roles)
 ├── prompt/
 │   └── encoding/            # TOON encoding for structured prompt payloads
-├── compaction/, session/, goals/, skills/, plugins/, datastore/, trace/
+├── compaction/, session/, goals/, skills/, datastore/, trace/
 └── lib.rs                   # Crate root (module declarations + re-exports)
 
 ## Crate boundaries
 
 | Crate        | Responsibility                                                                                                       |
 | ------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `elph-agent` | Agent + AgentHarness, optional built-in tools (`builtin-tools`), goals, subagents, MCP (`tools/mcp/`), **WASM extension host** (`plugins/`) |
+| `elph-agent` | Agent + AgentHarness, optional built-in tools (`builtin-tools`), goals, subagents, and MCP (`tools/mcp/`) |
 | `elph-ai`    | LLM providers, streaming                                                                                             |
 | `elph-tui`   | Reusable TUI components, chrome, diff engine                                                                         |
 | `elph`       | Product binary: CLI + shell + platform glue                                                                          |
@@ -137,7 +137,7 @@ Each crate's integration tests exercise that crate's public API. `crates/coding-
 
 ## Related
 
-- [extensions.md](./extensions.md)
+- [hooks.md](../hooks.md)
 - [agent-runtime.md](./agent-runtime.md)
 - [cli.md](./cli.md)
 - [transcript.md](./transcript.md) — Transcript panel architecture, performance, and disk caching

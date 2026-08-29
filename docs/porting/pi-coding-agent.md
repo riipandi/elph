@@ -14,9 +14,9 @@
 Track how far the **Elph coding-agent product** (`elph` crate) lags or leads mainstream **pi-coding-agent**.
 
 This is **not** the same as `elph-agent` / `elph-ai` (runtime libraries). Those map to `packages/agent` and `packages/ai`.
-`elph` maps to the **product shell**: CLI, interactive TUI, session UX, slash commands, settings, export, extensions host, print/RPC modes, and so on.
+`elph` maps to the **product shell**: CLI, interactive TUI, session UX, slash commands, settings, export, hook host, print/RPC modes, and so on.
 
-Elph deliberately **diverges** in product design (memory, ACP, WASM extensions, goals). Treat those as **[Elph delta]**, not failures to port pi.
+Elph deliberately **diverges** in product design (memory, ACP, native hooks, goals). Treat those as **[Elph delta]**, not failures to port pi.
 
 **Style:** status is written as tagged bullets and short paragraphs so the page stays scannable without wide comparison tables.
 
@@ -31,7 +31,7 @@ Elph deliberately **diverges** in product design (memory, ACP, WASM extensions, 
 - RPC / JSON automation — **[Gap]** in elph (pi has RPC); Elph has **ACP** instead (**[Elph delta]**, different protocol)
 - Public SDK (`createAgentSession`) — **[Gap]** as a first-class TS-style SDK; library is `elph` + crates, not a pi-compatible SDK API
 - Built-in tools — **[Parity]** via `elph-agent` tools (+ Elph web/multi-agent extras)
-- Extensions — **[Partial]** / different — pi: JS/TS host; elph: wasmi core Wasm (Pi-shaped host API, not jiti)
+- Hooks — **[Partial]** / different — pi: in-process JS/TS callbacks; elph: native command hooks via `hooks.json`
 - Skills + prompt templates — **[Partial]** — load paths in agent crate; product wiring incomplete
 - Themes / keybindings editor — **[Gap]** (or minimal)
 - Project trust — **[Partial]**
@@ -47,7 +47,7 @@ Elph deliberately **diverges** in product design (memory, ACP, WASM extensions, 
 
 **Scope:** product settings + `mcp.json` + `trust.json`. **[Elph delta]** vs pi’s single flat `settings.json`.
 
-- **Hierarchy fix** — project `.elph/settings.json` always merges (defaults ← home ← project). Earlier `ask`/`never` trust gate dropped project prefs (e.g. `notifications.onStartupReady: false`); that was wrong for Elph. Trust only gates **project WASM extensions**.
+- **Hierarchy fix** — project `.elph/settings.json` always merges (defaults ← home ← project). Earlier `ask`/`never` trust gate dropped project prefs (e.g. `notifications.onStartupReady: false`); that was wrong for Elph. Trust only gates **project hooks**.
 - **Less nesting** — dropped `ui.filePicker`, `models.embed`, `session.retention`, `tools`, `shell`, `network` wrappers. Keys are `ui.showHiddenFiles`, `models.embedModel` / `embedQuantized` / `embedGpuAcceleration`, `session.*`, top-level `defaultTools`, `shellPath`, `shellCommandPrefix`, `httpProxy`, `quietStartup`.
 - **MCP cache** moved to `mcp.json` (`cacheTtlSecs`, `cacheMaxEntries`); per-server `cacheTtlMs` unchanged. Matches archive layout: servers live in `mcp.json`, not `settings.json`.
 - **`defaultProjectTrust`** moved to `trust.json` beside `directories`. **[Partial]** vs pi (`defaultProjectTrust` stays in pi settings.json).
@@ -61,11 +61,11 @@ Elph deliberately **diverges** in product design (memory, ACP, WASM extensions, 
 Pi intent (`enabledModels`, resource path arrays, `defaultTools`, `defaultProjectTrust`, thinking budgets, shell, proxy) mapped onto Elph nested groups. No npm `packages`. No legacy settings migration.
 
 - `models.enabled` glob catalog filter; `models.thinkingBudgets` → harness stream options.
-- `resources.skills` / `prompts` / `extensions`, `disabledSkills` / `disabledExtensions`, `enableSkillCommands`.
+- `resources.skills` / `prompts` and `disabledSkills` / `enableSkillCommands`; hooks use a separate `hooks.json` contract.
 - `tools.default` builtin allowlist (meta tools stay).
-- `trust.defaultProjectTrust` gates **project WASM extensions** only (`ask` ≡ `never` until a prompt UI exists). Project `settings.json` / skills / prompts always merge.
+- `trust.defaultProjectTrust` gates **project hooks** only (`ask` ≡ `never` until a prompt UI exists). Project `settings.json` / skills / prompts always merge.
 - `shell.path` / `commandPrefix`, `network.httpProxy`, `ui.quietStartup`, `compaction.reserveTokens`.
-- Dropped `migrate_settings_value` and `extensions.json` sidecar.
+- Dropped `migrate_settings_value` and the old settings sidecar.
 
 ### 2026-08-09 — Busy-state queueing: action dispatch, not raw text (Elph delta)
 
@@ -75,19 +75,19 @@ resilience pass.
 Previously, when the agent was busy (`agent_turn_active`), turn-spawning slash
 commands queued their **raw slash text** (`/continue`, `/compact`) to the model
 as a follow-up prompt — semantically wrong (the model received the literal
-command string), while `goal`/`reload`/`extension` work was silently **dropped**.
+command string), while `goal`/`reload` work was silently **dropped**.
 
 Now:
 
 - `handle_slash_submit` **always dispatches** turn-spawning commands (Continue,
-  compact, skill, template, goal, reload, extension) on a background task. The
+  compact, skill, template, goal, reload) on a background task. The
   session's internal `turn_gate` serializes them behind the active turn — the
   same mechanism `/transfer` uses. The `spawn_agent_work` field is gone.
 - The shell no longer pushes raw slash text as a follow-up. When busy, a clear
   meta notice is shown ("Command /x queued — runs after the current task.");
   when idle, the normal echo/busy flow applies. Normal text prompts are
   unaffected (they still queue/steer as user input).
-- **Quiet background commands** — `/reload`, `/goal`, `/extension` (and
+- **Quiet background commands** — `/reload`, `/goal` (and
   `/transfer`) return `SlashOutcome::BackgroundTaskQuiet`: the slash input is
   never echoed as a user card and never enters prompt history; the task reports
   via `AgentUiEvent` (Status / notices) and busy state derives from the agent
@@ -180,8 +180,7 @@ Removed three dead credential helpers (`load_provider_credential`, `load_all_pro
 **Paths** (`crates/coding-agent/src/platform/paths.rs`):
 
 - Removed `project_sessions_dir()` and `project_sessions_dir_for()` — never called.
-- Fixed misplaced doc comment on `global_extensions_dir()`.
-- Removed stale `#[allow(dead_code)]` from `project_dir()` and `global_extensions_dir()` — both actively used.
+- Fixed path documentation for the project hook configuration.
 
 ### 2026-07-11T12:14:13Z @ `4c18610` (v0.80.6 + Unreleased)
 
@@ -191,7 +190,7 @@ Initial product gap audit: tree compare `packages/coding-agent` vs `crates/codin
 
 ## Architecture mapping
 
-```
+```text
 packages/coding-agent/                 elph/
 ├── main.ts / cli.ts                   ├── main.rs + cli/
 ├── cli/args, session-picker, …        ├── cli/* (subcommands) + default interactive entry
@@ -201,7 +200,7 @@ packages/coding-agent/                 elph/
 ├── core/slash-commands                ├── agent/slash_commands (+ shell/slash)
 ├── core/system-prompt                 ├── agent/system_prompt
 ├── core/tools/*                       ├── (lives in crates/elph-agent/tools)
-├── core/extensions/*                  ├── extensions/ + elph-agent plugins (WASM)
+├── core/extensions/*                  ├── platform/hooks (native commands; no extension loader)
 ├── core/settings-manager              ├── platform/settings, paths, bootstrap
 ├── core/export-html                   ├── cli/export (stub)
 ├── core/sdk.ts                        ├── lib.rs public modules (not pi-shaped SDK)
@@ -222,10 +221,10 @@ packages/coding-agent/                 elph/
 - Agent session core (`agent/session`, `runtime`) — **[Partial]**
 - Session manager, model registry, resource loader, system prompt, settings — **[Partial]**
 - Slash commands — **[Partial]** — wide registry; dispatch mostly stubs
-- Extensions — **[Partial]** (WASM ≠ JS)
+- Hooks — **[Partial]** (native commands differ from pi's in-process callbacks)
 - Tools — **[Parity+]** via `elph-agent` (web, multi-agent extra)
 - Export / import, HTML export / gist share — **[Gap]** (stubs)
-- Package manager CLI — **[Gap]** (elph uses `plugin` / extensions instead)
+- Package manager CLI — **[Gap]** (Elph uses file-based providers, skills, and hooks)
 - Themes — **[Gap]**; keybindings — **[Partial]** / minimal
 - Telemetry / timings — **[Gap]** or not product-exposed
 - Diagnostics, footers/status — **[Partial]**
@@ -263,7 +262,7 @@ elph built-in **names** largely mirror pi, plus `/provider`, `/help`, `/exit`. D
 - `/goal` — **[Elph delta]** / **[Partial]** in elph (design + goal_slash)
 - `/transfer` — **[Elph delta]** foreign-session resume (Claude + Codex
   implemented; see [transfer.md](../design/transfer.md))
-- Extension commands — **[Partial]** (JS vs WASM model)
+- Custom slash-command registration — **[N/A]** (prompt templates and skills cover user-invoked workflows)
 - Prompt templates as `/name` — **[Partial]** (planned)
 
 ---
@@ -278,7 +277,7 @@ pi ships a large interactive component set under `modes/interactive/components/`
 - Login / OAuth dialogs — **[Gap]**
 - Theme selector — **[Gap]** (no settings field; fixed dark palette); settings selector — **[Gap]**
 - Diff view — **[Gap]** (planned slash)
-- Extension UI (editor/input/selector) — **[Partial]** (WASM slash only, phase 1)
+- Custom UI registration (editor/input/selector) — **[N/A]** (custom UI is intentionally out of scope)
 - Image show / clipboard paste — **[Partial]**
 - Keybinding hints — **[Partial]** (`/hotkeys` stub)
 - Ctrl+X copy last message (Unreleased) — **[Gap]**
@@ -292,7 +291,7 @@ Design snapshot: _“Elph TUI + coding agent — In progress; Shell wired; overl
 
 ### pi (flag-oriented)
 
-Typical flags: `--model`, `--provider`, `--thinking`, `--continue`/`-c`, `--resume`/`-r`, `--session`, `--fork`, `--print`, `--mode text|json|rpc`, `--tools` / `--no-tools`, extensions/skills/templates toggles, `--list-models`, `--export`, offline/verbose, file args, system prompt flags, project trust override.
+Typical flags: `--model`, `--provider`, `--thinking`, `--continue`/`-c`, `--resume`/`-r`, `--session`, `--fork`, `--print`, `--mode text|json|rpc`, `--tools` / `--no-tools`, skills/templates toggles, `--list-models`, `--export`, offline/verbose, file args, system prompt flags, project trust override.
 
 ### elph (subcommand-oriented)
 
@@ -302,7 +301,7 @@ Typical flags: `--model`, `--provider`, `--thinking`, `--continue`/`-c`, `--resu
 - `provider` — **[Partial]** (many stubs; login/auth storage)
 - `export` / `import` — **[Partial]** JSONL full-tree export + import-to-new-session (Pi intent); HTML export / gist share still gap
 - `mcp` — **[Partial]** stubs (pi MCP packaging differs)
-- `plugin` / extensions — **[Partial]** vs pi extensions + package manager
+- File-based hooks and providers — **[Elph delta]**
 - `doctor` — **implemented** (health + secret-free JSON snapshot); `stats` / `update` — **stubs**
 - `acp`, `memory` — present, **[Elph delta]**
 - `server` — **stub**, **[Elph delta]**
@@ -319,7 +318,7 @@ Typical flags: `--model`, `--provider`, `--thinking`, `--continue`/`-c`, `--resu
 - Compaction UX — harness compaction; UX commands stub — **[Partial]**
 - Model registry / scoped models, settings, project trust — **[Partial]**
 - Keybindings — **[Gap]** / incomplete
-- Package manager vs extensions install — **[Partial]** (different model)
+- Package manager / extension installation — **[N/A]** (not part of Elph's current surface; hooks use local JSON plus native commands)
 - Export HTML — **[Gap]**
 - Event bus — harness/agent events — **[Partial]**
 - Output guard / stdout takeover — **[N/A]** (different product model)
@@ -333,11 +332,9 @@ Typical flags: `--model`, `--provider`, `--thinking`, `--continue`/`-c`, `--resu
 
 Library fixes may already be in `elph-ai` / `elph-agent` after the library sprints; **product exposure** can still lag:
 
-- Dynamic tool loading for extensions — library may be ready; WASM may not expose the same deferred-load story
 - Thinking `max` / Fable 5 — library ok; TUI selector / CLI flag completeness TBD
 - Input pricing tiers — library ok; stats/footer display TBD
-- `agent_settled` / idle wait for extensions + RPC — RPC missing; settled UX TBD
-- `before_provider_headers` extension hook — JS hooks ≠ WASM
+- `agent_settled` / idle wait for RPC — RPC missing; settled UX TBD
 - Project-local `pi config -l` resources — different config model
 - Cache miss notices, Ctrl+X copy message — missing in product
 - `/login <provider>` autocomplete — partial CLI only
@@ -351,7 +348,7 @@ Library fixes may already be in `elph-ai` / `elph-agent` after the library sprin
 - MCP product integration (`elph-agent` MCP + CLI)
 - Project memory (floppy) + `elph memory`
 - ACP server mode (alternative to pi RPC)
-- WASM extensions (vs pi JS extensions)
+- Native command hooks (vs pi JS callbacks)
 - Local REST/WS server (planned / stub)
 - Web tools (search/fetch) in the agent crate
 - Hyper provider (`elph-ai` only)
@@ -380,7 +377,7 @@ Library fixes may already be in `elph-ai` / `elph-agent` after the library sprin
 10. Decide RPC vs ACP strategy (document; implement the chosen automation plane fully).
 11. Themes + keybindings (if product wants pi-like customizability).
 12. Prompt templates as `/name` end-to-end.
-13. Extension story: deferred tools + entry renderers equivalent (WASM).
+13. Hook story: native command lifecycle integration and operational diagnostics.
 14. Doctor / stats / update CLI beyond stubs.
 
 ### Product (Elph-only — do not measure as pi lag)
@@ -394,7 +391,7 @@ Library fixes may already be in `elph-ai` / `elph-agent` after the library sprin
 Coding-agent product gaps often **depend on library parity** but are not solved by libraries alone:
 
 - Thinking `max` in UI/CLI — needs `elph-ai` / `elph-agent` levels (**library done**)
-- Deferred extension tools — needs `added_tool_names` + providers (**library done**)
+- Hook command lifecycle — native command adapter in `platform/hooks/` (**product partial**)
 - Compaction correctness — harness estimate (**library done**)
 - Session tree navigation — session backends (**largely done in agent**)
 

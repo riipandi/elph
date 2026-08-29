@@ -63,11 +63,8 @@ pub struct AdvertisedSlash {
 
 pub async fn slash_catalog(session: &CodingAgentSession) -> Vec<AdvertisedSlash> {
     let resources = session.harness().get_resources().await;
-    let palette = slash_commands_for_palette(
-        None,
-        Some(resources.prompt_templates.as_slice()),
-        Some(resources.skills.as_slice()),
-    );
+    let palette =
+        slash_commands_for_palette(Some(resources.prompt_templates.as_slice()), Some(resources.skills.as_slice()));
     merge_advertised(&palette)
 }
 
@@ -86,7 +83,7 @@ fn merge_advertised(palette: &[SlashCommand]) -> Vec<AdvertisedSlash> {
         let (name, description) = match cmd.kind {
             SlashCommandKind::PromptTemplate => (cmd.name.clone(), cmd.description.clone()),
             SlashCommandKind::Skill => (format!("skill:{}", cmd.name), cmd.description.clone()),
-            SlashCommandKind::Builtin | SlashCommandKind::Extension => continue,
+            SlashCommandKind::Builtin => continue,
         };
         if !seen.insert(name.clone()) {
             continue;
@@ -133,10 +130,10 @@ pub async fn resolve_slash(state: &Arc<Mutex<AcpAgentState>>, key: &str, input: 
     let resources = session.harness().get_resources().await;
     let templates = resources.prompt_templates.clone();
     let skills = resources.skills.clone();
-    let dispatch = dispatch_slash_command(input, None, Some(&templates), Some(&skills));
+    let dispatch = dispatch_slash_command(input, Some(&templates), Some(&skills));
 
     let text = match dispatch {
-        Some(SlashDispatch::Help) => format_help_message(None, Some(&templates), Some(&skills)),
+        Some(SlashDispatch::Help) => format_help_message(Some(&templates), Some(&skills)),
         Some(SlashDispatch::Tools { .. }) => {
             let (session, _, _) = lookup_session(state, key)?;
             crate::agent::discovery_tools_message(&session)
@@ -294,7 +291,7 @@ pub async fn resolve_slash(state: &Arc<Mutex<AcpAgentState>>, key: &str, input: 
         Some(SlashDispatch::PromptTemplate { name, args }) => {
             return Ok(SlashOutcome::PromptTemplate { name, args });
         }
-        Some(SlashDispatch::Extension { .. }) | None => return Ok(SlashOutcome::SubmitPrompt),
+        None => return Ok(SlashOutcome::SubmitPrompt),
         Some(other) => tui_only_message(&other),
     };
 

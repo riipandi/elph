@@ -31,4 +31,5 @@ Plan mode designs and asks. Approved plans land in `.elph/plans/` before the ful
 
 `elph import` reads Claude Code and Codex transcripts as **inert** context. Foreign tool calls are not executed. Use it when you are moving a conversation into Elph, not when you want another agent to keep running commands.
 
-WASM extensions (`elph extensions`) and MCP (`elph mcp`) stay behind those same approval and trust boundaries.
+Native hooks (`CONFIG_DIR/hooks.json` and project `.elph/hooks.json`) and MCP
+stay behind those same approval and trust boundaries.

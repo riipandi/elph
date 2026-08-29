@@ -81,7 +81,6 @@ Other Tools
 | `tools-find-path`     | no      | `find_path` only (pulls in `fff-search`)                                                       |
 | `tools-list-dir`      | no      | `list_dir` only (pulls in `walkdir`)                                                           |
 | `mcp`                 | yes     | MCP client — see [mcp.md](./mcp.md)                                                            |
-| `extensions`          | yes     | WASM extension host                                                                            |
 | `tracing`             | no      | `fastrace` spans + HTTP trace propagation — see [observability.md](./observability.md)         |
 
 The `elph` binary enables `builtin-tools`, `tools-shell-use`, and `tracing` by default:

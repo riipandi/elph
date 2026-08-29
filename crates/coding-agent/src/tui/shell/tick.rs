@@ -33,8 +33,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut ephemeral_banner_generation,
         mut ephemeral_expire,
         mut event_applier,
-        extension_host_for_loop,
-        extension_host_for_palette,
+        hook_host_for_loop,
         fallback_context_limit,
         fallback_model_label_for_chrome,
         fallback_supports_images,
@@ -228,15 +227,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 let new_skills = loaded.resources.skills.clone();
                 prompt_templates.set(new_templates);
                 skills.set(new_skills);
-                {
-                    let ext_registry = extension_host_for_loop.registry();
-                    slash_commands.set(slash_commands_for_palette_with(
-                        Some(ext_registry.as_ref()),
-                        Some(&prompt_templates.read()),
-                        Some(&skills.read()),
-                        settings.resources.enable_skill_commands,
-                    ));
-                }
+                slash_commands.set(slash_commands_for_palette_with(
+                    Some(&prompt_templates.read()),
+                    Some(&skills.read()),
+                    settings.resources.enable_skill_commands,
+                ));
 
                 let boot =
                     crate::tui::resolve_boot_model(&settings, &paths_for_load, &cwd_for_load, resume_id_req.as_deref())
@@ -255,7 +250,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     model_override: boot.ok().map(|(provider, model_id)| format!("{provider}/{model_id}")),
                     thinking_override: boot_thinking.ok().map(|level| level.label().to_string()),
                     preloaded_resources: loaded,
-                    extension_host: extension_host_for_loop.clone(),
+                    hook_host: hook_host_for_loop.clone(),
                 };
                 bootstrap_config.set(Some(new_config));
             }
@@ -302,7 +297,6 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     .map(|s| s.resources.enable_skill_commands)
                     .unwrap_or(true);
                 slash_commands.set(slash_commands_for_palette_with(
-                    Some(extension_host_for_palette.registry().as_ref()),
                     Some(&templates),
                     Some(&loaded_skills),
                     enable_skill_commands,

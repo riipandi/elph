@@ -9,7 +9,7 @@
 //! | Project  | `<project>/.elph/settings.json`   | Per-repo overrides (always merged) |
 //!
 //! Runtime load always merges **home ← project** (project wins per nested object key; arrays replace).
-//! `trust.defaultProjectTrust` / `trust.json` only gate **project WASM extensions**, not settings or skills/prompts.
+//! `trust.defaultProjectTrust` / `trust.json` gate executable project resources, not settings or skills/prompts.
 //! Runtime saves write **home only** so project overlays are not baked into the global file.
 //!
 //! # Shape (domain groups)
@@ -253,7 +253,7 @@ fn default_workers_max_hops() -> u32 {
     5
 }
 
-/// Extra skill/prompt/extension paths and name filters.
+/// Extra skill/prompt paths and name filters.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ResourcesSettings {
@@ -263,18 +263,12 @@ pub struct ResourcesSettings {
     /// Extra prompt template paths.
     #[serde(default)]
     pub prompts: Vec<String>,
-    /// Extra extension directory paths.
-    #[serde(default)]
-    pub extensions: Vec<String>,
     /// Skill names (globs) to drop after discovery.
     #[serde(default)]
     pub disabled_skills: Vec<String>,
     /// Prompt template names (globs) to drop after discovery.
     #[serde(default)]
     pub disabled_prompts: Vec<String>,
-    /// Extension names to skip (same role as former `extensions.json` `disabled`).
-    #[serde(default)]
-    pub disabled_extensions: Vec<String>,
     /// Register discovered skills as `/name` slash commands.
     #[serde(default = "default_true")]
     pub enable_skill_commands: bool,
@@ -285,10 +279,8 @@ impl Default for ResourcesSettings {
         Self {
             skills: Vec::new(),
             prompts: Vec::new(),
-            extensions: Vec::new(),
             disabled_skills: Vec::new(),
             disabled_prompts: Vec::new(),
-            disabled_extensions: Vec::new(),
             enable_skill_commands: true,
         }
     }
@@ -1452,8 +1444,7 @@ mod tests {
         assert_eq!(loaded.preferred_chat_language, "Indonesian");
         assert!(!loaded.notifications.on_startup_ready);
         assert!(
-            !crate::platform::scaffold::TrustStore::project_extensions_allowed(&paths, paths.project_dir())
-                .expect("trust")
+            !crate::platform::scaffold::TrustStore::project_hooks_allowed(&paths, paths.project_dir()).expect("trust")
         );
     }
 

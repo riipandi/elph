@@ -344,7 +344,7 @@ cache hit.
 - Keep deterministic ordering for system-prompt sections and tool definitions.
 - Preserve a stable prefix and append changing content after it where existing
   provider formats permit.
-- Mode changes, model changes, tool activation, extension reload, and compaction
+- Mode changes, model changes, tool activation, hook reload, and compaction
   are legitimate prefix invalidations.
 - Do not reorder tools solely for caching if it changes model-visible behavior.
 - Do not reuse a provider response ID when the full request properties are

@@ -48,7 +48,7 @@ pub struct TuiBootstrapConfig {
     /// session restores its own thinking level from the tree.
     pub thinking_override: Option<String>,
     pub preloaded_resources: LoadResourcesResult,
-    pub extension_host: crate::extensions::ExtensionHost,
+    pub hook_host: crate::platform::hooks::HookHost,
 }
 
 /// Bootstrap phases surfaced in the status row and transcript.
@@ -358,7 +358,7 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
         defer_session_gc: true,
         defer_memory_warm: true,
         headless: false,
-        extension_host: Some(&config.extension_host),
+        hook_host: Some(&config.hook_host),
     })
     .await?;
 

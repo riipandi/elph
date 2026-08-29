@@ -57,7 +57,7 @@ impl WorkspaceReloadReport {
 impl CodingAgentSession {
     /// Reload providers (disk catalogs), settings/model runtime, and workspace resources.
     ///
-    /// Does **not** reload WASM extensions — the host calls `ExtensionHost::reload` and
+    /// Does not reload hooks — the host calls `HookHost::reload` and
     /// merges those lines into the report.
     pub async fn reload_workspace(&self, request: WorkspaceReloadRequest<'_>) -> WorkspaceReloadReport {
         let mut report = WorkspaceReloadReport::default();

@@ -15,6 +15,7 @@ use super::runtime::CreateSessionOptions;
 use super::runtime::create_coding_session_with_events;
 use super::slash_commands::{SlashDispatch, dispatch_slash_command};
 use crate::cli::style::{CliStyle, S_MUTED};
+use crate::platform::hooks::HookHost;
 use crate::platform::{Paths, Settings};
 use crate::tui::labels::format_token_count;
 use crate::types::{AgentMode, ThinkingLevel};
@@ -102,6 +103,10 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         s
     };
 
+    let hook_host = HookHost::new();
+    if let Err(error) = hook_host.reload(options.paths) {
+        log::warn!("load hooks: {error:#}");
+    }
     let create_opts = CreateSessionOptions {
         paths: options.paths,
         settings: options.settings,
@@ -121,7 +126,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         defer_session_gc: false,
         defer_memory_warm: false,
         headless: true,
-        extension_host: None,
+        hook_host: Some(&hook_host),
     };
     let session_result = tokio::select! {
         result = create_coding_session_with_events(create_opts) => result,
@@ -464,7 +469,6 @@ async fn resolve_headless_turn(session: &super::session::CodingAgentSession, inp
     let resources = session.harness().get_resources().await;
     let dispatch = dispatch_slash_command(
         trimmed,
-        None,
         Some(resources.prompt_templates.as_slice()),
         Some(resources.skills.as_slice()),
     );
@@ -912,14 +916,14 @@ mod tests {
             file_path: "/tmp/ship-it.md".into(),
         }];
 
-        match dispatch_slash_command("/skill:code-review src/", None, Some(&templates), Some(&skills)) {
+        match dispatch_slash_command("/skill:code-review src/", Some(&templates), Some(&skills)) {
             Some(SlashDispatch::Skill { name, args }) => {
                 assert_eq!(name, "code-review");
                 assert_eq!(args, "src/");
             }
             other => panic!("expected Skill, got {other:?}"),
         }
-        match dispatch_slash_command("/ship-it fast", None, Some(&templates), Some(&skills)) {
+        match dispatch_slash_command("/ship-it fast", Some(&templates), Some(&skills)) {
             Some(SlashDispatch::PromptTemplate { name, args }) => {
                 assert_eq!(name, "ship-it");
                 assert_eq!(args, "fast");

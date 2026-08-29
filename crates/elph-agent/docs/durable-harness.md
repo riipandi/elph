@@ -17,7 +17,7 @@ A fully durable `AgentHarness` is not realistic by itself because important depe
 
 - tool implementations
 - model/auth providers
-- extensions and hook handlers
+- hook handlers
 - resource loaders
 - system-prompt callbacks/modifiers
 
@@ -60,7 +60,7 @@ The app must recreate compatible runtime dependencies:
 
 - model registry / model objects (`Arc<Models>`)
 - tool registry (`Vec<AgentTool>`)
-- extension set, versions, and ordering
+- configured hook set and ordering
 - resource loaders (skills, prompt templates)
 - system prompt providers/hooks
 - auth providers
@@ -125,7 +125,7 @@ Every accepted mutation must be durable before the public API resolves.
 
 On startup:
 
-1. Host app registers tools/models/extensions/resources/auth/hooks.
+1. Host app registers tools/models/resources/auth/hooks.
 2. Harness opens session.
 3. Harness reduces session entries into:
     - current leaf

@@ -74,7 +74,5 @@ docsite/public/
 # Misc
 .agents/*
 !.agents/skills/
-extensions/**/target
-extensions/**/Cargo.lock
 /demo-*
 /demo/*

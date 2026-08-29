@@ -35,7 +35,7 @@ pub(crate) fn build_shell_view(
         ephemeral_expire,
         mut event_applier,
         execution_env,
-        extension_host,
+        hook_host,
         fallback_model_label,
         atomic_paste,
         mut file_picker_active,
@@ -1614,7 +1614,6 @@ pub(crate) fn build_shell_view(
                             image_attachments.set(Vec::new());
                         }
 
-                        let ext_registry = extension_host.registry();
                         let templates = prompt_templates.read().clone();
                         let loaded_skills = skills.read().clone();
                         let paths_snapshot = paths.read().clone();
@@ -1625,11 +1624,10 @@ pub(crate) fn build_shell_view(
 
                         let outcome = handle_slash_submit(SlashContext {
                             input: &slash_input,
-                            extensions: Some(ext_registry.as_ref()),
                             prompt_templates: Some(&templates),
                             skills: Some(&loaded_skills),
                             agent_session: agent_session.clone(),
-                            extension_host: Some(&extension_host),
+                            hook_host: Some(&hook_host),
                             paths: Some(&paths_snapshot),
                             cwd: Some(&cwd),
                         });

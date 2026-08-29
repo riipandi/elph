@@ -3,7 +3,6 @@ mod completions;
 mod default;
 mod doctor;
 mod export;
-mod extensions;
 mod help;
 mod import;
 pub(crate) mod interactive;
@@ -76,7 +75,6 @@ pub use acp::AcpArgs;
 pub use completions::CompletionsArgs;
 pub use doctor::DoctorArgs;
 pub use export::ExportArgs;
-pub use extensions::ExtensionsArgs;
 pub use import::ImportArgs;
 pub use mcp::McpArgs;
 pub use memory::{MemoryArgs, MemoryCommands};
@@ -149,9 +147,6 @@ pub enum Commands {
     Memory(MemoryArgs),
     /// List available models and exit
     Models(ModelsArgs),
-    /// Manage Elph extensions
-    #[command(visible_alias = "ext")]
-    Extensions(ExtensionsArgs),
     /// Manage AI providers and credentials
     Provider(ProviderArgs),
     /// Run a prompt non-interactively (headless)
@@ -181,7 +176,6 @@ fn command_label(cli: &Cli) -> &'static str {
         Some(Commands::Mcp(_)) => "mcp",
         Some(Commands::Memory(_)) => "memory",
         Some(Commands::Models(_)) => "models",
-        Some(Commands::Extensions(_)) => "extensions",
         Some(Commands::Provider(_)) => "provider",
         Some(Commands::Run(_)) => "run",
         Some(Commands::Server(_)) => "server",
@@ -300,7 +294,6 @@ pub fn run(cli: &Cli) -> ExitCode {
         Commands::Completions(args) => completions::handle(args),
         Commands::Doctor(args) => doctor::handle(args),
         Commands::Export(args) => export::handle(args),
-        Commands::Extensions(args) => extensions::handle(args),
         Commands::Import(args) => import::handle(args),
         Commands::Mcp(args) => mcp::handle(args),
         Commands::Memory(args) => memory::handle(args),

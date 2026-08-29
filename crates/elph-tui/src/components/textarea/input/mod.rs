@@ -246,8 +246,8 @@ fn is_paste_echo_key(code: KeyCode, modifiers: KeyModifiers) -> bool {
 
 #[cfg(test)]
 mod tests {
-    const ELPH_PASTE: &str = "**Elph** is a Rust workspace for AI agent applications: a coding agent CLI, shared agent runtime libraries, and terminal UI components. It is a port of the [pi](https://pi.dev) TypeScript ecosystem to Rust, with additional MCP (Model Context Protocol) support, WASM extensions, and an iocraft-based interactive TUI.";
-    const ELPH_PASTE_WAKA: &str = "**Elph** is a Rust workspace for AI agent applications: a coding agent CLI, shared agent runtime libraries, and terminal UI components. It is a port of the [pi](https://pi.dev) TypeScript ecosystem to Rust, with additional MCP (Model Context Protocol) support, WASM extensions, wakakakkadkasdkask wakakakkadkasdkask wakakakkadkasdkask";
+    const ELPH_PASTE: &str = "**Elph** is a Rust workspace for AI agent applications: a coding agent CLI, shared agent runtime libraries, and terminal UI components. It is a port of the [pi](https://pi.dev) TypeScript ecosystem to Rust, with additional MCP (Model Context Protocol) support, native hooks, and an iocraft-based interactive TUI.";
+    const ELPH_PASTE_WAKA: &str = "**Elph** is a Rust workspace for AI agent applications: a coding agent CLI, shared agent runtime libraries, and terminal UI components. It is a port of the [pi](https://pi.dev) TypeScript ecosystem to Rust, with additional MCP (Model Context Protocol) support, native hooks, wakakakkadkasdkask wakakakkadkasdkask wakakakkadkasdkask";
     const BULLET_PASTE: &str = "- **TOON Encoding** — Optional structured-data encoding for tool results (reduces token usage on tabular payloads).\n- **MCP** — Model Context Protocol client supporting stdio, streamable HTTP, and SSE transports with OAuth 2.1 and AES-256-GCM credential encryption.\n- **Agent** — `elph::agent` wraps `elph-agent`'s `AgentHarness` with session orchestration for the coding use case.\n- **AgentHarness** — Stateful, session-backed agent runner with hooks, compaction, branching, and plan mode.";
 
     use super::*;

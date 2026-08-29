@@ -24,8 +24,8 @@ use crate::agent::TRANSFER_PROMPT_PREFIX;
 use crate::agent::load_resources;
 use crate::agent::slash_commands_for_palette_with;
 use crate::agent::{AgentUiEvent, CodingAgentSession, ToolApprovalChoice};
-use crate::extensions::ExtensionHost;
 use crate::platform::exit_message::{ExitSnapshot, record_if_active, session_had_user_activity};
+use crate::platform::hooks::HookHost;
 use crate::platform::{Paths, Settings};
 use crate::types::{AgentMode, SlashCommand, ThinkingLevel};
 use crate::types::{is_force_quit_command, is_quit_command};
@@ -341,7 +341,7 @@ pub struct MainShellProps {
     pub density: LogDensity,
     pub agent_session: Option<Arc<CodingAgentSession>>,
     pub ui_events: Option<Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>>,
-    pub extension_host: ExtensionHost,
+    pub hook_host: HookHost,
     pub slash_commands: Vec<SlashCommand>,
     pub prompt_templates: Vec<PromptTemplate>,
     pub skills: Vec<Skill>,
@@ -375,7 +375,7 @@ impl Default for MainShellProps {
             density: LogDensity::Compact,
             agent_session: None,
             ui_events: None,
-            extension_host: ExtensionHost::new(),
+            hook_host: HookHost::new(),
             slash_commands: Vec::new(),
             prompt_templates: Vec::new(),
             skills: Vec::new(),
@@ -554,7 +554,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     // Scroll handle for subagent output dialog.
     let subagent_output_scroll = hooks.use_ref_default::<ScrollViewHandle>();
 
-    let extension_host = props.extension_host.clone();
+    let hook_host = props.hook_host.clone();
     let cwd = props.cwd.clone();
 
     let agent_session_slot = hooks.use_ref(|| props.agent_session.clone());
@@ -570,7 +570,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let bootstrap_worker_started = hooks.use_ref(|| false);
     let bootstrap_rx = hooks.use_ref(|| None::<UnboundedReceiver<BootstrapUiEvent>>);
     let live_session_id = hooks.use_state(|| props.session_id.clone());
-    let extension_host_for_palette = extension_host.clone();
     let execution_env = props.execution_env.clone();
     let user_shell_channel = hooks.use_ref(|| {
         let (tx, rx) = unbounded_channel();
@@ -638,7 +637,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
     let cwd_for_mention_index = cwd.clone();
     let cwd_for_loop = cwd.clone();
-    let extension_host_for_loop = extension_host.clone();
+    let hook_host_for_loop = hook_host.clone();
     let pending_provider_connect_for_tick = pending_provider_connect;
     let pending_provider_disconnect_for_tick = pending_provider_disconnect;
     let pending_mcp_auth_for_tick = pending_mcp_auth;
@@ -692,9 +691,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         ephemeral_expire,
         event_applier,
         execution_env,
-        extension_host,
-        extension_host_for_loop,
-        extension_host_for_palette,
+        hook_host,
+        hook_host_for_loop,
         fallback_context_limit,
         fallback_model_label,
         fallback_model_label_for_chrome,

@@ -1,8 +1,11 @@
 # Extensions
 
+> Historical design document. The WASM extension runtime was removed. See the
+> [current native lifecycle hook documentation](../hooks.md).
+
 Design for Pi-compatible WASM extensions — sandboxed plugins that contribute slash commands, tools, and lifecycle hooks without running arbitrary native code in the host process.
 
-Inspired by [Pi extensions](https://pi.dev/docs/latest/extensions); Elph uses **wasmi + core Wasm** (JSON ABI, host imports) instead of TypeScript/jiti. Current spec: [../extensions.md](../extensions.md).
+Inspired by [Pi extensions](https://pi.dev/docs/latest/extensions); this document records the former **wasmi + core Wasm** (JSON ABI, host imports) design instead of TypeScript/jiti.
 
 ## Goals
 
@@ -53,9 +56,9 @@ Merge order for slash dispatch: **built-in commands → extension commands → p
 
 ## WASM guest contract
 
-See [../extensions.md](../extensions.md) for the current ABI (`elph_init`, host imports, JSON blobs).
+The former ABI (`elph_init`, host imports, JSON blobs) is no longer implemented.
 
-Tools and lifecycle events (`session_start`, `tool_call`, …) are on the host ABI in [../extensions.md](../extensions.md). Custom TUI widgets remain later.
+Tools and lifecycle events (`session_start`, `tool_call`, …) belonged to the former host ABI. Custom TUI widgets were never implemented.
 
 ### Build toolchain
 
