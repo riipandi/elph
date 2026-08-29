@@ -23,6 +23,7 @@ INSTALL_DIR  := $(HOME)/.local/bin
 APP          ?= elph
 CHANNEL      ?= stable
 OUTPUT_DIR   ?= release
+WEB_DIR      ?= website
 
 # ─── Compiler cache ───────────────────────────────────────────────────────────
 # Use sccache when installed AND its daemon is responsive; otherwise disable it
@@ -132,9 +133,9 @@ CARGO_QA_FLAGS :=
 NEXTEST_CARGO_FLAGS :=
 
 .PHONY: build install run watch test check generate-models prepare
-.PHONY: lint fmt clean coverage help stats
-.PHONY: release
+.PHONY: lint fmt clean coverage help stats release
 .PHONY: bump bump-elph bump-libs publish publish-dry-run version
+.PHONY: web-dev web-build web-start web-deps
 
 # ─── Build ──────────────────────────────────────────────────────────────────
 
@@ -215,6 +216,18 @@ run: ## Run elph coding agent
 	else \
 		$(CARGO) run -q -p $(APP_BIN); \
 	fi
+
+web-deps: ## Install website dependencies from the lockfile
+	@cd "$(WEB_DIR)" && pnpm install --frozen-lockfile
+
+web-dev: ## Start the website development server
+	@cd "$(WEB_DIR)" && pnpm run dev
+
+web-build: ## Build the website for production
+	@cd "$(WEB_DIR)" && pnpm run build
+
+web-start: ## Serve the built website
+	@cd "$(WEB_DIR)" && pnpm run start
 
 watch: ## Run elph with hot reload (requires watchexec)
 	@-$(CARGO) watch -c -- cargo run --bin $(APP_BIN) $(or $(_RESIDUAL_),$(ARGS)) 2>&1

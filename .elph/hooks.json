@@ -1,0 +1,16 @@
+{
+    "$schema": "https://elph.space/hooks-schema.json",
+    "hooks": [
+        {
+            "id": "audit-tool-calls",
+            "event": "preToolUse",
+            "matcher": {
+                "toolNames": ["write_file", "edit_file"]
+            },
+            "command": "hooks/audit-tool-calls.sh",
+            "args": [],
+            "timeoutMs": 5000,
+            "enabled": true
+        }
+    ]
+}

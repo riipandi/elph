@@ -14,6 +14,7 @@ Elph reads these files in order:
 The two `hooks` arrays are concatenated. Hook `id` values must be unique in the
 combined configuration. A malformed file is skipped as a unit. The canonical
 schema is [`schemas/hooks-schema.json`](../schemas/hooks-schema.json).
+A minimal project configuration is available in [`.elph/hooks.json`](../.elph/hooks.json).
 
 ```json
 {
@@ -23,9 +24,9 @@ schema is [`schemas/hooks-schema.json`](../schemas/hooks-schema.json).
             "id": "audit-tool-calls",
             "event": "preToolUse",
             "matcher": {
-                "toolNames": ["write_file", "apply_patch"]
+                "toolNames": ["write_file", "edit_file"]
             },
-            "command": "hooks/audit-tool-calls",
+            "command": "hooks/audit-tool-calls.sh",
             "args": [],
             "timeoutMs": 5000,
             "enabled": true
@@ -39,6 +40,34 @@ Relative executable paths are resolved against the directory containing the
 defining configuration file. The process working directory is the active
 project directory. Use an explicit shell executable in `command` and `args`
 when shell syntax is required.
+
+The project configuration may reference an executable inside
+`PROJECT_DIR/.elph/hooks/`, as the sample above does. Elph does not scan or
+auto-load every file in that directory: each hook must be declared in
+`hooks.json`. The sample script records the JSON payload in
+`.elph/hook-audit.log` and intentionally writes no stdout, so it observes
+`preToolUse` without changing the tool call.
+
+### Tool names for matchers
+
+Matchers use the names registered in Elph's tool catalog. Availability depends
+on compiled features, agent mode, and MCP activation. Common current names are:
+
+| Group | Tool names |
+| --- | --- |
+| Read/search | `read_file`, `grep`, `find_path`, `list_dir` |
+| File mutation | `edit_file`, `write_file`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
+| Shell | `shell_exec`, `shell_use` |
+| Web | `web_search`, `web_fetch`, `web_extract` |
+| Discovery | `list_available_tools`, `list_skills` |
+| Agent | `ask_user_question`, `request_mode_change` |
+| Goals/todos | `create_goal`, `get_goal`, `update_goal`, `set_goal_budget`, `todo_write`, `todo_read` |
+| Memory | `memory_start_task`, `memory_end_task`, `memory_report`, `memory_contradict`, `memory_status`, `memory_search`, `memory_recent` |
+| Session/collaboration | `get_session_summary`, `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents` |
+| MCP | `mcp_{server}__{tool}` when registered and activated |
+
+`apply_patch` is not an Elph model tool; use `edit_file` in a matcher for
+regular file edits.
 
 ## Lifecycle
 

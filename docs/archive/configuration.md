@@ -192,6 +192,12 @@ stdout. Elph does not implicitly invoke a shell. Relative commands resolve
 against the directory containing their defining config file, while the process
 working directory is the active project directory.
 
+For project hooks, an executable may live under `<project>/.elph/hooks/` and be
+referenced from `<project>/.elph/hooks.json`. Elph does not scan that directory;
+every executable must be declared as a hook. The sample at
+`.elph/hooks/audit-tool-calls.sh` records `preToolUse` payloads in
+`.elph/hook-audit.log` and requires a POSIX-compatible `sh` environment.
+
 Supported events are `sessionStart`, `userPromptSubmit`, `beforeAgent`,
 `preToolUse`, `postToolUse`, `postToolUseFailure`, `preCompact`, `postCompact`,
 and `stop`. `userPromptSubmit`, `postCompact`, and `stop` are observation-only;
