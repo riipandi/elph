@@ -314,6 +314,7 @@ pub(crate) fn build_shell_view(
     let confetti_open = pending_confetti.read().is_some();
     let provider_connect_open = pending_provider_connect.read().is_some();
     let mcp_auth_open = pending_mcp_auth.read().is_some();
+    let mcp_add_open = pending_mcp_add.read().is_some();
     let provider_disconnect_open = pending_provider_disconnect.read().is_some();
     let provider_api_key_open = pending_provider_api_key.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
@@ -333,6 +334,7 @@ pub(crate) fn build_shell_view(
         || confetti_open
         || provider_connect_open
         || mcp_auth_open
+        || mcp_add_open
         || provider_disconnect_open
         || provider_api_key_open
         || queue_manager_is_open
@@ -355,6 +357,7 @@ pub(crate) fn build_shell_view(
             || confetti_open
             || provider_connect_open
             || mcp_auth_open
+            || mcp_add_open
             || provider_api_key_open
             || queue_manager_is_open
             || aside_open);
@@ -415,6 +418,7 @@ pub(crate) fn build_shell_view(
         || *pending_feedback.read()
         || provider_connect_open
         || mcp_auth_open
+        || mcp_add_open
         || provider_disconnect_open
         || provider_api_key_open)
         && !user_question_open
