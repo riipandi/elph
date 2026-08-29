@@ -230,7 +230,7 @@ pub fn consume_paste_echo_key(
     modifiers: KeyModifiers,
     now: std::time::Instant,
 ) -> bool {
-    if modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META) {
+    if !modifiers.is_empty() {
         return false;
     }
     let key = match code {
@@ -248,8 +248,14 @@ pub fn consume_paste_echo_key(
         state.raw_echo_offset = 0;
         return false;
     }
-    let Some(expected) = state.raw_echo_text[state.raw_echo_offset..].chars().next() else {
+    let Some(expected) = state
+        .raw_echo_text
+        .get(state.raw_echo_offset..)
+        .and_then(|suffix| suffix.chars().next())
+    else {
         state.suppress_raw_keys_until = None;
+        state.raw_echo_text.clear();
+        state.raw_echo_offset = 0;
         return false;
     };
     if expected != key {

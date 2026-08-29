@@ -241,8 +241,7 @@ fn raw_paste_stream_blocks_submit(burst: &PasteBurstState, in_burst: bool) -> bo
 }
 
 fn is_paste_echo_key(code: KeyCode, modifiers: KeyModifiers) -> bool {
-    !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META)
-        && matches!(code, KeyCode::Char(_) | KeyCode::Tab | KeyCode::Enter)
+    modifiers.is_empty() && matches!(code, KeyCode::Char(_) | KeyCode::Tab | KeyCode::Enter)
 }
 
 #[cfg(test)]

@@ -5,6 +5,11 @@
     "description": "One provider per JSON file. Filename without extension is the provider id (kebab-case). Canonical shape is crates/elph-ai/models/*.json: a map of modelId → model entry, plus optional $schema. A wrapper { name, api, baseUrl, headers, auth, models } is also accepted. Runtime merges CONFIG_DIR/providers/<id>.json over the embedded catalog by model id.",
     "type": "object",
     "properties": {
+        "$schema": {
+            "type": "string",
+            "const": "https://elph.space/provider-schema.json",
+            "description": "JSON Schema URL (editor autocompletion). Ignored at runtime."
+        },
         "name": {
             "type": "string",
             "description": "Optional display name for the provider (wrapper form only)."

@@ -6,6 +6,11 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
+        "$schema": {
+            "type": "string",
+            "const": "https://elph.space/mcp-schema.json",
+            "description": "JSON Schema URL (editor autocompletion). Ignored at runtime."
+        },
         "mcpServers": {
             "type": "object",
             "description": "Named MCP server definitions. Keys are stable server ids used for tool namespacing and CLI management.",
