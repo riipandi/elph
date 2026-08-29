@@ -39,6 +39,23 @@ Project skill dirs always load. Extra paths that resolve to the same folder as a
 }
 ```
 
-`resources.skills` entries with a `!` or `-` prefix exclude a skill by name or path (leading `~` expands to the home dir; a bare directory path excludes everything under it; a relative path like `.agents/skills` matches any project at that relative location); `+` force-includes. `resources.disabledSkills` drops skills by name glob after discovery.
+`resources.skills` entries are evaluated in order. Positive entries add extra skill directories and re-include matching discovered skills; `!` excludes by name or path, `-` uses exact matching for names (path entries use path matching), and `+` force-includes a matching skill. Leading `~` expands to the home directory, and relative paths are resolved from the project directory during workspace discovery. A bare directory path applies to everything below that directory.
+
+For example, to keep project skills while selecting only two shared user skills:
+
+```json
+{
+  "resources": {
+    "skills": [
+      ".agents/skills",
+      "!~/.agents/skills/*",
+      "~/.agents/skills/commit-only",
+      "~/.agents/skills/identify"
+    ]
+  }
+}
+```
+
+`resources.disabledSkills` is applied after discovery and removes matching names even if a path entry includes them.
 
 `enableSkillCommands: false` keeps skills in the model catalog (`list_skills`) but does not register `/name` commands.

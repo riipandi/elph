@@ -7,7 +7,7 @@
     "properties": {
         "$schema": {
             "type": "string",
-            "const": "https://elph.space/provider-schema.json",
+            "format": "uri-reference",
             "description": "JSON Schema URL (editor autocompletion). Ignored at runtime."
         },
         "name": {

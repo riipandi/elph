@@ -8,6 +8,13 @@ use crate::paste::apply_paste_at_cursor;
 use crate::text_editing::wire_insert_newline;
 use crate::text_input_layout::WrappedTextLayout;
 
+/// Content retained for an atomic long-text paste marker.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AtomicPaste {
+    pub id: usize,
+    pub text: String,
+}
+
 /// Live editor buffer — single source of truth for text and cursor.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TextareaState {
@@ -16,6 +23,8 @@ pub struct TextareaState {
     /// Visual selection anchor (byte index). Selection is `[min(anchor,cursor), max(...))`.
     pub selection_anchor: Option<usize>,
     pub(crate) vertical_col_preference: Option<u16>,
+    /// Expanded payloads paired with `[Paste#N: N lines]` markers.
+    pub atomic_pastes: Vec<AtomicPaste>,
 }
 
 impl TextareaState {
@@ -52,13 +61,20 @@ impl TextareaState {
     pub fn begin_selection_at(&mut self, offset: usize) {
         let offset = offset.min(self.text.len());
         self.selection_anchor = Some(offset);
-        self.cursor = offset;
+        self.cursor = snap_atomic_cursor(&self.text, offset);
+        self.selection_anchor = Some(snap_atomic_cursor(&self.text, offset));
         self.vertical_col_preference = None;
     }
 
     /// Move the selection head (cursor) without moving the anchor.
     pub fn extend_selection_to(&mut self, offset: usize) {
-        let offset = offset.min(self.text.len());
+        let raw_offset = offset.min(self.text.len());
+        let offset = if let Some((start, end)) = atomic_marker_range_at(&self.text, raw_offset) {
+            let anchor = self.selection_anchor.unwrap_or(self.cursor);
+            if raw_offset >= anchor { end } else { start }
+        } else {
+            raw_offset
+        };
         if self.selection_anchor.is_none() {
             self.selection_anchor = Some(self.cursor);
         }
@@ -70,9 +86,11 @@ impl TextareaState {
         let Some((a, b)) = self.selection_range() else {
             return false;
         };
+        let (a, b) = expand_atomic_marker_range(&self.text, a, b);
         self.text.drain(a..b);
         self.cursor = a;
         self.clear_selection();
+        self.prune_atomic_pastes();
         self.vertical_col_preference = None;
         true
     }
@@ -113,7 +131,7 @@ impl TextareaState {
     pub fn sync_external_with_cursor(&mut self, external: &str, forced_cursor: Option<usize>) {
         if self.text == external {
             if let Some(pos) = forced_cursor {
-                self.cursor = pos.min(self.text.len());
+                self.cursor = snap_atomic_cursor(&self.text, pos.min(self.text.len()));
                 self.vertical_col_preference = None;
             }
             return;
@@ -130,10 +148,11 @@ impl TextareaState {
                 self.cursor.min(self.text.len())
             }
         });
-        self.cursor = self.cursor.min(self.text.len());
+        self.cursor = snap_atomic_cursor(&self.text, self.cursor.min(self.text.len()));
         if let Some(anchor) = self.selection_anchor {
             self.selection_anchor = Some(anchor.min(self.text.len()));
         }
+        self.prune_atomic_pastes();
         self.vertical_col_preference = None;
     }
 
@@ -155,6 +174,7 @@ impl TextareaState {
         let cursor = self.cursor.min(self.text.len());
         self.text.insert(cursor, c);
         self.cursor = cursor + c.len_utf8();
+        self.prune_atomic_pastes();
         self.vertical_col_preference = None;
     }
 
@@ -162,7 +182,8 @@ impl TextareaState {
         self.delete_selection();
         let (text, cursor) = wire_insert_newline(&self.text, self.cursor);
         self.text = text;
-        self.cursor = cursor;
+        self.cursor = snap_atomic_cursor(&self.text, cursor);
+        self.prune_atomic_pastes();
         self.vertical_col_preference = None;
     }
 
@@ -174,9 +195,15 @@ impl TextareaState {
         if cursor == 0 {
             return;
         }
-        let prev = self.text[..cursor].chars().last().map(|c| c.len_utf8()).unwrap_or(0);
-        self.text.drain(cursor - prev..cursor);
-        self.cursor = cursor - prev;
+        if let Some((start, end)) = atomic_marker_range_at(&self.text, cursor.saturating_sub(1)) {
+            self.text.drain(start..end);
+            self.cursor = start;
+        } else {
+            let prev = self.text[..cursor].chars().last().map(|c| c.len_utf8()).unwrap_or(0);
+            self.text.drain(cursor - prev..cursor);
+            self.cursor = cursor - prev;
+        }
+        self.prune_atomic_pastes();
         self.vertical_col_preference = None;
     }
 
@@ -188,22 +215,31 @@ impl TextareaState {
         if cursor >= self.text.len() {
             return;
         }
-        let next = self.text[cursor..].chars().next().map(|c| c.len_utf8()).unwrap_or(0);
-        self.text.drain(cursor..cursor + next);
+        if let Some((start, end)) = atomic_marker_range_at(&self.text, cursor) {
+            self.text.drain(start..end);
+            self.prune_atomic_pastes();
+        } else {
+            let next = self.text[cursor..].chars().next().map(|c| c.len_utf8()).unwrap_or(0);
+            self.text.drain(cursor..cursor + next);
+        }
         self.vertical_col_preference = None;
     }
 
     pub fn move_left(&mut self, input_width: u16) {
         let _ = input_width;
         self.clear_selection();
-        self.cursor = WrappedTextLayout::left_of_offset(&self.text, self.cursor);
+        self.cursor = atomic_marker_end_or_left(&self.text, self.cursor)
+            .unwrap_or_else(|| WrappedTextLayout::left_of_offset(&self.text, self.cursor));
+        self.cursor = snap_atomic_cursor(&self.text, self.cursor);
         self.vertical_col_preference = None;
     }
 
     pub fn move_right(&mut self, input_width: u16) {
         let _ = input_width;
         self.clear_selection();
-        self.cursor = WrappedTextLayout::right_of_offset(&self.text, self.cursor);
+        self.cursor = atomic_marker_start_or_right(&self.text, self.cursor)
+            .unwrap_or_else(|| WrappedTextLayout::right_of_offset(&self.text, self.cursor));
+        self.cursor = snap_atomic_cursor(&self.text, self.cursor);
         self.vertical_col_preference = None;
     }
 
@@ -215,6 +251,7 @@ impl TextareaState {
             self.vertical_col_preference = Some(col);
         }
         self.cursor = layout.above_offset(&self.text, self.cursor, self.vertical_col_preference);
+        self.cursor = snap_atomic_cursor(&self.text, self.cursor);
     }
 
     pub fn move_down(&mut self, input_width: u16) {
@@ -225,12 +262,14 @@ impl TextareaState {
             self.vertical_col_preference = Some(col);
         }
         self.cursor = layout.below_offset(&self.text, self.cursor, self.vertical_col_preference);
+        self.cursor = snap_atomic_cursor(&self.text, self.cursor);
     }
 
     pub fn move_home(&mut self, input_width: u16) {
         self.clear_selection();
         let layout = WrappedTextLayout::new_for_overlay_editor(&self.text, input_width);
         self.cursor = layout.row_start_offset(&self.text, self.cursor);
+        self.cursor = snap_atomic_cursor(&self.text, self.cursor);
         self.vertical_col_preference = None;
     }
 
@@ -238,6 +277,7 @@ impl TextareaState {
         self.clear_selection();
         let layout = WrappedTextLayout::new_for_overlay_editor(&self.text, input_width);
         self.cursor = layout.row_end_offset(&self.text, self.cursor);
+        self.cursor = snap_atomic_cursor(&self.text, self.cursor);
         self.vertical_col_preference = None;
     }
 
@@ -259,12 +299,16 @@ impl TextareaState {
         }
         match code {
             KeyCode::Left => {
-                self.cursor = WrappedTextLayout::left_of_offset(&self.text, self.cursor);
+                self.cursor = atomic_marker_end_or_left(&self.text, self.cursor)
+                    .unwrap_or_else(|| WrappedTextLayout::left_of_offset(&self.text, self.cursor));
+                self.cursor = snap_atomic_cursor(&self.text, self.cursor);
                 self.vertical_col_preference = None;
                 true
             }
             KeyCode::Right => {
-                self.cursor = WrappedTextLayout::right_of_offset(&self.text, self.cursor);
+                self.cursor = atomic_marker_start_or_right(&self.text, self.cursor)
+                    .unwrap_or_else(|| WrappedTextLayout::right_of_offset(&self.text, self.cursor));
+                self.cursor = snap_atomic_cursor(&self.text, self.cursor);
                 self.vertical_col_preference = None;
                 true
             }
@@ -274,6 +318,7 @@ impl TextareaState {
                     self.vertical_col_preference = Some(col);
                 }
                 self.cursor = layout.above_offset(&self.text, self.cursor, self.vertical_col_preference);
+                self.cursor = snap_atomic_cursor(&self.text, self.cursor);
                 true
             }
             KeyCode::Down => {
@@ -282,15 +327,18 @@ impl TextareaState {
                     self.vertical_col_preference = Some(col);
                 }
                 self.cursor = layout.below_offset(&self.text, self.cursor, self.vertical_col_preference);
+                self.cursor = snap_atomic_cursor(&self.text, self.cursor);
                 true
             }
             KeyCode::Home => {
                 self.cursor = layout.row_start_offset(&self.text, self.cursor);
+                self.cursor = snap_atomic_cursor(&self.text, self.cursor);
                 self.vertical_col_preference = None;
                 true
             }
             KeyCode::End => {
                 self.cursor = layout.row_end_offset(&self.text, self.cursor);
+                self.cursor = snap_atomic_cursor(&self.text, self.cursor);
                 self.vertical_col_preference = None;
                 true
             }
@@ -363,11 +411,72 @@ impl TextareaState {
     }
 
     pub fn apply_paste(&mut self, data: &str) {
+        self.apply_paste_with_atomic(data, false);
+    }
+
+    /// Insert clipboard text, optionally replacing long content with an atomic marker.
+    pub fn apply_paste_with_atomic(&mut self, data: &str, atomic: bool) {
         self.delete_selection();
+        let normalized = crate::paste::normalize_paste_text(data);
+        if atomic && crate::paste::should_atomicize(&normalized) {
+            let id = next_atomic_paste_id(&self.text);
+            let marker = format!("[Paste#{id}: {} lines]", crate::paste::line_count(&normalized));
+            let cursor = self.cursor.min(self.text.len());
+            self.text.insert_str(cursor, &marker);
+            self.cursor = cursor + marker.len();
+            self.atomic_pastes.push(AtomicPaste { id, text: normalized });
+            self.vertical_col_preference = None;
+            return;
+        }
         let cursor = self.cursor.min(self.text.len());
-        let (text, cursor) = apply_paste_at_cursor(&self.text, cursor, data);
+        let (text, cursor) = apply_paste_at_cursor(&self.text, cursor, &normalized);
         self.text = text;
-        self.cursor = cursor;
+        self.cursor = snap_atomic_cursor(&self.text, cursor);
+        self.prune_atomic_pastes();
+        self.vertical_col_preference = None;
+    }
+
+    /// Expand the atomic paste marker touching the caret into editable text.
+    pub fn expand_atomic_paste_at_cursor(&mut self) -> bool {
+        let Some((start, end, id)) = atomic_paste_id_at_cursor(&self.text, self.cursor) else {
+            return false;
+        };
+        let Some(paste) = self.atomic_pastes.iter().find(|paste| paste.id == id).cloned() else {
+            return false;
+        };
+        self.text.replace_range(start..end, &paste.text);
+        self.cursor = start + paste.text.len();
+        self.atomic_pastes.retain(|item| item.id != id);
+        self.vertical_col_preference = None;
+        true
+    }
+
+    /// Return the draft with every retained atomic paste expanded for submission.
+    pub fn expanded_text(&self) -> String {
+        self.atomic_pastes.iter().fold(self.text.clone(), |text, paste| {
+            let Some((start, end)) = atomic_paste_marker_range(&text, paste.id) else {
+                return text;
+            };
+            let mut expanded = String::with_capacity(text.len() - (end - start) + paste.text.len());
+            expanded.push_str(&text[..start]);
+            expanded.push_str(&paste.text);
+            expanded.push_str(&text[end..]);
+            expanded
+        })
+    }
+
+    fn prune_atomic_pastes(&mut self) {
+        self.atomic_pastes
+            .retain(|paste| atomic_paste_marker_range(&self.text, paste.id).is_some());
+    }
+
+    /// Insert an image marker as one cursor/deletion unit.
+    pub fn insert_image_marker(&mut self, id: usize) {
+        self.delete_selection();
+        let marker = format!("[Image #{id}]");
+        let cursor = self.cursor.min(self.text.len());
+        self.text.insert_str(cursor, &marker);
+        self.cursor = cursor + marker.len();
         self.vertical_col_preference = None;
     }
 
@@ -375,7 +484,245 @@ impl TextareaState {
         self.text.clear();
         self.cursor = 0;
         self.clear_selection();
+        self.atomic_pastes.clear();
         self.vertical_col_preference = None;
+    }
+}
+
+fn image_marker_range_at(text: &str, offset: usize) -> Option<(usize, usize)> {
+    let mut search_from = 0;
+    while let Some(relative) = text[search_from..].find("[Image #") {
+        let start = search_from + relative;
+        let digits_start = start + "[Image #".len();
+        let end = text[digits_start..].find(']')? + digits_start + 1;
+        if digits_start < end - 1
+            && text[digits_start..end - 1].chars().all(|ch| ch.is_ascii_digit())
+            && offset >= start
+            && offset < end
+        {
+            return Some((start, end));
+        }
+        search_from = end;
+    }
+    None
+}
+
+fn paste_marker_range_at(text: &str, offset: usize) -> Option<(usize, usize)> {
+    let mut search_from = 0;
+    while let Some(relative) = text[search_from..].find("[Paste#") {
+        let start = search_from + relative;
+        let digits_start = start + "[Paste#".len();
+        let end = text[digits_start..].find(']')? + digits_start + 1;
+        let marker = &text[start..end];
+        let valid = marker
+            .strip_prefix("[Paste#")
+            .and_then(|value| value.strip_suffix(']'))
+            .and_then(|value| value.split_once(": "))
+            .is_some_and(|(id, lines)| {
+                !id.is_empty()
+                    && id.chars().all(|ch| ch.is_ascii_digit())
+                    && !lines.is_empty()
+                    && lines
+                        .strip_suffix(" lines")
+                        .is_some_and(|count| !count.is_empty() && count.chars().all(|ch| ch.is_ascii_digit()))
+            });
+        if valid && offset >= start && offset < end {
+            return Some((start, end));
+        }
+        search_from = end;
+    }
+    None
+}
+
+fn atomic_marker_range_at(text: &str, offset: usize) -> Option<(usize, usize)> {
+    image_marker_range_at(text, offset).or_else(|| paste_marker_range_at(text, offset))
+}
+
+/// Return the marker range and image id touching a caret offset.
+pub fn image_marker_id_at_cursor(text: &str, cursor: usize) -> Option<(usize, usize, usize)> {
+    let marker =
+        image_marker_range_at(text, cursor).or_else(|| image_marker_range_at(text, cursor.saturating_sub(1)))?;
+    let id_start = marker.0 + "[Image #".len();
+    let id = text[id_start..marker.1 - 1].parse().ok()?;
+    Some((marker.0, marker.1, id))
+}
+
+/// Return the atomic paste marker range and id touching a caret offset.
+pub fn atomic_paste_id_at_cursor(text: &str, cursor: usize) -> Option<(usize, usize, usize)> {
+    let marker =
+        paste_marker_range_at(text, cursor).or_else(|| paste_marker_range_at(text, cursor.saturating_sub(1)))?;
+    let id_start = marker.0 + "[Paste#".len();
+    let id_end = text[id_start..marker.1].find(": ")? + id_start;
+    let id = text[id_start..id_end].parse().ok()?;
+    Some((marker.0, marker.1, id))
+}
+
+fn atomic_paste_marker_range(text: &str, id: usize) -> Option<(usize, usize)> {
+    let marker = format!("[Paste#{id}: ");
+    let start = text.find(&marker)?;
+    let end = text[start..].find(" lines]")? + start + " lines]".len();
+    Some((start, end))
+}
+
+fn expand_atomic_marker_range(text: &str, mut start: usize, mut end: usize) -> (usize, usize) {
+    let mut cursor = 0;
+    while cursor < text.len() {
+        let image = text[cursor..].find("[Image #").map(|relative| (relative, true));
+        let paste = text[cursor..].find("[Paste#").map(|relative| (relative, false));
+        let Some((relative, is_image)) = [image, paste]
+            .into_iter()
+            .flatten()
+            .min_by_key(|(relative, _)| *relative)
+        else {
+            break;
+        };
+        let marker_start = cursor + relative;
+        let marker_end = if is_image {
+            let digits_start = marker_start + "[Image #".len();
+            let Some(relative_end) = text[digits_start..].find(']') else {
+                break;
+            };
+            digits_start + relative_end + 1
+        } else {
+            let digits_start = marker_start + "[Paste#".len();
+            let Some(relative_end) = text[digits_start..].find(']') else {
+                break;
+            };
+            digits_start + relative_end + 1
+        };
+        if atomic_marker_range_at(text, marker_start).is_some() && start < marker_end && end > marker_start {
+            start = start.min(marker_start);
+            end = end.max(marker_end);
+        }
+        cursor = marker_end;
+    }
+    (start, end)
+}
+
+fn atomic_marker_end_or_left(text: &str, cursor: usize) -> Option<usize> {
+    let marker = atomic_marker_range_at(text, cursor.saturating_sub(1))?;
+    (marker.1 == cursor).then_some(marker.0)
+}
+
+fn atomic_marker_start_or_right(text: &str, cursor: usize) -> Option<usize> {
+    let marker = atomic_marker_range_at(text, cursor)?;
+    (marker.0 == cursor).then_some(marker.1)
+}
+
+fn snap_atomic_cursor(text: &str, cursor: usize) -> usize {
+    let Some((start, end)) = atomic_marker_range_at(text, cursor) else {
+        return cursor;
+    };
+    if cursor - start <= end - cursor { start } else { end }
+}
+
+fn next_atomic_paste_id(text: &str) -> usize {
+    (1..)
+        .find(|id| atomic_paste_marker_range(text, *id).is_none())
+        .unwrap_or(usize::MAX)
+}
+
+#[cfg(test)]
+mod image_marker_tests {
+    use super::{TextareaState, image_marker_id_at_cursor};
+
+    #[test]
+    fn image_marker_is_inserted_and_deleted_atomically() {
+        let mut state = TextareaState::from_text("before after".into());
+        state.cursor = "before ".len();
+        state.insert_image_marker(1);
+        assert_eq!(state.text, "before [Image #1]after");
+
+        state.delete_char_back();
+        assert_eq!(state.text, "before after");
+        assert_eq!(state.cursor, "before ".len());
+    }
+
+    #[test]
+    fn cursor_skips_image_marker() {
+        let mut state = TextareaState::from_text("[Image #7]x".into());
+        state.cursor = "[Image #7]".len();
+        state.move_left(80);
+        assert_eq!(state.cursor, 0);
+        state.move_right(80);
+        assert_eq!(state.cursor, "[Image #7]".len());
+    }
+
+    #[test]
+    fn image_marker_preview_range_includes_caret_after_marker() {
+        let mut state = TextareaState::from_text("x[Image #7]y".into());
+        state.cursor = 10;
+        assert_eq!(image_marker_id_at_cursor(&state.text, state.cursor), Some((1, 11, 7)));
+        state.cursor = 11;
+        assert_eq!(image_marker_id_at_cursor(&state.text, state.cursor), Some((1, 11, 7)));
+        state.cursor = 12;
+        assert_eq!(image_marker_id_at_cursor(&state.text, state.cursor), None);
+    }
+}
+
+#[cfg(test)]
+mod atomic_paste_tests {
+    use super::{AtomicPaste, TextareaState, atomic_paste_id_at_cursor};
+
+    fn long_text() -> String {
+        "one\ntwo\nthree\nfour".into()
+    }
+
+    #[test]
+    fn long_paste_is_one_cursor_and_deletion_unit() {
+        let mut state = TextareaState::default();
+        state.apply_paste_with_atomic(&long_text(), true);
+        assert_eq!(state.text, "[Paste#1: 4 lines]");
+        assert_eq!(
+            state.atomic_pastes,
+            vec![AtomicPaste {
+                id: 1,
+                text: long_text()
+            }]
+        );
+        state.move_left(80);
+        assert_eq!(state.cursor, 0);
+        state.move_right(80);
+        assert_eq!(state.cursor, state.text.len());
+        state.delete_char_back();
+        assert!(state.text.is_empty());
+        assert!(state.atomic_pastes.is_empty());
+    }
+
+    #[test]
+    fn selection_overlapping_marker_expands_to_whole_marker() {
+        let mut state = TextareaState::from_text("a[Paste#1: 4 lines]b".into());
+        state.atomic_pastes.push(AtomicPaste {
+            id: 1,
+            text: long_text(),
+        });
+        state.begin_selection_at(1);
+        state.extend_selection_to(5);
+        assert!(state.delete_selection());
+        assert_eq!(state.text, "ab");
+        assert!(state.atomic_pastes.is_empty());
+    }
+
+    #[test]
+    fn marker_preview_range_is_cursor_aware_and_expands() {
+        let mut state = TextareaState::from_text("x[Paste#1: 4 lines]y".into());
+        state.atomic_pastes.push(AtomicPaste {
+            id: 1,
+            text: long_text(),
+        });
+        state.cursor = 3;
+        assert_eq!(atomic_paste_id_at_cursor(&state.text, state.cursor), Some((1, 19, 1)));
+        assert!(state.expand_atomic_paste_at_cursor());
+        assert_eq!(state.text, format!("x{}y", long_text()));
+    }
+
+    #[test]
+    fn atomic_ids_restart_after_markers_are_removed() {
+        let mut state = TextareaState::default();
+        state.apply_paste_with_atomic(&long_text(), true);
+        state.clear_after_submit();
+        state.apply_paste_with_atomic(&long_text(), true);
+        assert_eq!(state.text, "[Paste#1: 4 lines]");
     }
 }
 

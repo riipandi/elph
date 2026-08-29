@@ -6,6 +6,16 @@ pub fn newline_count(text: &str) -> usize {
     text.chars().filter(|&c| c == '\n').count()
 }
 
+/// Count logical lines in normalized paste text.
+pub fn line_count(text: &str) -> usize {
+    if text.is_empty() { 0 } else { newline_count(text) + 1 }
+}
+
+/// Whether pasted content is large enough to benefit from an atomic marker.
+pub fn should_atomicize(text: &str) -> bool {
+    line_count(text) >= 4 || text.chars().count() >= 400
+}
+
 /// Normalize clipboard text to Unix newlines for the editor buffer.
 pub fn normalize_paste_text(raw: &str) -> String {
     if !raw.contains('\r') {
@@ -61,6 +71,9 @@ pub struct PasteBurstState {
     pub buffer: String,
     /// Suppress raw key replay until this instant (after bracketed paste).
     pub suppress_raw_keys_until: Option<std::time::Instant>,
+    /// Bracketed-paste payload used to distinguish terminal echo from new user input.
+    pub raw_echo_text: String,
+    pub raw_echo_offset: usize,
     /// Suppress plain-Enter submit until this instant (trailing paste echo).
     pub suppress_submit_until: Option<std::time::Instant>,
 }
@@ -194,6 +207,72 @@ pub fn paste_burst_reset(state: &mut PasteBurstState) {
     restore_guards(state, raw_guard, submit_guard);
 }
 
+/// Arm replay protection while retaining the pasted payload for prefix matching.
+pub fn arm_paste_echo_guard(
+    state: &mut PasteBurstState,
+    text: &str,
+    now: std::time::Instant,
+    duration: std::time::Duration,
+) {
+    state.suppress_raw_keys_until = Some(now + duration);
+    state.raw_echo_text = normalize_paste_text(text);
+    state.raw_echo_offset = 0;
+}
+
+/// Consume one key only when it matches the next character replayed by the terminal.
+///
+/// A blanket time-based guard makes the first real key after a large paste disappear.
+/// Prefix matching keeps protection for terminals that echo bracketed paste while allowing
+/// unrelated user input through immediately.
+pub fn consume_paste_echo_key(
+    state: &mut PasteBurstState,
+    code: KeyCode,
+    modifiers: KeyModifiers,
+    now: std::time::Instant,
+) -> bool {
+    if !modifiers.is_empty() {
+        return false;
+    }
+    let key = match code {
+        KeyCode::Char(ch) => ch,
+        KeyCode::Tab => '\t',
+        KeyCode::Enter => '\n',
+        _ => return false,
+    };
+    let Some(deadline) = state.suppress_raw_keys_until else {
+        return false;
+    };
+    if now >= deadline {
+        state.suppress_raw_keys_until = None;
+        state.raw_echo_text.clear();
+        state.raw_echo_offset = 0;
+        return false;
+    }
+    let Some(expected) = state
+        .raw_echo_text
+        .get(state.raw_echo_offset..)
+        .and_then(|suffix| suffix.chars().next())
+    else {
+        state.suppress_raw_keys_until = None;
+        state.raw_echo_text.clear();
+        state.raw_echo_offset = 0;
+        return false;
+    };
+    if expected != key {
+        state.suppress_raw_keys_until = None;
+        state.raw_echo_text.clear();
+        state.raw_echo_offset = 0;
+        return false;
+    }
+    state.raw_echo_offset += expected.len_utf8();
+    if state.raw_echo_offset == state.raw_echo_text.len() {
+        state.suppress_raw_keys_until = None;
+        state.raw_echo_text.clear();
+        state.raw_echo_offset = 0;
+    }
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -206,6 +285,13 @@ mod tests {
     #[test]
     fn apply_paste_at_cursor_inserts_at_offset() {
         assert_eq!(apply_paste_at_cursor("hi", 2, " there"), ("hi there".into(), 8));
+    }
+
+    #[test]
+    fn atomic_threshold_uses_lines_or_runes() {
+        assert!(!should_atomicize("one\ntwo\nthree"));
+        assert!(should_atomicize("one\ntwo\nthree\nfour"));
+        assert!(should_atomicize(&"x".repeat(400)));
     }
 
     #[test]

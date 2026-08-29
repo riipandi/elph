@@ -1,14 +1,18 @@
 //! iocraft [`Textarea`] — thin shell around [`TextareaState`] + direct render.
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use super::TextareaProps;
 use super::input::handle_textarea_terminal_event;
 use super::input::{TextareaInputContext, TextareaInputResult};
 use super::layout::{layout_cursor_for_viewport, layout_metrics_from_wrapped, layout_textarea_measured};
-use super::state::{TextareaState, selection_display_rows};
-use crate::clipboard::{ClipboardNotice, copy_to_clipboard};
+use super::state::{AtomicPaste, TextareaState, selection_display_rows};
+use crate::clipboard::{
+    ClipboardNotice, ImageAttachment, copy_to_clipboard, read_from_clipboard, remove_image_attachments,
+    save_clipboard_image,
+};
 use crate::components::scroll_bar::VerticalScrollbar;
 use crate::components::theme::resolve_ui_theme;
 use crate::input_prefix::{InputPrefixKind, PromptPrefixConfig, absorb_inline_triggers};
@@ -199,6 +203,37 @@ fn sync_editor_from_parent(ed: &mut TextareaState, external: &str, has_focus: bo
     ed.sync_external(external);
 }
 
+fn prune_removed_image_attachments(text: &str, attachments: &mut Vec<ImageAttachment>) {
+    let mut removed = Vec::new();
+    attachments.retain(|attachment| {
+        let marker = format!("[Image #{}]", attachment.id);
+        if text.contains(&marker) {
+            true
+        } else {
+            removed.push(attachment.clone());
+            false
+        }
+    });
+    remove_image_attachments(&removed);
+}
+
+fn next_image_id(text: &str) -> usize {
+    (1..)
+        .find(|id| {
+            let marker = format!("[Image #{id}]");
+            !text.contains(&marker)
+        })
+        .unwrap_or(usize::MAX)
+}
+
+#[derive(Debug)]
+enum BackgroundPasteResult {
+    Image(ImageAttachment),
+    Text(String),
+    Unsupported,
+    Failed(String),
+}
+
 fn apply_palette_draft_to_editor(ed: &mut TextareaState, external: &str, forced_cursor: Option<usize>) {
     ed.sync_external_with_cursor(external, forced_cursor);
 }
@@ -208,6 +243,7 @@ fn mirror_editor_buffer(
     live_draft: Option<Ref<String>>,
     live_cursor: Option<Ref<usize>>,
     prompt_editor_mirror: Option<Ref<(String, usize)>>,
+    atomic_pastes: Option<Ref<Vec<AtomicPaste>>>,
 ) {
     if let Some(mut live) = live_draft {
         live.set(ed.text.clone());
@@ -217,6 +253,9 @@ fn mirror_editor_buffer(
     }
     if let Some(mut mirror) = prompt_editor_mirror {
         mirror.set((ed.text.clone(), ed.cursor));
+    }
+    if let Some(mut mirror) = atomic_pastes {
+        mirror.set(ed.atomic_pastes.clone());
     }
 }
 
@@ -246,6 +285,8 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     let mut scroll_row = hooks.use_ref(|| 0u16);
     let mut layout_cache = hooks.use_ref(|| None::<TextareaLayoutCache>);
     let mut viewport_cache = hooks.use_ref(|| None::<ViewportRenderCache>);
+    let image_paste_result = hooks.use_ref(|| Arc::new(Mutex::new(None::<BackgroundPasteResult>)));
+    let image_paste_busy = hooks.use_ref(|| false);
     let mut generation = hooks.use_state(|| 0u32);
     let on_submit = props.on_submit.take();
     let on_escape = props.on_escape.take();
@@ -253,6 +294,175 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     let file_picker_key_handled = props.file_picker_key_handled;
     let prompt_editor_mirror = props.prompt_editor_mirror;
     let clipboard_toast = props.clipboard_toast;
+    let image_attachment_dir = props.image_attachment_dir.clone();
+    let image_attachments = props.image_attachments;
+    let supports_images = props.supports_images;
+    let atomic_paste = props.atomic_paste;
+    let atomic_pastes = props.atomic_pastes;
+    let temporary_dir = props.temporary_dir.clone();
+    let atomic_temp_files = hooks.use_ref(HashMap::<usize, std::path::PathBuf>::new);
+
+    {
+        let temporary_dir = temporary_dir.clone();
+        let mut atomic_temp_files = atomic_temp_files;
+        hooks.use_future(async move {
+            let mut current = Vec::<AtomicPaste>::new();
+            let mut current_key = Vec::<(usize, usize)>::new();
+            loop {
+                smol::Timer::after(Duration::from_millis(100)).await;
+                let Some(directory) = temporary_dir.as_ref() else {
+                    continue;
+                };
+                let next_key = atomic_pastes
+                    .map(|pastes| pastes.read().iter().map(|paste| (paste.id, paste.text.len())).collect())
+                    .unwrap_or_default();
+                if next_key != current_key {
+                    current = atomic_pastes.map(|pastes| pastes.read().clone()).unwrap_or_default();
+                    current_key = next_key;
+                }
+                let stale = atomic_temp_files
+                    .read()
+                    .iter()
+                    .filter(|(id, _)| !current.iter().any(|paste| paste.id == **id))
+                    .map(|(_, path)| path.clone())
+                    .collect::<Vec<_>>();
+                if !stale.is_empty() {
+                    for path in &stale {
+                        let _ = std::fs::remove_file(path);
+                    }
+                    atomic_temp_files.write().retain(|_, path| !stale.contains(path));
+                }
+                for paste in &current {
+                    if atomic_temp_files.read().contains_key(&paste.id) {
+                        continue;
+                    }
+                    let directory = directory.clone();
+                    let payload = paste.text.clone();
+                    let id = paste.id;
+                    let result = smol::unblock(move || {
+                        std::fs::create_dir_all(&directory)?;
+                        let stamp = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_nanos();
+                        for attempt in 0..100u32 {
+                            let path = directory.join(format!("paste-{stamp}-{id}-{attempt}.txt"));
+                            let mut file = match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
+                                Ok(file) => file,
+                                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                                Err(error) => return Err(error),
+                            };
+                            use std::io::Write;
+                            file.write_all(payload.as_bytes())?;
+                            return Ok(path);
+                        }
+                        Err(std::io::Error::new(
+                            std::io::ErrorKind::AlreadyExists,
+                            "could not allocate an atomic paste temporary file",
+                        ))
+                    })
+                    .await;
+                    if let Ok(path) = result {
+                        atomic_temp_files.write().insert(id, path);
+                    }
+                }
+            }
+        });
+    }
+
+    {
+        let result_slot = image_paste_result.read().clone();
+        let mut image_paste_busy = image_paste_busy;
+        let mut editor = editor;
+        let mut value = value;
+        let mut layout_cache = layout_cache;
+        let mut viewport_cache = viewport_cache;
+        let mut generation = generation;
+        hooks.use_future(async move {
+            loop {
+                smol::Timer::after(Duration::from_millis(32)).await;
+                let result = result_slot.lock().ok().and_then(|mut slot| slot.take());
+                let Some(result) = result else {
+                    continue;
+                };
+                image_paste_busy.set(false);
+                match result {
+                    BackgroundPasteResult::Image(saved) => {
+                        let Some(mut attachment_ref) = image_attachments else {
+                            remove_image_attachments(&[saved]);
+                            if let Some(mut toast) = clipboard_toast {
+                                toast.set(Some(ClipboardNotice::ImagePasteFailed {
+                                    detail: "the prompt is no longer available".to_string(),
+                                }));
+                            }
+                            continue;
+                        };
+                        let mut attachments = attachment_ref.write();
+                        let next_id = {
+                            let ed = editor.read();
+                            next_image_id(&ed.text)
+                        };
+                        let attachment = ImageAttachment { id: next_id, ..saved };
+                        attachments.push(attachment.clone());
+                        editor.write().insert_image_marker(next_id);
+                        let ed = editor.read();
+                        value.set(ed.text.clone());
+                        if let Some(mut live) = live_draft {
+                            live.set(ed.text.clone());
+                        }
+                        if let Some(mut cursor_ref) = live_cursor {
+                            cursor_ref.set(ed.cursor);
+                        }
+                        if let Some(mut mirror) = prompt_editor_mirror {
+                            mirror.set((ed.text.clone(), ed.cursor));
+                        }
+                        if let Some(mut mirror) = atomic_pastes {
+                            mirror.set(ed.atomic_pastes.clone());
+                        }
+                        if let Some(mut toast) = clipboard_toast {
+                            toast.set(Some(ClipboardNotice::ImagePasted { id: next_id }));
+                        }
+                        layout_cache.set(None);
+                        viewport_cache.set(None);
+                        generation.set(generation.get().wrapping_add(1));
+                    }
+                    BackgroundPasteResult::Text(text) => {
+                        let mut ed = editor.write();
+                        ed.apply_paste_with_atomic(&text, atomic_paste);
+                        if let Some(mut live) = live_draft {
+                            live.set(ed.text.clone());
+                        }
+                        if let Some(mut cursor_ref) = live_cursor {
+                            cursor_ref.set(ed.cursor);
+                        }
+                        if let Some(mut mirror) = prompt_editor_mirror {
+                            mirror.set((ed.text.clone(), ed.cursor));
+                        }
+                        if let Some(mut mirror) = atomic_pastes {
+                            mirror.set(ed.atomic_pastes.clone());
+                        }
+                        value.set(ed.text.clone());
+                        if let Some(mut toast) = clipboard_toast {
+                            toast.set(Some(ClipboardNotice::ImagePasteText));
+                        }
+                        layout_cache.set(None);
+                        viewport_cache.set(None);
+                        generation.set(generation.get().wrapping_add(1));
+                    }
+                    BackgroundPasteResult::Unsupported => {
+                        if let Some(mut toast) = clipboard_toast {
+                            toast.set(Some(ClipboardNotice::ImageInputUnsupported));
+                        }
+                    }
+                    BackgroundPasteResult::Failed(detail) => {
+                        if let Some(mut toast) = clipboard_toast {
+                            toast.set(Some(ClipboardNotice::ImagePasteFailed { detail }));
+                        }
+                    }
+                }
+            }
+        });
+    }
 
     // Flush raw paste-burst buffers after a typing gap so rapid keys are not lost when the
     // user stops (merge used to run only on the *next* keypress).
@@ -279,11 +489,12 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                 }
                 let mut ed = editor.write();
                 let mut burst = paste_burst.write();
-                if !super::input::flush_idle_burst(&mut ed, &mut burst) {
+                if !super::input::flush_idle_burst(&mut ed, &mut burst, atomic_paste) {
                     continue;
                 }
                 let text = ed.text.clone();
                 let cursor = ed.cursor;
+                let atomic_snapshot = ed.atomic_pastes.clone();
                 drop(burst);
                 drop(ed);
                 if let Some(mut live) = live_draft {
@@ -294,6 +505,9 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                 }
                 if let Some(mut mirror) = prompt_editor_mirror {
                     mirror.set((text.clone(), cursor));
+                }
+                if let Some(mut mirror) = atomic_pastes {
+                    mirror.set(atomic_snapshot);
                 }
                 value.set(text);
                 layout_cache.set(None);
@@ -310,7 +524,15 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     {
         let mut ed = editor.write();
         if force_clear.is_some_and(|signal| signal.get()) {
+            if let Some(mut attachments) = image_attachments {
+                let pending = attachments.read().clone();
+                remove_image_attachments(&pending);
+                attachments.set(Vec::new());
+            }
             ed.clear_after_submit();
+            if let Some(mut mirror) = atomic_pastes {
+                mirror.set(Vec::new());
+            }
             if let Some(mut signal) = force_clear {
                 signal.set(false);
             }
@@ -335,6 +557,10 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
         } else {
             sync_editor_from_parent(&mut ed, &value.read(), has_focus);
         }
+    }
+    if let Some(mut attachments) = image_attachments {
+        let text = editor.read().text.clone();
+        prune_removed_image_attachments(&text, &mut attachments.write());
     }
 
     let h_pad = if show_border { 2 } else { 0 };
@@ -447,6 +673,10 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
         let mut paste_burst = paste_burst;
         let mut last_key_at = last_key_at;
         let submit_on_enter = props.submit_on_enter;
+        let atomic_paste = props.atomic_paste;
+        let image_attachment_dir = image_attachment_dir.clone();
+        let image_paste_result = image_paste_result.read().clone();
+        let mut image_paste_busy = image_paste_busy;
         let input_width = layout.input_width;
         move |event| {
             if !has_focus {
@@ -473,7 +703,7 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                 let mut ed = editor.write();
                 let mut burst = paste_burst.write();
                 if burst.active {
-                    super::input::flush_idle_burst(&mut ed, &mut burst);
+                    super::input::flush_idle_burst(&mut ed, &mut burst, atomic_paste);
                 }
                 let input = PaletteKeyInput {
                     code: *code,
@@ -492,7 +722,7 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                         {
                             let mut ed = editor.write();
                             apply_palette_draft_to_editor(&mut ed, &external, forced_cursor);
-                            mirror_editor_buffer(&ed, live_draft, live_cursor, prompt_editor_mirror);
+                            mirror_editor_buffer(&ed, live_draft, live_cursor, prompt_editor_mirror, atomic_pastes);
                         }
                         value.set(external);
                         if let Some(mut signal) = force_palette_sync {
@@ -527,6 +757,7 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                         has_focus,
                         input_width,
                         submit_on_enter,
+                        atomic_paste,
                         suppress_enter_newline,
                         slash_palette_active,
                         file_picker_active,
@@ -549,13 +780,28 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
             };
 
             match result {
-                TextareaInputResult::Submit(draft) => {
+                TextareaInputResult::Submit(_draft) => {
+                    if !supports_images && image_attachments.is_some_and(|attachments| !attachments.read().is_empty()) {
+                        if let Some(mut toast) = clipboard_toast {
+                            toast.set(Some(ClipboardNotice::ImageInputUnsupported));
+                        }
+                        return;
+                    }
+                    let draft = editor.read().expanded_text();
                     sync_live_draft(&draft, editor.read().cursor);
                     if !on_submit.is_default() {
                         on_submit(draft);
                     }
                     let mut ed = editor.write();
                     ed.clear_after_submit();
+                    if let Some(mut mirror) = atomic_pastes {
+                        mirror.set(Vec::new());
+                    }
+                    if let Some(mut attachments) = image_attachments {
+                        let pending = attachments.read().clone();
+                        remove_image_attachments(&pending);
+                        attachments.set(Vec::new());
+                    }
                     sync_live_draft("", 0);
                     value.set(String::new());
                     if let Some(mut kind) = input_prefix_kind {
@@ -572,6 +818,9 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                         let ed = editor.read();
                         let text = ed.text.clone();
                         sync_live_draft(&text, ed.cursor);
+                        if let Some(mut mirror) = atomic_pastes {
+                            mirror.set(ed.atomic_pastes.clone());
+                        }
                         value.set(text);
                     }
                     if sync_prefix_draft(prefix_config, input_prefix_kind, &mut editor, &mut value, live_draft) {
@@ -614,6 +863,47 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                         sync_live_draft(&ed.text, ed.cursor);
                     }
                     generation.set(generation.get().wrapping_add(1));
+                }
+                TextareaInputResult::PasteImage => {
+                    if image_paste_busy.get() {
+                        return;
+                    }
+                    image_paste_busy.set(true);
+                    if let Some(mut toast) = clipboard_toast {
+                        toast.set(Some(ClipboardNotice::ImagePasting));
+                    }
+                    if let Ok(mut slot) = image_paste_result.lock() {
+                        *slot = None;
+                    }
+                    let attachment_dir = image_attachment_dir.clone();
+                    let result_slot = image_paste_result.clone();
+                    smol::spawn(async move {
+                        let result = smol::unblock(move || {
+                            if !supports_images {
+                                return match read_from_clipboard() {
+                                    Ok(text) if !text.is_empty() => BackgroundPasteResult::Text(text),
+                                    Ok(_) | Err(_) => BackgroundPasteResult::Unsupported,
+                                };
+                            }
+                            if let Some(dir) = attachment_dir.as_deref()
+                                && let Ok(image) = save_clipboard_image(dir, 0)
+                            {
+                                return BackgroundPasteResult::Image(image);
+                            }
+                            match read_from_clipboard() {
+                                Ok(text) if !text.is_empty() => BackgroundPasteResult::Text(text),
+                                Ok(_) => {
+                                    BackgroundPasteResult::Failed("clipboard does not contain an image".to_string())
+                                }
+                                Err(err) => BackgroundPasteResult::Failed(err.to_string()),
+                            }
+                        })
+                        .await;
+                        if let Ok(mut slot) = result_slot.lock() {
+                            *slot = Some(result);
+                        }
+                    })
+                    .detach();
                 }
                 TextareaInputResult::Ignored => {}
             }
@@ -760,6 +1050,13 @@ mod tests {
         let mut ed = TextareaState::from_text("/goal args".into());
         sync_editor_from_parent(&mut ed, "/goal ", true);
         assert_eq!(ed.text, "/goal args");
+    }
+
+    #[test]
+    fn next_image_id_reuses_first_free_id_in_current_prompt() {
+        assert_eq!(next_image_id("[Image #2]"), 1);
+        assert_eq!(next_image_id(""), 1);
+        assert_eq!(next_image_id("[Image #1] [Image #2]"), 3);
     }
 
     #[test]

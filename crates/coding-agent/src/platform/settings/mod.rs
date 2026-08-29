@@ -20,7 +20,7 @@
 //!   "preferredChatLanguage": "english",
 //!   "maxRetries": 2,
 //!   "defaultTimeout": "120s",
-//!   "ui": { "theme": "auto", "showThinking": true, "density": "compact", ... },
+//!   "ui": { "theme": "auto", "showThinking": true, "density": "compact", "atomicPaste": true, ... },
 //!   "models": {
 //!     "defaultModel": null,
 //!     "sessionTitleModel": "inherit",
@@ -419,6 +419,9 @@ pub struct UiSettings {
     /// provider/model) under the last assistant reply after each completed turn.
     #[serde(default = "default_true")]
     pub turn_stats: bool,
+    /// Replace long clipboard text with an atomic marker in the prompt editor.
+    #[serde(default = "default_true")]
+    pub atomic_paste: bool,
 }
 
 impl Default for UiSettings {
@@ -435,6 +438,7 @@ impl Default for UiSettings {
             show_hidden_files: false,
             allow_mode_change_while_busy: true,
             turn_stats: true,
+            atomic_paste: true,
         }
     }
 }
@@ -1203,6 +1207,8 @@ mod tests {
         assert!(!obj.contains_key("provider"));
         assert!(obj.contains_key("maxRetries"));
         assert!(obj.contains_key("defaultTimeout"));
+        assert_eq!(obj["ui"]["atomicPaste"], true);
+        assert!(!obj.contains_key("atomicPaste"));
         assert!(obj.contains_key("memory"));
         assert!(!obj.contains_key("showThinking"));
         assert!(!obj.contains_key("scopedModelItems"));
@@ -1232,6 +1238,14 @@ mod tests {
     fn file_picker_settings_default_hidden_off() {
         let settings = Settings::defaults();
         assert!(!settings.ui.show_hidden_files);
+    }
+
+    #[test]
+    fn atomic_paste_setting_defaults_on_and_decodes() {
+        assert!(Settings::defaults().ui.atomic_paste);
+        let settings: Settings = serde_json::from_str(r#"{"ui":{"atomicPaste":false}}"#).expect("decode");
+        assert!(!settings.ui.atomic_paste);
+        assert_eq!(settings.schema, default_elph_schema());
     }
 
     #[test]

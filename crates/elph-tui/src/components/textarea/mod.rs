@@ -15,7 +15,7 @@ pub use layout::{
     compute_viewport_height, display_row_count, layout_cursor_for_viewport, layout_textarea, layout_textarea_measured,
 };
 pub use layout::{logical_line_count, visible_row_count};
-pub use state::TextareaState;
+pub use state::{AtomicPaste, TextareaState, atomic_paste_id_at_cursor, image_marker_id_at_cursor};
 
 /// Props for [`Textarea`].
 #[derive(Default, Props)]
@@ -66,8 +66,21 @@ pub struct TextareaProps {
     pub prompt_editor_mirror: Option<Ref<(String, usize)>>,
     /// One-shot clipboard toast request (plain `y` selection yank). Shell drains into the ephemeral banner.
     pub clipboard_toast: Option<State<Option<crate::clipboard::ClipboardNotice>>>,
+    /// Directory for staged clipboard images (`APP_DATA/attachments`).
+    pub image_attachment_dir: Option<std::path::PathBuf>,
+    /// Pending image files keyed by the atomic markers in the editor.
+    pub image_attachments: Option<Ref<Vec<ImageAttachment>>>,
+    /// Whether the active model accepts image input.
+    pub supports_images: bool,
+    /// Replace long clipboard text with an atomic marker.
+    pub atomic_paste: bool,
+    /// Mirror of atomic paste payloads for the preview dialog.
+    pub atomic_pastes: Option<Ref<Vec<AtomicPaste>>>,
+    /// Temporary directory for atomic paste payloads.
+    pub temporary_dir: Option<std::path::PathBuf>,
 }
 
+use crate::clipboard::ImageAttachment;
 use crate::components::scroll_bar::ScrollbarStyle;
 use crate::components::theme::UiTheme;
 use crate::input_prefix::{InputPrefixKind, PromptPrefixConfig};

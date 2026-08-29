@@ -25,6 +25,8 @@ pub const THEME_MODE_NOTICE_KEY: &str = "transient:theme_mode";
 
 /// Stable key after Ctrl+Y copies the prompt draft.
 pub const PROMPT_COPY_NOTICE_KEY: &str = "transient:prompt_copy";
+/// Stable key for clipboard image status banners.
+pub const IMAGE_PASTE_NOTICE_KEY: &str = "transient:image_paste";
 
 /// Stable key for text-select mode (Ctrl+S) mouse-capture notices.
 pub const SELECT_MODE_NOTICE_KEY: &str = "transient:select_mode";
@@ -189,6 +191,36 @@ pub fn clipboard_notice_banner(notice: &elph_tui::ClipboardNotice) -> EphemeralB
             }
         }
         elph_tui::ClipboardNotice::Failed { .. } => prompt_copy_failed_banner(),
+        elph_tui::ClipboardNotice::ImagePasting => EphemeralBanner {
+            key: IMAGE_PASTE_NOTICE_KEY,
+            text: "Pasting image…".to_string(),
+            kind: EphemeralBannerKind::Notice,
+            expires_at: None,
+        },
+        elph_tui::ClipboardNotice::ImagePasted { id } => EphemeralBanner {
+            key: IMAGE_PASTE_NOTICE_KEY,
+            text: format!("Pasted image #{id} · move the cursor to preview"),
+            kind: EphemeralBannerKind::Notice,
+            expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+        },
+        elph_tui::ClipboardNotice::ImagePasteText => EphemeralBanner {
+            key: IMAGE_PASTE_NOTICE_KEY,
+            text: "Pasted clipboard text".to_string(),
+            kind: EphemeralBannerKind::Notice,
+            expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+        },
+        elph_tui::ClipboardNotice::ImagePasteFailed { detail } => EphemeralBanner {
+            key: IMAGE_PASTE_NOTICE_KEY,
+            text: format!("Could not paste image · {detail}"),
+            kind: EphemeralBannerKind::Error,
+            expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+        },
+        elph_tui::ClipboardNotice::ImageInputUnsupported => EphemeralBanner {
+            key: IMAGE_PASTE_NOTICE_KEY,
+            text: "Image input is unavailable for the selected model".to_string(),
+            kind: EphemeralBannerKind::Warning,
+            expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+        },
     }
 }
 

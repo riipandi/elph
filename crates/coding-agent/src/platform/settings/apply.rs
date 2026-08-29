@@ -33,12 +33,21 @@ impl Settings {
         crate::platform::scaffold::TrustStore::project_extensions_allowed(paths, paths.project_dir()).unwrap_or(false)
     }
 
-    /// Filter discovered skills by `resources.disabledSkills` and `resources.skills` `!` / `-` patterns.
+    /// Filter discovered skills by disabled names and ordered `resources.skills` patterns.
     pub fn filter_skills(&self, skills: Vec<Skill>) -> Vec<Skill> {
+        self.filter_skills_with_base(skills, None)
+    }
+
+    /// Filter skills using the project directory to resolve relative resource paths.
+    pub(crate) fn filter_skills_for_project(&self, skills: Vec<Skill>, project_dir: &Path) -> Vec<Skill> {
+        self.filter_skills_with_base(skills, Some(project_dir))
+    }
+
+    fn filter_skills_with_base(&self, skills: Vec<Skill>, base_dir: Option<&Path>) -> Vec<Skill> {
         skills
             .into_iter()
             .filter(|s| !name_denied(&self.resources.disabled_skills, &s.name))
-            .filter(|s| !path_or_name_excluded(&self.resources.skills, &s.name, &s.file_path))
+            .filter(|s| !path_or_name_excluded(&self.resources.skills, &s.name, &s.file_path, base_dir))
             .collect()
     }
 
@@ -47,7 +56,7 @@ impl Settings {
         templates
             .into_iter()
             .filter(|t| !name_denied(&self.resources.disabled_prompts, &t.name))
-            .filter(|t| !path_or_name_excluded(&self.resources.prompts, &t.name, &t.file_path))
+            .filter(|t| !path_or_name_excluded(&self.resources.prompts, &t.name, &t.file_path, None))
             .collect()
     }
 
@@ -112,20 +121,63 @@ fn name_denied(deny: &[String], name: &str) -> bool {
     })
 }
 
-fn path_or_name_excluded(skill_patterns: &[String], name: &str, path: &str) -> bool {
-    skill_patterns.iter().any(|pat| {
+fn path_or_name_excluded(resource_patterns: &[String], name: &str, path: &str, base_dir: Option<&Path>) -> bool {
+    let mut excluded = false;
+    for pat in resource_patterns {
         let t = pat.trim();
-        let rest = if let Some(r) = t.strip_prefix('!') {
-            r
-        } else if let Some(r) = t.strip_prefix('-') {
-            r
+        if t.is_empty() {
+            continue;
+        }
+        if let Some(rest) = t.strip_prefix('!').or_else(|| t.strip_prefix('-')) {
+            if resource_pattern_matches(rest, name, path, base_dir, t.starts_with('-')) {
+                excluded = true;
+            }
         } else {
-            return false;
-        };
-        let rest = expand_user_pattern(rest);
-        crate::platform::settings::patterns::matches_any(std::slice::from_ref(&rest), name)
-            || path_matches_pattern(&rest, path)
-    })
+            let rest = t.strip_prefix('+').unwrap_or(t);
+            if resource_pattern_matches(rest, name, path, base_dir, t.starts_with('+')) {
+                excluded = false;
+            }
+        }
+    }
+    excluded
+}
+
+fn resource_pattern_matches(raw_pattern: &str, name: &str, path: &str, base_dir: Option<&Path>, exact: bool) -> bool {
+    let pattern = raw_pattern.trim();
+    if pattern.is_empty() {
+        return false;
+    }
+    let path_like = is_path_pattern(pattern);
+    let name_matches = if exact {
+        pattern == name
+    } else {
+        crate::platform::settings::patterns::matches_any(&[pattern.to_string()], name)
+    };
+    if name_matches {
+        return true;
+    }
+    path_like && path_matches_pattern(&expand_resource_pattern(pattern, base_dir), path)
+}
+
+fn is_path_pattern(pattern: &str) -> bool {
+    pattern == "~"
+        || pattern.starts_with("~/")
+        || pattern.starts_with("./")
+        || pattern.starts_with("../")
+        || pattern.contains('/')
+        || pattern.contains('\\')
+        || Path::new(pattern).is_absolute()
+}
+
+fn expand_resource_pattern(pattern: &str, base_dir: Option<&Path>) -> String {
+    let expanded = expand_user_pattern(pattern);
+    if expanded == pattern
+        && !Path::new(pattern).is_absolute()
+        && let Some(base_dir) = base_dir
+    {
+        return base_dir.join(pattern).to_string_lossy().into_owned();
+    }
+    expanded
 }
 
 /// True when `pat` excludes `path`: as an absolute path, as a parent directory of `path`,
@@ -456,6 +508,70 @@ mod tests {
         let out = settings.filter_skills(skills);
         let names: Vec<_> = out.iter().map(|s| s.name.as_str()).collect();
         assert_eq!(names, vec!["keep"]);
+    }
+
+    #[test]
+    fn filter_skills_reincludes_explicit_paths_after_directory_exclude() {
+        let home = std::env::var_os("HOME")
+            .or_else(|| std::env::var_os("USERPROFILE"))
+            .map(std::path::PathBuf::from)
+            .expect("HOME");
+        let project = tempfile::tempdir().expect("project");
+        let project_skill = project.path().join(".agents/skills/project/SKILL.md");
+        let skill = |name: &str, file_path: std::path::PathBuf| Skill {
+            name: name.into(),
+            description: String::new(),
+            content: String::new(),
+            file_path: file_path.to_string_lossy().into_owned(),
+            disable_model_invocation: false,
+            license: None,
+            compatibility: None,
+            metadata: None,
+            allowed_tools: None,
+            argument_hint: None,
+        };
+        let mut settings = Settings::defaults();
+        settings.resources.skills = vec![
+            ".agents/skills".into(),
+            "!~/.agents/skills/*".into(),
+            "~/.agents/skills/commit-only".into(),
+            "~/.agents/skills/identify".into(),
+        ];
+
+        let skills = vec![
+            skill("project", project_skill),
+            skill("commit-only", home.join(".agents/skills/commit-only/SKILL.md")),
+            skill("identify", home.join(".agents/skills/identify/SKILL.md")),
+            skill("other", home.join(".agents/skills/other/SKILL.md")),
+        ];
+        let out = settings.filter_skills_for_project(skills, project.path());
+        let names: Vec<_> = out.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, vec!["project", "commit-only", "identify"]);
+    }
+
+    #[test]
+    fn filter_skills_keeps_name_patterns_relative_to_project() {
+        let mut settings = Settings::defaults();
+        settings.resources.skills = vec!["!legacy-*".into(), "legacy-keep".into()];
+
+        let skill = |name: &str| Skill {
+            name: name.into(),
+            description: String::new(),
+            content: String::new(),
+            file_path: format!("/home/user/project/.agents/skills/{name}/SKILL.md"),
+            disable_model_invocation: false,
+            license: None,
+            compatibility: None,
+            metadata: None,
+            allowed_tools: None,
+            argument_hint: None,
+        };
+        let out = settings.filter_skills_for_project(
+            vec![skill("legacy-drop"), skill("legacy-keep"), skill("current")],
+            Path::new("/home/user/project"),
+        );
+        let names: Vec<_> = out.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, vec!["legacy-keep", "current"]);
     }
 
     #[test]

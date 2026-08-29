@@ -51,6 +51,15 @@ pub struct EditorProps {
     pub prompt_editor_mirror: Option<Ref<(String, usize)>>,
     /// Selection yank toast (`y`) — shell drains into ephemeral banner.
     pub clipboard_toast: Option<State<Option<elph_tui::ClipboardNotice>>>,
+    /// Directory for staged clipboard images.
+    pub image_attachment_dir: Option<std::path::PathBuf>,
+    /// Pending clipboard images paired with `[Image #N]` markers.
+    pub image_attachments: Option<Ref<Vec<elph_tui::ImageAttachment>>>,
+    /// Whether the active model accepts image input.
+    pub supports_images: bool,
+    pub atomic_paste: bool,
+    pub atomic_pastes: Option<Ref<Vec<elph_tui::AtomicPaste>>>,
+    pub temporary_dir: Option<std::path::PathBuf>,
     /// Shown centered when the editor is blocked by an inline dialog.
     pub blocked_hint: Option<String>,
     /// Native terminal text-select mode (mouse capture off). Prompt stays focused/interactive;
@@ -106,7 +115,6 @@ pub fn Editor(props: &mut EditorProps) -> impl Into<AnyElement<'static>> {
     } else {
         format!(" {border_project} ")
     };
-
     element! {
         View(
             width: props.screen_width,
@@ -155,6 +163,12 @@ pub fn Editor(props: &mut EditorProps) -> impl Into<AnyElement<'static>> {
                     force_palette_sync: props.force_palette_sync,
                     force_clear: props.force_clear,
                     clipboard_toast: props.clipboard_toast,
+                    image_attachment_dir: props.image_attachment_dir.clone(),
+                    image_attachments: props.image_attachments,
+                    supports_images: props.supports_images,
+                    atomic_paste: props.atomic_paste,
+                    atomic_pastes: props.atomic_pastes,
+                    temporary_dir: props.temporary_dir.clone(),
                     submit_on_enter: true,
                     on_submit: props.on_submit.take(),
                     on_escape: props.on_escape.take(),

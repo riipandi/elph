@@ -179,8 +179,8 @@ When expanded, the body appears inside a background box colored by status:
 
 - Green tint (success), red tint (error), amber tint (warning), blue tint (running).
 - Detail titles use plain text (no background); the hint row is clickable for detail blocks.
-- `Ctrl+O` toggles the most recent collapsible block in the session (unless the input has a
-  collapsed paste token or the paste editor is open — then **Ctrl+O** handles paste preview first).
+- `Ctrl+O` toggles the most recent collapsible block in the session (unless the input caret is
+  touching an atomic `[Paste#N: N lines]` marker — then **Ctrl+O** expands that marker first).
 
 ### Slash command palette
 
@@ -193,19 +193,44 @@ See [prompt-templates.md](./prompt-templates.md) for format, argument placeholde
 
 ### Image attachments
 
-When the selected model supports vision, **Ctrl+V** / **Cmd+V** pastes a clipboard image into the
-pending turn (up to **4** images). Files are saved under `~/.local/share/elph/attachments/` as
-`paste_<session_suffix>_*.png` and listed below the input while pending.
+When the selected model supports image input, **Ctrl+V** / **Cmd+V** starts an asynchronous
+clipboard-image paste for the pending turn. The prompt stays interactive while the clipboard is
+read and the image is staged under the application's `attachments/` data directory.
 
-| UI element       | Behavior                                                                    |
-| ---------------- | --------------------------------------------------------------------------- |
-| Input suffix     | `[images: paste_….png, …]` on the prompt line                               |
-| Hint row         | Count + shortcuts; bullet list of relative paths                            |
-| Footer **◐**     | Shown when `provider.SupportsImageInput(model.Input)` is true               |
-| Non-vision model | Paste blocked with a system message; switch model via **Ctrl+L** / `/model` |
+Successful pastes insert an atomic `[Image #N]` marker into the prompt and keep the staged
+attachment paired with that marker. The marker is the only image representation shown in the
+textarea. When the caret is inside or immediately after a marker, Elph shows a full-width
+metadata preview dialog above the textarea border. Moving the caret away closes the preview.
 
-On submit, images are sent as `TurnOptions.UserImages` to the provider API. For non-vision models,
-paths are appended to the text prompt so the agent can use **ReadMediaFile** instead.
+| UI element          | Behavior                                                                 |
+| ------------------- | ------------------------------------------------------------------------ |
+| Prompt text         | Atomic `[Image #N]` marker; marker deletion also removes its attachment |
+| Loading status      | Ephemeral `Pasting image…` notification while staging is in progress    |
+| Preview dialog      | Appears only while the caret touches the corresponding image marker    |
+| Footer **◐**        | Indicates that the selected model accepts image input                  |
+| Non-vision model    | Image paste is rejected with an ephemeral warning                       |
+
+On submit, staged files are base64-encoded and sent as image content to the provider API. The
+temporary files are removed when the prompt is submitted or discarded. Attachment names are
+reserved atomically; if a generated name already exists, Elph adds a numeric suffix.
+
+#### Image format limitations
+
+Clipboard images are currently normalized to PNG. JPEG/JPG, Bitmap/DIB, and other raster formats
+can be accepted when the operating-system clipboard backend exposes them as a decodable image,
+but their original format is not preserved. The staged file and model MIME type are always
+`image/png`.
+
+SVG is not handled as a vector attachment. If an application places SVG only on the clipboard as
+text or HTML, Elph may fall back to pasting that text instead of creating an image attachment.
+Animated-image behavior and clipboard formats that are not exposed as raster images depend on the
+operating-system clipboard backend.
+
+There is no application-level four-image limit in the prompt editor. The effective limit is
+determined by the selected provider/model request constraints and available local resources.
+Images can only be submitted while the selected model supports image input; changing to a
+non-vision model while attachments are pending blocks submission until the model is changed back
+or the attachments are removed.
 
 **Remove attachments** (only when the input textarea is empty):
 
@@ -221,20 +246,23 @@ Terminals that emit raw CSI for **Cmd+Delete** (e.g. Ghostty `\x1b[3;9~`) are ha
 
 ### Long text paste
 
-When **Ctrl+V** / **Cmd+V** pastes plain text (not an image), long payloads collapse so the input
-stays readable. Thresholds: **≥ 4 lines** or **≥ 400 runes**. The textarea stores an internal token
-(`[[paste:id]]`); the UI shows **`[Pasted: N lines]`**. On submit, tokens expand to the full text
-sent to the agent.
+When **Ctrl+V** / **Cmd+V** pastes plain text (not an image), `ui.atomicPaste` controls
+whether long payloads collapse so the input stays readable. It defaults to `true`.
+When enabled, the threshold is **at least four lines or 400 runes**. Elph stores
+the payload in `APP_DATA/temp/` and shows the atomic marker
+**`[Paste#N: N lines]`** in the prompt.
 
-| UI element   | Behavior                                                                 |
-| ------------ | ------------------------------------------------------------------------ |
-| Hint row     | `Pasted block · N lines · ctrl+o to preview/edit` when a token is active |
-| **Ctrl+O**   | Opens a full-screen paste editor overlay (when input has a paste token)  |
-| Editor keys  | **Ctrl+J** / **Shift+Enter** — newline; **Ctrl+O** or **Esc** — save     |
-| After paste  | Cursor moves to the end of the paste token                               |
-| After editor | Main input cursor restores to the pre-edit line/column                   |
+| UI element | Behavior |
+| --- | --- |
+| Marker | The marker is one cursor, backspace, delete, and selection unit |
+| Preview | Appears above the textarea only while the caret touches the marker |
+| **Enter** / **Ctrl+O** | Expand the marker into editable text |
+| Submit | Any remaining markers expand automatically before the agent receives the prompt |
+| Cleanup | Temporary payload files are removed when expanded, deleted, submitted, or discarded |
 
-Paste collapse is always applied for long text payloads (no settings toggle).
+Moving the caret away closes the preview. Marker indices are allocated from the
+current prompt state, so a new empty prompt starts at `[Paste#1: ...]`. With
+`ui.atomicPaste: false`, clipboard text is inserted normally.
 
 ---
 

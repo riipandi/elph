@@ -24,6 +24,7 @@ pub(crate) fn build_shell_view(
         chrome_stats,
         chrome_ui_revision,
         mut clipboard_toast,
+        mut image_attachments,
         colored_status_footer,
         confetti_frame,
         mut confetti_runtime,
@@ -36,6 +37,7 @@ pub(crate) fn build_shell_view(
         execution_env,
         extension_host,
         fallback_model_label,
+        atomic_paste,
         mut file_picker_active,
         mut file_picker_index,
         file_picker_key_handled,
@@ -94,6 +96,7 @@ pub(crate) fn build_shell_view(
         mut pending_user_question,
         mut pre_echoed_user_prompts,
         mut prompt_editor_mirror,
+        atomic_pastes,
         mut prompt_history,
         mut prompt_history_index,
         mut prompt_history_open,
@@ -1316,6 +1319,9 @@ pub(crate) fn build_shell_view(
                 turn: chrome.turn_count,
                 model_label: model_label.clone(),
                 supports_images: supports_images,
+                atomic_paste: atomic_paste,
+                atomic_pastes: Some(atomic_pastes),
+                temporary_dir: Some(paths.read().temp_dir()),
                 colored_status_footer: colored_status_footer,
                 worker_live_count: agent_session
                     .as_ref()
@@ -1342,6 +1348,8 @@ pub(crate) fn build_shell_view(
                 styled_content: Some(styled_content),
                 live_cursor: Some(live_cursor),
                 clipboard_toast: Some(clipboard_toast),
+                image_attachment_dir: Some(paths.read().attachments_dir()),
+                image_attachments: Some(image_attachments),
                 prompt_editor_mirror: Some(prompt_editor_mirror),
                 force_palette_sync: Some(force_palette_sync),
                 force_editor_clear: Some(force_editor_clear),
@@ -1414,6 +1422,13 @@ pub(crate) fn build_shell_view(
                 },
                 file_picker_key_handled: Some(file_picker_key_handled),
                 on_submit: move |text: String| {
+                       // The image files are owned by the editor until this callback returns.
+                       // Local commands and slash commands must never leak them into a model turn.
+                       if pending_plan_confirmation.read().is_some() {
+                           let pending = image_attachments.read().clone();
+                           crate::tui::prompt::images::remove_files(&pending);
+                           image_attachments.set(Vec::new());
+                       }
                         // Plan confirmation owns Enter while parked — do not also start a
                         // normal user turn (that double-submitted revision notes).
                         if pending_plan_confirmation.read().is_some() {
@@ -1473,6 +1488,9 @@ pub(crate) fn build_shell_view(
                         }
                         shell_focus.set(ShellFocus::Prompt);
                         if is_force_quit_command(&text) || is_quit_command(&text) {
+                            let pending = image_attachments.read().clone();
+                            crate::tui::prompt::images::remove_files(&pending);
+                            image_attachments.set(Vec::new());
                             let expire_tx = ephemeral_expire.read().tx.clone();
                             let _ = request_quit(
                                 PendingQuitAction {
@@ -1496,12 +1514,18 @@ pub(crate) fn build_shell_view(
                             return;
                         }
                         if text.trim().is_empty() {
+                            let pending = image_attachments.read().clone();
+                            crate::tui::prompt::images::remove_files(&pending);
+                            image_attachments.set(Vec::new());
                             return;
                         }
 
                         let (prefix_kind, body) =
                             resolve_submit_draft(input_prefix_kind.get(), &text, &PromptPrefixConfig::default());
                         if body.trim().is_empty() {
+                            let pending = image_attachments.read().clone();
+                            crate::tui::prompt::images::remove_files(&pending);
+                            image_attachments.set(Vec::new());
                             push_transcript_message_synced(
                                 &mut messages,
                                 messages_arc,
@@ -1519,6 +1543,9 @@ pub(crate) fn build_shell_view(
                             prefix_kind,
                             InputPrefixKind::ShellWithContext | InputPrefixKind::ShellNoContext
                         ) {
+                            let pending = image_attachments.read().clone();
+                            crate::tui::prompt::images::remove_files(&pending);
+                            image_attachments.set(Vec::new());
                             let with_context = prefix_kind == InputPrefixKind::ShellWithContext;
                             let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
                             submitted.submitted_at = Some(chrono::Utc::now());
@@ -1581,6 +1608,11 @@ pub(crate) fn build_shell_view(
                             body.clone()
                         };
                         let is_slash = prefix_kind == InputPrefixKind::Slash;
+                        if is_slash {
+                            let pending = image_attachments.read().clone();
+                            crate::tui::prompt::images::remove_files(&pending);
+                            image_attachments.set(Vec::new());
+                        }
 
                         let ext_registry = extension_host.registry();
                         let templates = prompt_templates.read().clone();
@@ -1601,6 +1633,13 @@ pub(crate) fn build_shell_view(
                             paths: Some(&paths_snapshot),
                             cwd: Some(&cwd),
                         });
+                        let prompt_attachments = if is_slash {
+                            Vec::new()
+                        } else {
+                            let pending = image_attachments.read().clone();
+                            image_attachments.set(Vec::new());
+                            pending
+                        };
 
                         // The handler now ALWAYS dispatches turn-spawning work (Continue,
                         // compact, skill, template) on a background task; `turn_gate`
@@ -2193,7 +2232,11 @@ pub(crate) fn build_shell_view(
                                     prompt_queue.write().push_follow_up_local(body.clone());
                                     queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
                                     if let Some(session) = agent_session.as_ref() {
-                                        TurnDispatcher::spawn_follow_up(Arc::clone(session), body.clone());
+                                        TurnDispatcher::spawn_follow_up_with_attachments(
+                                            Arc::clone(session),
+                                            body.clone(),
+                                            prompt_attachments.clone(),
+                                        );
                                     }
                                 } else if let Some(session) = agent_session.as_ref() {
                                     agent_turn_active.set(true);
@@ -2212,8 +2255,14 @@ pub(crate) fn build_shell_view(
                                         None,
                                     );
                                     begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
-                                    TurnDispatcher::spawn_turn(Arc::clone(session), body.clone(), false);
+                                    TurnDispatcher::spawn_turn_with_attachments(
+                                        Arc::clone(session),
+                                        body.clone(),
+                                        false,
+                                        prompt_attachments.clone(),
+                                    );
                                 } else {
+                                    crate::tui::prompt::images::remove_files(&prompt_attachments);
                                     push_transcript_message_synced(
                                 &mut messages,
                                 messages_arc,

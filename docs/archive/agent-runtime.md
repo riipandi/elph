@@ -22,7 +22,7 @@ Design for the path from user input to model response, tool execution, and TUI u
 
 ## Turn cycle
 
-```
+```text
 User message
     → assemble system prompt + resources + history
     → stream completion (with tool schemas)
@@ -231,9 +231,12 @@ Product open/resume uses `AgentHarness::restore` (wired from `crates/coding-agen
 
 ### Vision images (TUI)
 
-- **Ctrl+V** / **Cmd+V** — paste up to 4 images when the model supports vision
-- Stored under data dir `attachments/`
-- Non-vision models: paths appended to text so the agent can use ReadMediaFile
+- **Ctrl+V** / **Cmd+V** — asynchronously stage clipboard images when the model supports image input
+- Stored as temporary PNG files under the data directory's `attachments/` directory
+- Inserted into the prompt as atomic `[Image #N]` markers with a caret-aware metadata preview
+- Non-vision models: image paste is rejected with an ephemeral warning; text clipboard content still
+  falls back to ordinary text paste
+- There is no editor-level four-image limit; provider/model request limits still apply
 
 ## Goals & todos
 

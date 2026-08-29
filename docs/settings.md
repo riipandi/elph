@@ -34,7 +34,8 @@ Schema: `schemas/elph-schema.json`, `schemas/mcp-schema.json`, `schemas/auth-sch
     "showThinking": true,
     "density": "compact",
     "showHiddenFiles": false,
-    "turnStats": true
+    "turnStats": true,
+    "atomicPaste": true
   },
   "models": {
     "defaultModel": null,
@@ -61,7 +62,34 @@ Schema: `schemas/elph-schema.json`, `schemas/mcp-schema.json`, `schemas/auth-sch
 
 `notifications.onStartupReady` in a **project** `.elph/settings.json` overrides home. Restart or `/reload` after edits.
 
-`resources.skills` / `resources.prompts` entries may carry a `!` or `-` prefix to exclude a skill/template by name or path (leading `~` expands to the home dir; a bare directory path excludes everything under it; a relative path like `.agents/skills` matches any project at that relative location), and `+` to force-include. `resources.disabledSkills` / `resources.disabledPrompts` drop entries by name glob after discovery.
+`resources.skills` / `resources.prompts` entries may carry a `!` or `-` prefix to exclude a skill/template by name or path, and `+` to force-include. Leading `~` expands to the home directory, a path entry without a filename component matches the directory and everything below it, and a relative path is resolved from the project directory during workspace discovery. Entries are evaluated in order, so a later positive path can re-include a resource after a broader exclusion:
+
+```json
+{
+  "resources": {
+    "skills": [
+      ".agents/skills",
+      "!~/.agents/skills/*",
+      "~/.agents/skills/commit-only",
+      "~/.agents/skills/identify"
+    ]
+  }
+}
+```
+
+`resources.disabledSkills` / `resources.disabledPrompts` drop entries by name glob after discovery and remain disabled even when a resource path is explicitly included.
+
+## Clipboard paste
+
+The prompt editor handles **Ctrl+V** (or **Cmd+V** on macOS) asynchronously:
+
+- Clipboard images are staged as temporary PNG files in `APP_DATA/attachments/` and represented in the prompt by atomic `[Image #N]` markers.
+- The prompt remains interactive while an image is read. An ephemeral notification shows the loading state, and a full-width metadata preview appears above the textarea only when the caret touches that image marker.
+- JPEG/JPG, Bitmap/DIB, and other raster formats are accepted when the platform clipboard exposes decodable image data, but all staged images are normalized to `image/png`. SVG is not handled as a vector attachment; SVG clipboard text or HTML may be pasted as ordinary text.
+- Image submission requires a model with vision/image-input support. The paste is rejected with an ephemeral warning for other models.
+- Attachment files are removed after submission or when the prompt is discarded. Existing filenames are not overwritten; an available numeric suffix is used instead.
+
+When `ui.atomicPaste` is `true` (the default), long text pastes of at least four lines or 400 runes are staged in `APP_DATA/temp/` and represented by atomic `[Paste#N: N lines]` markers. Cursor movement, backspace, delete, and selection treat each marker as one unit. The marker preview appears only at the marker; **Enter** or **Ctrl+O** expands it in place, and remaining markers expand automatically on submission. Temporary files are cleaned up when the marker is expanded, deleted, submitted, or discarded. Set `ui.atomicPaste` to `false` to insert clipboard text normally.
 
 ## Memory (agent)
 

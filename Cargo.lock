@@ -2880,6 +2880,7 @@ dependencies = [
  "agent-client-protocol",
  "anstyle",
  "anyhow",
+ "base64 0.23.1",
  "chrono",
  "clap",
  "clap_complete",
