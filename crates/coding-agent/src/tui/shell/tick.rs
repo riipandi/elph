@@ -227,10 +227,13 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 let new_skills = loaded.resources.skills.clone();
                 prompt_templates.set(new_templates);
                 skills.set(new_skills);
-                slash_commands.set(slash_commands_for_palette_with(
+                let project_trusted =
+                    crate::platform::scaffold::TrustStore::is_trusted(&paths_for_load, &cwd_for_load).unwrap_or(false);
+                slash_commands.set(slash_commands_for_palette_with_trust(
                     Some(&prompt_templates.read()),
                     Some(&skills.read()),
                     settings.resources.enable_skill_commands,
+                    project_trusted,
                 ));
 
                 let boot =
@@ -296,10 +299,14 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 let enable_skill_commands = Settings::load(&paths.read())
                     .map(|s| s.resources.enable_skill_commands)
                     .unwrap_or(true);
-                slash_commands.set(slash_commands_for_palette_with(
+                let paths_for_trust = paths.read().clone();
+                let project_trusted =
+                    crate::platform::scaffold::TrustStore::is_trusted(&paths_for_trust, &cwd_for_loop).unwrap_or(false);
+                slash_commands.set(slash_commands_for_palette_with_trust(
                     Some(&templates),
                     Some(&loaded_skills),
                     enable_skill_commands,
+                    project_trusted,
                 ));
             }
             palette_refresh_pending.set(false);

@@ -153,6 +153,12 @@ before the datastore or TUI opens. Choosing No, declining the prompt, or
 starting without a terminal exits without launching the project. The doctor
 output reports skipped or malformed project hooks.
 
+Use `/trust` to mark the current project trusted. Use `/untrust` to write an
+explicit `false` decision, but only when the project is currently trusted.
+An explicit project decision overrides inherited trust from a parent directory.
+The command palette shows exactly one of these commands based on the current
+trust state, and refreshes that choice after either command succeeds.
+
 `/reload` re-reads hook configuration and replaces the active command handlers
 only after the new configuration has been parsed. It also reloads provider
 catalogs, MCP resources, skills, and prompt templates through their existing

@@ -129,4 +129,4 @@ See [elph-agent observability](../crates/elph-agent/docs/observability.md).
 ## Not in settings.json
 
 - **MCP cache** — `mcp.json` keys `cacheTtlSecs` (default 60) and `cacheMaxEntries` (default 2048). Per-server `cacheTtlMs` still wins.
-- **Trust** — `trust.json` keys `directories` and `defaultProjectTrust` (`ask` / `always` / `never`). Only gates **project hooks**. Interactive TUI startup prompts for trust when the value is `ask`; `always` skips the prompt and `never` refuses untrusted projects.
+- **Trust** — `trust.json` keys `directories` and `defaultProjectTrust` (`ask` / `always` / `never`). Only gates **project hooks**. Interactive TUI startup prompts for trust when the value is `ask`; `always` skips the prompt and `never` refuses untrusted projects. `/trust` and `/untrust` update the current directory decision, with `/untrust` available only for trusted projects.

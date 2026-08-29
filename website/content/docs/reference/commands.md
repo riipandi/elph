@@ -18,6 +18,11 @@ Type `/` in the prompt to open the command palette. Dispatch order:
 | `/reload`   | Reload hooks and other resources         |
 | `/commit`   | Commit message helper for staged changes |
 | `/trust`    | Trust the current workspace              |
+| `/untrust`  | Remove trust from the current workspace  |
 | `/exit`     | Quit                                     |
 
-Skills appear as `/skill-name` when enabled. Prompt templates appear as `/name` (filter with `resources.disabledPrompts` or `resources.prompts` `!` excludes).
+`/trust` and `/untrust` are state-aware: the palette shows only the action
+available for the current workspace. `/untrust` requires an existing trusted
+decision. Skills appear as `/skill-name` when enabled. Prompt templates appear
+as `/name` (filter with `resources.disabledPrompts` or `resources.prompts` `!`
+excludes).

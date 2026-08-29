@@ -76,7 +76,7 @@ impl Drop for ShellUseTeardownGuard {
     }
 }
 
-use crate::agent::{load_resources, resolve_provider_and_model, slash_commands_for_palette_with};
+use crate::agent::{load_resources, resolve_provider_and_model, slash_commands_for_palette_with_trust};
 use crate::platform::hooks::HookHost;
 use crate::platform::{Paths, Settings};
 use crate::tui::transcript::LogDensity;
@@ -117,10 +117,12 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
     let bootstrap_resources = load_resources(&paths, &cwd, &env, &settings).await;
     let prompt_templates = bootstrap_resources.resources.prompt_templates.clone();
     let skills = bootstrap_resources.resources.skills.clone();
-    let slash_commands = slash_commands_for_palette_with(
+    let project_trusted = crate::platform::scaffold::TrustStore::is_trusted(&paths, &cwd).unwrap_or(false);
+    let slash_commands = slash_commands_for_palette_with_trust(
         Some(&prompt_templates),
         Some(&skills),
         settings.resources.enable_skill_commands,
+        project_trusted,
     );
 
     let session_id = options.resume_id.clone().unwrap_or_else(|| "starting…".to_string());

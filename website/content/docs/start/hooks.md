@@ -19,6 +19,14 @@ the project. A positive answer records the project in `CONFIG_DIR/trust.json`.
 The home file is loaded first and the project file is appended. Hook IDs must
 be unique across both files. A malformed file is ignored as a unit.
 
+## Trust controls
+
+Use `/trust` to mark the current project trusted. Use `/untrust` to write an
+explicit `false` decision, but only when the project is currently trusted.
+An explicit project decision overrides inherited trust from a parent directory.
+The command palette shows exactly one of these commands based on the current
+trust state and refreshes after either command succeeds.
+
 The canonical schema is
 [`schemas/hooks-schema.json`](https://github.com/riipandi/elph/blob/main/schemas/hooks-schema.json).
 A minimal project example is available at

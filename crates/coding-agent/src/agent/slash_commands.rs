@@ -64,6 +64,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("clone", "Clone current session"),
         builtin("tree", "Navigate session tree"),
         builtin("trust", "Save project trust decision"),
+        builtin("untrust", "Remove project trust decision"),
         builtin_with_args("provider", "Manage providers"),
         builtin_with_args("transfer", "Resume a foreign coding-agent session"),
         builtin_with_args("mcp", "MCP servers"),
@@ -94,7 +95,7 @@ pub fn slash_commands_for_palette(
     prompt_templates: Option<&[PromptTemplate]>,
     skills: Option<&[Skill]>,
 ) -> Vec<SlashCommand> {
-    slash_commands_for_palette_with(prompt_templates, skills, true)
+    slash_commands_for_palette_with_trust(prompt_templates, skills, true, false)
 }
 
 pub fn slash_commands_for_palette_with(
@@ -102,10 +103,25 @@ pub fn slash_commands_for_palette_with(
     skills: Option<&[Skill]>,
     enable_skill_commands: bool,
 ) -> Vec<SlashCommand> {
+    slash_commands_for_palette_with_trust(prompt_templates, skills, enable_skill_commands, false)
+}
+
+/// Build the command palette with exactly one project trust action.
+///
+/// The TUI passes the current effective trust state so `/trust` and `/untrust`
+/// never appear together. The simpler palette helpers retain the untrusted
+/// default for callers that do not have a project context.
+pub fn slash_commands_for_palette_with_trust(
+    prompt_templates: Option<&[PromptTemplate]>,
+    skills: Option<&[Skill]>,
+    enable_skill_commands: bool,
+    project_trusted: bool,
+) -> Vec<SlashCommand> {
     // Include hidden builtins (e.g. `/confetti`) so Tab can still complete them when the
     // typed query matches. Empty-query palette + `/help` filter them out via `hidden`.
     let mut commands: Vec<SlashCommand> = builtin_slash_commands()
         .into_iter()
+        .filter(|cmd| (project_trusted || cmd.name != "untrust") && (!project_trusted || cmd.name != "trust"))
         .map(|cmd| {
             let mut entry = SlashCommand::new(cmd.name, truncate_palette_description(cmd.description, None));
             if let Some(hint) = cmd.args_hint {
@@ -274,6 +290,8 @@ pub enum SlashDispatch {
     },
     /// Mark project trusted (`/trust`).
     Trust,
+    /// Mark project untrusted (`/untrust`).
+    Untrust,
     /// Fork current session (`/fork`).
     Fork,
     /// Clone current session (`/clone`).
@@ -613,6 +631,7 @@ pub fn slash_palette_submit_on_enter(command_name: &str) -> bool {
             | "changelog"
             | "settings"
             | "trust"
+            | "untrust"
             | "fork"
             | "clone"
     )
@@ -655,6 +674,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "export" => Some(SlashDispatch::Export { args }),
         "import" => Some(SlashDispatch::Import { args }),
         "trust" => Some(SlashDispatch::Trust),
+        "untrust" => Some(SlashDispatch::Untrust),
         "fork" => Some(SlashDispatch::Fork),
         "clone" => Some(SlashDispatch::CloneSession),
         "copy" => Some(SlashDispatch::CloneSession),
@@ -1051,6 +1071,25 @@ mod tests {
         assert!(names.contains(&"mcp"));
         assert!(names.contains(&"session"));
         assert!(names.contains(&"rename"));
+    }
+
+    #[test]
+    fn trust_commands_dispatch_and_palette_is_state_aware() {
+        assert_eq!(dispatch_slash_command("/untrust", None, None), Some(SlashDispatch::Untrust));
+
+        let untrusted_names: Vec<_> = slash_commands_for_palette_with_trust(None, None, true, false)
+            .into_iter()
+            .map(|command| command.name)
+            .collect();
+        assert!(untrusted_names.iter().any(|name| name == "trust"));
+        assert!(!untrusted_names.iter().any(|name| name == "untrust"));
+
+        let trusted_names: Vec<_> = slash_commands_for_palette_with_trust(None, None, true, true)
+            .into_iter()
+            .map(|command| command.name)
+            .collect();
+        assert!(!trusted_names.iter().any(|name| name == "trust"));
+        assert!(trusted_names.iter().any(|name| name == "untrust"));
     }
 
     #[test]

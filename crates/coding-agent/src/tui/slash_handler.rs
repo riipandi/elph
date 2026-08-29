@@ -74,6 +74,10 @@ pub enum SlashOutcome {
     NewSession,
     BackgroundTask,
     Status(String),
+    TrustChanged {
+        message: String,
+        trusted: bool,
+    },
     Unimplemented(String),
     SpawnAgentTurn,
     /// Spawn agent turn from a skill (transcript echoes `/skill:name`).
@@ -520,7 +524,25 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                 return SlashOutcome::Status("Working directory required for /trust.".into());
             };
             match trust_slash_message(paths, cwd) {
-                Ok(text) => SlashOutcome::Status(text),
+                Ok(text) => SlashOutcome::TrustChanged {
+                    message: text,
+                    trusted: true,
+                },
+                Err(message) => SlashOutcome::Status(message),
+            }
+        }
+        SlashDispatch::Untrust => {
+            let Some(paths) = ctx.paths else {
+                return SlashOutcome::Status("Paths required for /untrust.".into());
+            };
+            let Some(cwd) = ctx.cwd else {
+                return SlashOutcome::Status("Working directory required for /untrust.".into());
+            };
+            match crate::agent::untrust_slash_message(paths, cwd) {
+                Ok(text) => SlashOutcome::TrustChanged {
+                    message: text,
+                    trusted: false,
+                },
                 Err(message) => SlashOutcome::Status(message),
             }
         }
@@ -701,6 +723,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
     matches!(
         outcome,
         SlashOutcome::Status(_)
+            | SlashOutcome::TrustChanged { .. }
             | SlashOutcome::Unimplemented(_)
             | SlashOutcome::NewSession
             | SlashOutcome::BackgroundTask

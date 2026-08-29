@@ -104,7 +104,8 @@ This is separate from retention GC and is best-effort: a session with `turn_coun
 | `/tree --branch` | Interactive picker limited to the active branch path. |
 | `/resume` | **Interactive session picker** for this project. ↑↓ / filter / Enter to switch. |
 | `/resume <session_id>` | Switch directly without the picker. |
-| `/trust` | Records the workspace under `CONFIG_DIR/trust.json` (`directories` map). Not project `.elph/trusted`. |
+| `/trust` | Records the workspace as trusted under `CONFIG_DIR/trust.json` (`directories` map). |
+| `/untrust` | Records an explicit false decision for a currently trusted workspace. |
 
 ### `/tree` filter modes (Pi-aligned)
 

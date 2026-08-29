@@ -37,6 +37,7 @@ Built-in commands always win over extension and template names.
 | `/import`                   | —             | Import session JSONL into a new session (path required)                                                                               |
 | `/export`                   | —             | Export full session tree as JSONL                                                                                                     |
 | `/trust`                    | —             | Trust cwd in `CONFIG_DIR/trust.json`                                                                                                  |
+| `/untrust`                  | —             | Write an explicit false trust decision when the cwd is trusted                                                                        |
 
 ### Interactive vs text-only
 
@@ -44,9 +45,13 @@ Built-in commands always win over extension and template names.
 | --- | --- | --- |
 | Interactive (inline selector / editor) | `/model`, `/thinking`, `/resume`, `/tree`, `/rename`, tool approval | Focus status zone; ↑↓ / type / Enter / Esc |
 | Scroll text dialog | `/session`, `/tools`, `/system-prompt`, `/settings` | Read-only report; copy optional |
-| Status line | `/trust`, `/export`, `/fork` | One-shot result in transcript |
+| Status line | `/trust`, `/untrust`, `/export`, `/fork` | One-shot result in transcript |
 
 When adding a new slash that needs a choice, open an interactive overlay (`SlashOutcome::OpenItemSelector` or a dedicated dialog) rather than dumping a numbered list for the user to retype.
+
+`/trust` and `/untrust` are mutually exclusive in the command palette. The
+palette shows `/trust` for an untrusted project and `/untrust` for a trusted
+project.
 
 ### `/goal` subcommands
 

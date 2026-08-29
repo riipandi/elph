@@ -482,7 +482,8 @@ You are a careful code reviewer. Focus on correctness and security.
     "directories": {
         "~/Developer/Experimental": true,
         "$HOME/Developer/github.com": true,
-        "/Users/johndoe/gitlab.com": true
+        "/Users/johndoe/gitlab.com": true,
+        "/Users/johndoe/gitlab.com/private": false
     }
 }
 ```
@@ -494,6 +495,11 @@ whether the current project should be trusted before opening the datastore or
 TUI. A positive answer records the canonical project path in `directories`;
 declining, non-interactive startup, or `never` exits without launching the
 project. `always` skips this prompt.
+
+Inside the TUI, `/trust` writes `true` for the current project and `/untrust`
+writes an explicit `false` only when the project is currently trusted. An
+explicit child-project decision overrides a trusted parent directory. The
+command palette shows only the action available for the current trust state.
 
 ## `version.json`
 

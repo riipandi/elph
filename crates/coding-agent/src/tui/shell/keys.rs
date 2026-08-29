@@ -109,7 +109,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut shift_last_pressed,
         mut should_exit,
         skills,
-        slash_commands,
+        mut slash_commands,
         mut slash_palette_active,
         mut slash_palette_index,
         mut slash_palette_query,
@@ -3807,6 +3807,24 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             &mut prompt_history,
                             TranscriptMessage::text(message, TranscriptStyle::Meta),
                         );
+                    }
+                    SlashOutcome::TrustChanged { message, trusted } => {
+                        push_transcript_message_synced(
+                            &mut messages,
+                            messages_arc,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            TranscriptMessage::text(message, TranscriptStyle::Meta),
+                        );
+                        let enable_skill_commands = Settings::load(&paths)
+                            .map(|settings| settings.resources.enable_skill_commands)
+                            .unwrap_or(true);
+                        slash_commands.set(crate::agent::slash_commands_for_palette_with_trust(
+                            Some(&prompt_templates.read()),
+                            Some(&skills.read()),
+                            enable_skill_commands,
+                            trusted,
+                        ));
                     }
                     SlashOutcome::Unimplemented(message) => {
                         push_transcript_message_synced(

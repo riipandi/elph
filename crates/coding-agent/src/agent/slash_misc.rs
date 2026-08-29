@@ -509,6 +509,21 @@ pub fn trust_slash_message(paths: &Paths, cwd: &Path) -> Result<String, String> 
     ))
 }
 
+/// Remove trust from the project cwd in `CONFIG_DIR/trust.json`.
+pub fn untrust_slash_message(paths: &Paths, cwd: &Path) -> Result<String, String> {
+    use crate::platform::scaffold::TrustStore;
+    let key = TrustStore::untrust_directory(paths, cwd).map_err(|e| format!("untrust failed: {e:#}"))?;
+    Ok(format!(
+        "Project untrusted\n\
+         ─────────────────\n\
+         Directory  {key}\n\
+         Store      {}\n\
+         \n\
+         Project-local hooks under .elph/hooks.json will not load until this project is trusted again.",
+        paths.trust_path().display()
+    ))
+}
+
 pub async fn fork_session_message(session: &CodingAgentSession) -> Result<String, String> {
     let sm = session.session_manager();
     let source_id = session.session_id().to_string();

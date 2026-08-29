@@ -133,7 +133,7 @@ pub(crate) fn build_shell_view(
         show_thinking,
         skills,
         skills_count,
-        slash_commands,
+        mut slash_commands,
         mut slash_palette_active,
         mut slash_palette_index,
         mut slash_palette_query,
@@ -1799,6 +1799,24 @@ pub(crate) fn build_shell_view(
                                 &mut prompt_history,
                                 TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
+                            }
+                            SlashOutcome::TrustChanged { message, trusted } => {
+                                push_transcript_message_synced(
+                                    &mut messages,
+                                    messages_arc,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(message, TranscriptStyle::Meta),
+                                );
+                                let enable_skill_commands = Settings::load(&paths_snapshot)
+                                    .map(|settings| settings.resources.enable_skill_commands)
+                                    .unwrap_or(true);
+                                slash_commands.set(crate::agent::slash_commands_for_palette_with_trust(
+                                    Some(&templates),
+                                    Some(&loaded_skills),
+                                    enable_skill_commands,
+                                    trusted,
+                                ));
                             }
                             SlashOutcome::Unimplemented(message) => {
                                 push_transcript_message_synced(
