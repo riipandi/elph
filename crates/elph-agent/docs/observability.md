@@ -13,7 +13,7 @@ Design lineage: [pi-agent observability](https://github.com/earendil-works/pi/bl
 | Crash   | panic hook → `CrashRecord` JSONL                 | `{logs_dir}/crash-YYMMDDhh.jsonl` (UTC)     |
 | Bridge  | `logforth::FastraceEvent`                        | Log events attached to the active span tree |
 
-Library crates emit through the `log` facade. Only the process (`elph` / an embedder) calls [`logger::init`](../src/logger/mod.rs). The returned [`LogGuard`](../src/logger/mod.rs) must live for the process lifetime; on drop it flushes async log writers and `fastrace::flush()`.
+Library crates emit through the `log` facade. Only the process (`elph` / an embedder) calls [`logger::init`](../src/logger/mod.rs); initialization also installs the process-wide panic hook for the configured logs directory. The returned [`LogGuard`](../src/logger/mod.rs) must live for the process lifetime; on drop it flushes async log writers and `fastrace::flush()`.
 
 Configure with [`LoggingOptions::builder`](../src/logger/options.rs). Merge order: defaults → `settings.json` `logging` → `{PREFIX}_LOG_*` / `{PREFIX}_TRACE` (env wins). File-open failure degrades (stderr warning, no file appender) instead of panicking.
 
@@ -54,7 +54,7 @@ Timestamps are UTC. Optional `kv` is omitted when empty. Prompts, completions, t
 
 ### Crash logs
 
-Panics append one `CrashRecord` to `{logs_dir}/crash-YYMMDDhh.jsonl` (2-digit year + month + day + UTC hour). Example: `2026-08-18T14:07:00Z` → `crash-26081814.jsonl`. Multiple panics in the same hour append extra lines.
+Panics append one `CrashRecord` to `{logs_dir}/crash-YYMMDDhh.jsonl` (2-digit year + month + day + UTC hour). Example: `2026-08-18T14:07:00Z` → `crash-26081814.jsonl`. Multiple panics in the same hour append extra lines. The hook is best-effort and covers Rust panics; operating-system termination signals, forced aborts, and out-of-memory kills cannot be captured by it.
 
 ## Cargo features
 

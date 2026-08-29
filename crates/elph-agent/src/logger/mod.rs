@@ -45,6 +45,9 @@ impl Drop for LogGuard {
 /// async appenders can flush buffered records. File-open failure degrades to
 /// no file appender (a line is written to stderr) instead of panicking.
 pub fn init(options: LoggingOptions) -> LogGuard {
+    // Install before initializing any logger/tracing backend so a panic
+    // during setup still has a durable last-resort report.
+    install_panic_hook(options.logs_dir.clone());
     let trace_enabled = options.trace_enabled;
     crate::trace::init(&options);
     #[cfg(feature = "tracing")]

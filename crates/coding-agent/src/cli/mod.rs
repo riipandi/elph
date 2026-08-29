@@ -258,7 +258,14 @@ fn fallback_logs_dir() -> Option<std::path::PathBuf> {
     }
     std::env::var_os("HOME")
         .or_else(|| std::env::var_os("USERPROFILE"))
-        .map(|home| PathBuf::from(home).join(".local/share/elph/logs"))
+        .map(|home| {
+            PathBuf::from(home)
+                .join(".local")
+                .join("share")
+                .join("elph")
+                .join("logs")
+        })
+        .or_else(|| Some(PathBuf::from(".local").join("share").join("elph").join("logs")))
 }
 
 pub fn run(cli: &Cli) -> ExitCode {
@@ -273,6 +280,13 @@ pub fn run(cli: &Cli) -> ExitCode {
         .quiet_env("ELPH_QUIET")
         .console_enabled(console_enabled);
 
+    // Path resolution itself can fail before the normal logger is ready.
+    // Install a provisional hook first; logger::init replaces its directory
+    // with the resolved one when initialization succeeds.
+    if let Some(logs) = fallback_logs_dir() {
+        elph_agent::logger::install_panic_hook(logs);
+    }
+
     let _log_guard = match crate::platform::Paths::resolve() {
         Ok(paths) => {
             elph_agent::logger::install_panic_hook(paths.logs_dir());
@@ -286,9 +300,6 @@ pub fn run(cli: &Cli) -> ExitCode {
         }
         Err(_) => {
             log::warn!("path resolve failed; using fallback logs directory");
-            if let Some(logs) = fallback_logs_dir() {
-                elph_agent::logger::install_panic_hook(logs);
-            }
             let init = agent_builder.build();
             elph_agent::logger::init(init.logging)
         }

@@ -5,7 +5,7 @@ use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::panic::PanicHookInfo;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 
 use chrono::Utc;
 use serde::Deserialize;
@@ -18,7 +18,9 @@ pub const CRASH_LOG_PREFIX: &str = "crash";
 /// Legacy alias kept for re-exports that expected a basename constant.
 pub const CRASH_LOG_FILE: &str = CRASH_LOG_PREFIX;
 
-static CRASH_LOG_DIR: OnceLock<PathBuf> = OnceLock::new();
+static CRASH_LOG_DIR: OnceLock<Mutex<PathBuf>> = OnceLock::new();
+static CRASH_WRITE_LOCK: Mutex<()> = Mutex::new(());
+static HOOK_INSTALLED: OnceLock<()> = OnceLock::new();
 
 /// One panic recorded as a JSON line.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,22 +36,30 @@ pub struct CrashRecord {
 /// Install a process-wide panic hook that appends to `{logs_dir}/crash-YYMMDDhh.jsonl`.
 pub fn install_panic_hook(logs_dir: impl Into<PathBuf>) {
     let dir = logs_dir.into();
-    let _ = CRASH_LOG_DIR.set(dir.clone());
-
-    static HOOK_INSTALLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-    if HOOK_INSTALLED.swap(true, std::sync::atomic::Ordering::SeqCst) {
-        return;
+    let crash_dir = CRASH_LOG_DIR.get_or_init(|| Mutex::new(dir.clone()));
+    if let Ok(mut configured_dir) = crash_dir.lock() {
+        *configured_dir = dir;
+    } else {
+        // A poisoned directory lock should not prevent the original panic
+        // hook from rendering its diagnostic.
+        let _ = writeln!(io::stderr(), "elph: crash log configuration is unavailable");
     }
 
-    let previous = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        if let Some(dir) = CRASH_LOG_DIR.get()
-            && let Err(err) = write_crash_report(dir, info)
-        {
-            let _ = writeln!(io::stderr(), "elph: failed to write crash log under {}: {err}", dir.display(),);
-        }
-        previous(info);
-    }));
+    HOOK_INSTALLED.get_or_init(|| {
+        let previous = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            let dir = CRASH_LOG_DIR.get().map(|dir| match dir.lock() {
+                Ok(configured_dir) => configured_dir.clone(),
+                Err(poisoned) => poisoned.into_inner().clone(),
+            });
+            if let Some(dir) = dir
+                && let Err(err) = write_crash_report(&dir, info)
+            {
+                let _ = writeln!(io::stderr(), "elph: failed to write crash log under {}: {err}", dir.display(),);
+            }
+            previous(info);
+        }));
+    });
 }
 
 /// Full path to this UTC hour's crash log (`crash-YYMMDDhh.jsonl`).
@@ -63,6 +73,11 @@ pub fn crash_log_filename_for(now: chrono::DateTime<Utc>) -> String {
 }
 
 fn write_crash_report(logs_dir: &Path, info: &PanicHookInfo<'_>) -> io::Result<()> {
+    // A panic can be raised concurrently by more than one worker. Serialize
+    // the complete JSONL write so records cannot interleave on the same file.
+    let _write_guard = CRASH_WRITE_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     fs::create_dir_all(logs_dir)?;
     let path = crash_log_path(logs_dir);
     let file = OpenOptions::new().create(true).append(true).open(&path)?;
@@ -82,8 +97,6 @@ fn write_crash_report(logs_dir: &Path, info: &PanicHookInfo<'_>) -> io::Result<(
     let mut writer = JsonLinesWriter::new(file);
     writer.write(&record)?;
     writer.flush()?;
-
-    log::error!("panic recorded in {}: {} ({})", path.display(), record.message, record.location);
 
     Ok(())
 }
@@ -140,5 +153,25 @@ mod tests {
         let parsed: CrashRecord = serde_json::from_str(body.trim()).expect("json");
         assert_eq!(parsed.message, "test panic");
         assert_eq!(parsed.location, "foo.rs:1:1");
+    }
+
+    #[test]
+    fn panic_hook_records_caught_panic_in_configured_directory() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        install_panic_hook(dir.path());
+
+        let result = std::panic::catch_unwind(|| panic!("hook test panic"));
+        assert!(result.is_err());
+
+        let path = fs::read_dir(dir.path())
+            .expect("crash log directory")
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .find(|path| path.extension().is_some_and(|extension| extension == "jsonl"))
+            .expect("crash log file");
+        let body = fs::read_to_string(path).expect("crash log");
+        let record: CrashRecord = serde_json::from_str(body.trim()).expect("json");
+        assert_eq!(record.message, "hook test panic");
+        assert!(!record.backtrace.is_empty());
     }
 }
