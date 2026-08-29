@@ -32,6 +32,8 @@ pub struct BeforeProviderPayloadResult {
 pub struct ToolCallHookResult {
     pub block: bool,
     pub reason: Option<String>,
+    /// Override validated arguments; the runtime validates the replacement again before execution.
+    pub args: Option<Value>,
 }
 
 #[derive(Debug, Clone, Default)]

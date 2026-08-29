@@ -25,6 +25,7 @@
                 "sessionStart",
                 "userPromptSubmit",
                 "beforeAgent",
+                "context",
                 "preToolUse",
                 "postToolUse",
                 "postToolUseFailure",

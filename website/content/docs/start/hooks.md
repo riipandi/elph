@@ -59,6 +59,29 @@ discover or load every file under that directory; each hook must be declared in
 `hooks.json`. The sample script appends the received `sessionStart` JSON payload
 to `.elph/hook-audit.log` and keeps stdout empty.
 
+## Architecture
+
+```mermaid
+flowchart TD
+    A["TUI, headless, or ACP"] --> B["AgentHarness"]
+    B --> C["Typed HookRegistry"]
+    C --> D["Native Elph handlers"]
+    C --> E["HookHost"]
+    F["CONFIG_DIR/hooks.json"] --> G["Validated configuration"]
+    H["PROJECT/.elph/hooks.json"] --> G
+    G --> E
+    E --> I["Bounded child process"]
+    I --> J["JSON stdin/stdout"]
+    J --> E
+    E --> C
+    K["MCP"] --> L["Dynamic tools"]
+    M["Skills and prompt templates"] --> N["Reusable workflows"]
+```
+
+`elph-agent` owns typed lifecycle contracts and validation. `coding-agent`
+owns JSON discovery, project trust, process execution, timeouts, output bounds,
+and diagnostics. Hooks do not load WASM or Pi extensions.
+
 ### Hook fields
 
 | Field | Required | Description |
@@ -107,10 +130,16 @@ Supported events are:
 
 - `sessionStart` — once when a session is initialized.
 - `userPromptSubmit` — before an agent turn; observation-only.
-- `beforeAgent` — before a provider request; may return `systemPrompt`.
-- `preToolUse` — before native approval and execution; may block a tool call.
-- `postToolUse` — after a successful tool call.
-- `postToolUseFailure` — after a failed tool call.
+- `beforeAgent` — before a provider request; may append `systemPrompt` or
+  `additionalContext`, and may append temporary `messages` to the turn.
+- `context` — after the turn context is assembled and before it is sent to the
+  provider; may replace the complete `messages` array for that request.
+- `preToolUse` — before native approval and execution; may block a tool call or
+  replace `toolInput`.
+- `postToolUse` — after a successful tool call; may replace `content`,
+  `details`, or `isError`, and may request `terminate`.
+- `postToolUseFailure` — after a failed tool call; supports the same result
+  patch fields as `postToolUse`.
 - `preCompact` — before compaction; may cancel or provide instructions.
 - `postCompact` — after compaction; observation-only.
 - `stop` — when a turn settles; observation-only.
@@ -119,7 +148,9 @@ Supported events are:
 session owner.
 
 Tool events may use `matcher.toolNames` with exact, `prefix*`, or `*suffix`
-patterns. Handlers run serially in configuration order.
+patterns. Handlers run serially in configuration order. Transformations are
+passed to the next matching handler for tool events, and native tool-call
+decisions are merged.
 
 ### Outcomes
 
@@ -142,6 +173,47 @@ Add instructions before a provider request:
 }
 ```
 
+Replace the provider-bound context for one request:
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Redacted context"
+    }
+  ]
+}
+```
+
+Rewrite validated tool arguments:
+
+```json
+{
+  "toolInput": {
+    "path": "safe/path.txt"
+  }
+}
+```
+
+Replace a tool result:
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Sanitized result"
+    }
+  ],
+  "details": {
+    "source": "policy-filter"
+  },
+  "isError": false,
+  "terminate": false
+}
+```
+
 Cancel compaction or add compaction instructions:
 
 ```json
@@ -151,20 +223,33 @@ Cancel compaction or add compaction instructions:
 }
 ```
 
-Post-tool hooks can return `isError` and `details` fields. Other fields are
-ignored for those events. `allow` and `ask` do not loosen native approval
-decisions, and hooks cannot replace tool input.
+`beforeAgent.systemPrompt` and `beforeAgent.additionalContext` are appended to
+the compiled system prompt with a blank-line separator. `beforeAgent.messages`
+are appended to the current turn only and are not persisted as session entries.
+`context.messages` replaces the full provider-bound message array without
+changing the durable transcript.
+
+`preToolUse.toolInput` is passed through the remaining hook chain and validated
+against the tool schema again before native approval and execution. `allow` and
+`ask` do not loosen native approval decisions.
+
+Post-tool `content` must contain text blocks
+`{ "type": "text", "text": "..." }` or image blocks
+`{ "type": "image", "data": "...", "mime_type": "..." }`. These fields are
+validated before the replacement reaches the model context.
 
 ## Feature matrix
 
 | Feature | Status | Notes |
 | --- | --- | --- |
 | Observe session and turn lifecycle | Supported | `sessionStart`, `userPromptSubmit`, and `stop` |
-| Add a system prompt | Supported | `beforeAgent.systemPrompt` |
+| Add a system prompt/context | Supported | `beforeAgent.systemPrompt` and `additionalContext` |
+| Inject temporary messages | Supported | `beforeAgent.messages` |
+| Transform provider context | Supported | `context.messages` replacement |
 | Block a tool call | Supported | `preToolUse` with `block: true` or `decision: "deny"` |
 | Filter tool events | Supported | Exact, `prefix*`, and `*suffix` patterns |
-| Modify tool input | Not supported | Hooks cannot replace or rewrite `toolInput` |
-| Modify tool results | Limited | `postToolUse` events may patch `isError` and `details` |
+| Modify tool input | Supported | `preToolUse.toolInput`, schema-validated again |
+| Modify tool results | Supported | Content, details, error state, and termination |
 | Control compaction | Supported | `preCompact.cancel` and `customInstructions` |
 | Audit compaction | Supported | `postCompact` is observation-only |
 | Reload configuration | Supported | `/reload` replaces active command handlers |
@@ -181,6 +266,10 @@ decisions, and hooks cannot replace tool input.
   lifecycle operation.
 - `userPromptSubmit`, `sessionStart`, `postCompact`, and `stop` are
   observation-only in the current implementation.
+- `beforeAgent` cannot remove or replace the compiled system prompt. `context`
+  can replace provider-bound messages, but cannot rewrite the durable transcript.
+- Hooks cannot add tools through `postToolUse.addedToolNames`; dynamic tool
+  registration remains an MCP responsibility.
 - A hook cannot loosen native approval, sandbox, authentication, MCP policy, or
   tool-schema decisions.
 - `sessionEnd` is reserved in the schema but is not emitted by the current ACP
@@ -207,8 +296,10 @@ Use native approval, sandbox, agent mode, MCP policy, and tool-schema
 validation for security enforcement.
 
 The child process receives a small environment allowlist plus `ELPH_HOOK_ID`.
-Credentials, provider headers, auth-store values, the full transcript, and
-arbitrary environment variables are not passed to hooks.
+Credentials, provider headers, auth-store values, and arbitrary environment
+variables are not passed to hooks. The `context` event intentionally receives
+the current provider-bound message array, but changes to it are not persisted
+to the session transcript.
 
 ## Reload and integration boundaries
 

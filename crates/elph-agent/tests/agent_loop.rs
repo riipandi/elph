@@ -359,7 +359,7 @@ async fn fails_truncated_tool_calls_on_length_stop() {
 }
 
 #[tokio::test]
-async fn run_agent_loop_executes_mutated_before_tool_call_args_without_revalidation() {
+async fn run_agent_loop_executes_valid_mutated_before_tool_call_args() {
     let faux = faux_provider(Default::default());
     let model = faux.provider.get_models()[0].clone();
     two_step_tool_then_text_responses(
@@ -379,6 +379,61 @@ async fn run_agent_loop_executes_mutated_before_tool_call_args_without_revalidat
             let value = args.get("value").cloned().unwrap_or(json!(null));
             executed_capture.lock().await.push(value);
             Ok(AgentToolResult::text("ok"))
+        })
+    });
+
+    let mut config = base_loop_config(model, faux_stream_fn(&faux));
+    config.before_tool_call = Some(Arc::new(move |ctx, _| {
+        let mut args = ctx.args.clone();
+        if let Some(obj) = args.as_object_mut() {
+            obj.insert("value".into(), json!("changed"));
+        }
+        Box::pin(async move {
+            Some(BeforeToolCallResult {
+                block: false,
+                reason: None,
+                args: Some(args),
+                terminate: None,
+            })
+        })
+    }));
+
+    let mut context = empty_context();
+    context.tools = vec![tool];
+
+    let _ = run_agent_loop(
+        vec![user_agent_message("echo something")],
+        context,
+        config,
+        capture_events().0,
+        None,
+    )
+    .await
+    .expect("agent loop");
+
+    assert_eq!(*executed.lock().await, vec![json!("changed")]);
+}
+
+#[tokio::test]
+async fn run_agent_loop_rejects_invalid_mutated_before_tool_call_args() {
+    let faux = faux_provider(Default::default());
+    let model = faux.provider.get_models()[0].clone();
+    two_step_tool_then_text_responses(
+        &faux,
+        vec![faux_tool_call(
+            "echo",
+            json!({ "value": "hello" }),
+            Some("tool-1".into()),
+        )],
+    );
+
+    let executed = Arc::new(Mutex::new(false));
+    let executed_capture = executed.clone();
+    let tool = value_echo_tool(move |_id, _args| {
+        let executed_capture = executed_capture.clone();
+        Box::pin(async move {
+            *executed_capture.lock().await = true;
+            Ok(AgentToolResult::text("unexpected execution"))
         })
     });
 
@@ -411,7 +466,7 @@ async fn run_agent_loop_executes_mutated_before_tool_call_args_without_revalidat
     .await
     .expect("agent loop");
 
-    assert_eq!(*executed.lock().await, vec![json!(123)]);
+    assert!(!*executed.lock().await);
 }
 
 #[tokio::test]

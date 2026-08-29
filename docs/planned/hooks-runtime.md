@@ -69,13 +69,27 @@ Shell syntax requires an explicit shell command and literal `args`.
 
 The schema accepts the following event names:
 
-`sessionStart`, `userPromptSubmit`, `beforeAgent`, `preToolUse`,
+`sessionStart`, `userPromptSubmit`, `beforeAgent`, `context`, `preToolUse`,
 `postToolUse`, `postToolUseFailure`, `preCompact`, `postCompact`, `stop`, and
 reserved `sessionEnd`.
 
 `sessionEnd` is reserved in the schema but is not emitted by the current ACP
 session owner. Tool events support optional exact, `prefix*`, or `*suffix`
 matching through `matcher.toolNames`.
+
+The command outcomes that influence the runtime are:
+
+- `beforeAgent`: append `systemPrompt` or `additionalContext`, and append
+  temporary `messages` to the current turn.
+- `context`: replace the provider-bound `messages` array for the current
+  request without changing the durable transcript.
+- `preToolUse`: block a call or replace `toolInput`; replacement arguments are
+  validated again against the native tool schema before execution.
+- `postToolUse` and `postToolUseFailure`: replace validated result `content`,
+  `details`, or `isError`, and optionally request `terminate`.
+
+`postToolUse.addedToolNames` is intentionally not accepted from external
+commands. Dynamic tool registration remains an MCP responsibility.
 
 ## Command and failure policy
 

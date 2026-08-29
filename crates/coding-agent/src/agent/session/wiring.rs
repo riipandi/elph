@@ -49,10 +49,12 @@ impl CodingAgentSession {
                             Ok(false) => Some(ToolCallHookResult {
                                 block: true,
                                 reason: Some("Tool execution rejected by user".into()),
+                                args: None,
                             }),
                             Err(reason) => Some(ToolCallHookResult {
                                 block: true,
                                 reason: Some(reason),
+                                args: None,
                             }),
                         }
                     })
