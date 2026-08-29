@@ -1245,6 +1245,7 @@ mod tests {
         assert!(Settings::defaults().ui.atomic_paste);
         let settings: Settings = serde_json::from_str(r#"{"ui":{"atomicPaste":false}}"#).expect("decode");
         assert!(!settings.ui.atomic_paste);
+        assert_eq!(settings.schema, default_elph_schema());
     }
 
     #[test]

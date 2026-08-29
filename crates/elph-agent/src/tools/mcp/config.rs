@@ -670,6 +670,7 @@ mod tests {
         let cfg: McpConfig = serde_json::from_str(json).expect("parse");
         assert_eq!(cfg.server_count(), 2);
         assert_eq!(cfg.enabled_count(), 2);
+        assert_eq!(cfg.schema, default_mcp_schema());
         assert!(matches!(cfg.servers.get("local"), Some(McpServerConfig::Stdio(_))));
         assert!(matches!(cfg.servers.get("remote"), Some(McpServerConfig::Http(_))));
     }

@@ -600,6 +600,12 @@ mod sealed_store_tests {
     use super::*;
     use tempfile::tempdir;
 
+    #[test]
+    fn schema_is_optional_when_deserializing() {
+        let file: AuthStoreFile = serde_json::from_str(r#"{"provider":{}}"#).expect("parse");
+        assert_eq!(file.schema, default_auth_schema());
+    }
+
     #[tokio::test]
     async fn plain_json_encrypted_roundtrip_no_lock_sidecar() {
         let key = Aes256Key::generate();
