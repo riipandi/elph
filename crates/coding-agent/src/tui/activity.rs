@@ -43,6 +43,14 @@ pub fn normalize_agent_status(line: &str) -> String {
     if lower.starts_with("thinking") {
         return "Thinking".to_string();
     }
+    // Compaction status rows stay concise — no resolved model name repeated here
+    // (the transcript card keeps the full "with provider/model" detail).
+    if lower.starts_with("compacting") || lower.starts_with("auto-compacting") {
+        return "Compacting history".to_string();
+    }
+    if lower.starts_with("compaction ") {
+        return "Compacting history".to_string();
+    }
     if lower.starts_with("responding") || lower.contains("streaming") {
         return "Responding".to_string();
     }
@@ -503,6 +511,27 @@ mod tests {
     fn normalizes_thinking_status() {
         assert_eq!(normalize_agent_status("Thinking…"), "Thinking");
         assert_eq!(normalize_agent_status("  thinking "), "Thinking");
+    }
+
+    #[test]
+    fn compaction_status_stays_concise_without_model_name() {
+        // Status row: short label only; the transcript card keeps the model ref.
+        assert_eq!(
+            normalize_agent_status("Compacting history with hyper/deepseek-v4-flash-0731"),
+            "Compacting history"
+        );
+        assert_eq!(
+            normalize_agent_status("Auto-compacting history with hyper/deepseek-v4-flash-0731"),
+            "Compacting history"
+        );
+        assert_eq!(
+            normalize_agent_status("Compacting history for the new model's context limit with hyper/deepseek"),
+            "Compacting history"
+        );
+        assert_eq!(
+            normalize_agent_status("Compaction complete: ~1.2K → ~120 tokens using hyper/deepseek-v4-flash-0731."),
+            "Compacting history"
+        );
     }
 
     #[test]
