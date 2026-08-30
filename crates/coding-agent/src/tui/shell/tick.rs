@@ -435,8 +435,8 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             // `GIT_FOOTER_REFRESH_SECS` instead of on every 1 s chrome pass. Explicit
             // `chrome_refresh_pending` events (e.g. a git checkout) still force an immediate
             // rescan so the footer stays correct after a state change.
-            let git_footer_due =
-                chrome_refresh_pending.get() || last_git_footer_refresh.elapsed() >= Duration::from_secs(GIT_FOOTER_REFRESH_SECS);
+            let git_footer_due = chrome_refresh_pending.get()
+                || last_git_footer_refresh.elapsed() >= Duration::from_secs(GIT_FOOTER_REFRESH_SECS);
             if git_footer_due {
                 last_git_footer_refresh = Instant::now();
                 let next_git_footer = read_git_footer_info(paths.project_dir());

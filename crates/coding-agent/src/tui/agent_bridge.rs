@@ -846,6 +846,26 @@ impl TranscriptEventApplier {
         true
     }
 
+    /// Keep the tail of a tool's output, dropping the leading bytes past the
+    /// streaming cap so the stored transcript never holds an unbounded multi-MB
+    /// string. Mirrors the cap in [`Self::update_tool`]; only the visible tail is
+    /// retained. Char-boundary safe.
+    fn keep_tool_output_tail(output: &str) -> String {
+        if output.len() <= TOOL_OUTPUT_STREAM_CAP {
+            return output.to_string();
+        }
+        let marker = "\n[...stream output truncated...]\n";
+        let drop = output.len() - TOOL_OUTPUT_STREAM_CAP;
+        let start = output
+            .char_indices()
+            .map(|(i, _)| i)
+            .chain(std::iter::once(output.len()))
+            .take_while(|&i| i <= drop)
+            .last()
+            .unwrap_or(0);
+        format!("{marker}{}", &output[start..])
+    }
+
     fn update_tool(&mut self, messages: &mut [TranscriptMessage], id: &str, output: &str) -> bool {
         if output.is_empty() {
             return false;
@@ -894,7 +914,10 @@ impl TranscriptEventApplier {
         {
             if let Some(tool) = message.tool.as_mut() {
                 if !output.is_empty() {
-                    tool.output = output.to_string();
+                    // Bound the stored transcript copy: `update_tool` already caps the
+                    // streaming accumulation, but the final `ToolEnd` carries the full
+                    // output and would otherwise replace it unbounded. Keep the tail.
+                    tool.output = Self::keep_tool_output_tail(output);
                 }
                 // Install edit_file before/after text for the embedded DiffView (if present).
                 let _ = tool.apply_tool_result_details(details);
