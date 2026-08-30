@@ -95,7 +95,6 @@ pub struct HookStatus {
 #[derive(Clone, Default)]
 pub struct HookHost {
     config: Arc<RwLock<HookStatus>>,
-    session_id: Arc<RwLock<Option<String>>>,
 }
 
 impl std::fmt::Debug for HookHost {
@@ -164,7 +163,6 @@ impl HookHost {
         S::Metadata: HasSessionId + Send + Sync,
     {
         let session_id = harness.session_metadata().await.session_id().to_string();
-        *self.session_id.write() = Some(session_id.clone());
         for hook in self.handlers(HookEvent::SessionStart) {
             deliver_session_start(harness, &hook).await;
         }
