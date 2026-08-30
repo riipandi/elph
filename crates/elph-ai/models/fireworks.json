@@ -1,40 +1,5 @@
 {
     "$schema": "https://elph.space/provider-schema.json",
-    "accounts/fireworks/models/deepseek-v4-flash": {
-        "api": "anthropic-messages",
-        "baseUrl": "https://api.fireworks.ai/inference",
-        "compat": {
-            "sendSessionAffinityHeaders": true,
-            "supportsCacheControlOnTools": false,
-            "supportsEagerToolInputStreaming": false,
-            "supportsLongCacheRetention": false
-        },
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.028,
-            "cacheWrite": 0.0,
-            "input": 0.14,
-            "output": 0.28
-        },
-        "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
-        "id": "accounts/fireworks/models/deepseek-v4-flash",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 384000,
-        "name": "DeepSeek V4 Flash",
-        "provider": "fireworks",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "accounts/fireworks/models/deepseek-v4-flash-0731": {
         "api": "openai-completions",
         "baseUrl": "https://api.fireworks.ai/inference/v1",
@@ -113,6 +78,64 @@
         "knowledgeCutoff": "",
         "maxTokens": 131072,
         "name": "GLM 5.2",
+        "provider": "fireworks",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "accounts/fireworks/models/glm-5p3": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.fireworks.ai/inference/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.26,
+            "cacheWrite": 0.0,
+            "input": 1.4,
+            "output": 4.4
+        },
+        "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
+        "id": "accounts/fireworks/models/glm-5p3",
+        "input": ["text"],
+        "knowledgeCutoff": "",
+        "maxTokens": 131072,
+        "name": "GLM 5.3",
+        "provider": "fireworks",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "accounts/fireworks/models/glm-5p3-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.fireworks.ai/inference/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.029,
+            "cacheWrite": 0.0,
+            "input": 0.15,
+            "output": 0.5
+        },
+        "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+        "id": "accounts/fireworks/models/glm-5p3-flash",
+        "input": ["text", "image", "video", "pdf"],
+        "knowledgeCutoff": "",
+        "maxTokens": 131072,
+        "name": "GLM 5.3 Flash",
         "provider": "fireworks",
         "reasoning": true,
         "releaseDate": "",

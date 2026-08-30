@@ -1315,33 +1315,6 @@
             "xhigh": null
         }
     },
-    "hy3-free": {
-        "api": "openai-completions",
-        "baseUrl": "https://opencode.ai/zen/v1",
-        "contextWindow": 190000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
-        "id": "hy3-free",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "Hy3 Free",
-        "provider": "opencode",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "kimi-k2.5": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/v1",
@@ -1480,6 +1453,33 @@
         "input": ["text"],
         "maxTokens": 32000,
         "name": "Laguna S 2.1 Free",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "ling-3.0-flash-fin-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Finance-enhanced model for financial research, multi-step investment workflows, and long-horizon planning and execution",
+        "id": "ling-3.0-flash-fin-free",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "Ling 3.0 Flash Fin Free",
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {

@@ -128,38 +128,6 @@
             "xhigh": null
         }
     },
-    "allenai/olmo-3-32b-think": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 65536,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.15,
-            "output": 0.5
-        },
-        "description": "Reasoning model for deliberate analysis, multi-step problem solving, and tool use",
-        "id": "allenai/olmo-3-32b-think",
-        "input": ["text"],
-        "maxTokens": 58982,
-        "name": "AllenAI: Olmo 3 32B Think",
-        "provider": "kilo",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "amazon/nova-2-lite-v1": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
@@ -920,45 +888,13 @@
         "description": "Reasoning-optimized 398B MoE agent model with extended thinking for long-horizon and multi-turn tool use",
         "id": "arcee-ai/trinity-large-thinking",
         "input": ["text"],
-        "maxTokens": 235929,
+        "maxTokens": 80000,
         "name": "Trinity Large Thinking",
         "provider": "kilo",
         "reasoning": true,
         "releaseDate": "2026-04-01",
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "arcee-ai/virtuoso-large": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.kilo.ai/api/gateway",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false,
-            "thinkingFormat": "openrouter"
-        },
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.75,
-            "output": 1.2
-        },
-        "description": "Flagship model for demanding analysis, coding, and production agent workflows",
-        "id": "arcee-ai/virtuoso-large",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "Arcee AI: Virtuoso Large",
-        "provider": "kilo",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
             "low": null,
             "max": null,
             "medium": null,
@@ -2730,10 +2666,10 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.01,
+            "cacheRead": 0.049999999999999996,
             "cacheWrite": 0.0,
-            "input": 0.08,
-            "output": 0.35
+            "input": 0.09,
+            "output": 0.33999999999999997
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-4-31b-it",
@@ -3549,7 +3485,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.19999999999999998,
-            "output": 0.7999999999999999
+            "output": 0.696
         },
         "description": "Open multimodal Llama model for strong reasoning and fast responses",
         "id": "meta-llama/llama-4-maverick",
@@ -3646,7 +3582,7 @@
         "id": "meta/muse-glimmer-30b",
         "input": ["text", "image", "pdf"],
         "knowledgeCutoff": "2026-01-04",
-        "maxTokens": 117964,
+        "maxTokens": 16384,
         "name": "Muse Glimmer 30B",
         "provider": "kilo",
         "reasoning": true,
@@ -4160,10 +4096,10 @@
         "baseUrl": "https://api.kilo.ai/api/gateway",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.044,
+            "cacheRead": 0.04,
             "cacheWrite": 0.0,
-            "input": 0.44,
-            "output": 2.2
+            "input": 0.39999999999999997,
+            "output": 2.0
         },
         "description": "Devstral 2 is a state-of-the-art open-source model by Mistral AI specializing in agentic coding. It is a 123B-parameter dense transformer model supporting a 256K context window. Devstral 2 supports exploring...",
         "id": "mistralai/devstral-2512",
@@ -4482,8 +4418,8 @@
         "cost": {
             "cacheRead": 0.016499999999999997,
             "cacheWrite": 0.0,
-            "input": 0.165,
-            "output": 0.165
+            "input": 0.019000000000000003,
+            "output": 0.03
         },
         "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
         "id": "mistralai/mistral-nemo",
@@ -4642,8 +4578,8 @@
         "cost": {
             "cacheRead": 0.011,
             "cacheWrite": 0.0,
-            "input": 0.11,
-            "output": 0.33
+            "input": 0.075,
+            "output": 0.19999999999999998
         },
         "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
         "id": "mistralai/mistral-small-3.2-24b-instruct",
@@ -4702,7 +4638,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 32000,
+        "contextWindow": 32768,
         "cost": {
             "cacheRead": 0.01,
             "cacheWrite": 0.0,
@@ -4712,7 +4648,7 @@
         "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
         "id": "mistralai/voxtral-small-24b-2507",
         "input": ["text", "audio", "pdf"],
-        "maxTokens": 25600,
+        "maxTokens": 26214,
         "name": "Mistral: Voxtral Small 24B 2507",
         "provider": "kilo",
         "reasoning": false,
@@ -5455,7 +5391,7 @@
         "description": "NVIDIA Nemotron 3.5 Lightning is an open mixture-of-experts model from NVIDIA, with 3B active parameters out of 30B total. It is suited for high-throughput agentic workloads and specialized tasks that...",
         "id": "nvidia/nemotron-3.5-lightning",
         "input": ["text"],
-        "maxTokens": 235929,
+        "maxTokens": 131072,
         "name": "Nemotron 3.5 Lightning 30B A3B",
         "provider": "kilo",
         "reasoning": true,
@@ -5814,7 +5750,7 @@
         "id": "openai/gpt-4.1-nano",
         "input": ["image", "text", "pdf"],
         "knowledgeCutoff": "2024-04",
-        "maxTokens": 32768,
+        "maxTokens": 942818,
         "name": "GPT-4.1 nano",
         "provider": "kilo",
         "reasoning": false,
@@ -8701,7 +8637,7 @@
         "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
         "id": "qwen/qwen3-next-80b-a3b-instruct",
         "input": ["text"],
-        "maxTokens": 235929,
+        "maxTokens": 16384,
         "name": "Qwen3-Next 80B-A3B Instruct",
         "provider": "kilo",
         "reasoning": false,
@@ -8829,7 +8765,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3-vl-30b-a3b-instruct",
         "input": ["text", "image"],
-        "maxTokens": 32768,
+        "maxTokens": 16384,
         "name": "Qwen: Qwen3 VL 30B A3B Instruct",
         "provider": "kilo",
         "reasoning": false,
@@ -8989,7 +8925,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video"],
-        "maxTokens": 235929,
+        "maxTokens": 81920,
         "name": "Qwen3.5 122B-A10B",
         "provider": "kilo",
         "reasoning": true,
@@ -10346,7 +10282,7 @@
         "id": "tencent/hy4-preview",
         "input": ["text"],
         "maxTokens": 64000,
-        "name": "Tencent: Hy4 preview",
+        "name": "Hy4 preview",
         "provider": "kilo",
         "reasoning": true,
         "releaseDate": "2026-08-28",
@@ -10474,7 +10410,7 @@
         "description": "Inkling is an open-weight multimodal mixture-of-experts model from Thinking Machines Lab, with 41B active parameters out of 975B total. It is designed for general-purpose reasoning, coding, agentic and tool-use systems,...",
         "id": "thinkingmachines/inkling",
         "input": ["text", "image", "audio"],
-        "maxTokens": 262144,
+        "maxTokens": 471859,
         "name": "Inkling",
         "provider": "kilo",
         "reasoning": true,
@@ -11257,7 +11193,7 @@
         "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "z-ai/glm-5.1",
         "input": ["text"],
-        "maxTokens": 182476,
+        "maxTokens": 128000,
         "name": "GLM-5.1",
         "provider": "kilo",
         "reasoning": true,
@@ -11306,7 +11242,7 @@
     "z-ai/glm-5.3": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 1048576,
+        "contextWindow": 1310720,
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 0.0,
@@ -11335,10 +11271,10 @@
         "baseUrl": "https://api.kilo.ai/api/gateway",
         "contextWindow": 1310720,
         "cost": {
-            "cacheRead": 0.015,
+            "cacheRead": 0.03,
             "cacheWrite": 0.0,
-            "input": 0.075,
-            "output": 0.25
+            "input": 0.15,
+            "output": 0.5
         },
         "description": "GLM-5.3-Flash is a native multimodal model from Z.ai. It is suited for efficient coding and long-horizon agent tasks. Its hybrid sparse and linear attention architecture maintains accurate long-context behavior while...",
         "id": "z-ai/glm-5.3-flash",
@@ -11522,15 +11458,15 @@
         "baseUrl": "https://api.kilo.ai/api/gateway",
         "contextWindow": 1310720,
         "cost": {
-            "cacheRead": 0.007,
+            "cacheRead": 0.01,
             "cacheWrite": 0.0,
             "input": 0.03,
-            "output": 0.09999999999999999
+            "output": 0.16
         },
         "description": "This model always redirects to the latest model in the DeepSeek V4 Flash family.",
         "id": "~deepseek/deepseek-v4-flash-latest",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 393216,
         "name": "DeepSeek V4 Flash Latest",
         "provider": "kilo",
         "reasoning": true,
@@ -11554,10 +11490,10 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0375,
-            "cacheWrite": 0.020833,
-            "input": 0.375,
-            "output": 1.875
+            "cacheRead": 0.075,
+            "cacheWrite": 0.041667,
+            "input": 0.75,
+            "output": 3.75
         },
         "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
         "id": "~google/gemini-flash-latest",
@@ -11739,12 +11675,12 @@
     "~z-ai/glm-latest": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 1048576,
+        "contextWindow": 1310720,
         "cost": {
-            "cacheRead": 0.26,
+            "cacheRead": 0.24699999999999997,
             "cacheWrite": 0.0,
-            "input": 1.4,
-            "output": 4.4
+            "input": 1.1875,
+            "output": 4.18
         },
         "description": "This model always redirects to the latest GLM model from Z.ai.",
         "id": "~z-ai/glm-latest",

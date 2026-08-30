@@ -85,12 +85,12 @@
         "baseUrl": "https://ai.databyte.co.id/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0028,
+            "cacheRead": 0.0077,
             "cacheWrite": 0.0,
-            "input": 0.14,
-            "output": 0.28
+            "input": 0.242,
+            "output": 0.726
         },
-        "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
+        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-v4-flash",
         "input": ["text"],
         "maxTokens": 200000,
@@ -99,7 +99,7 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
+            "low": "low",
             "max": "max",
             "medium": null,
             "minimal": null,

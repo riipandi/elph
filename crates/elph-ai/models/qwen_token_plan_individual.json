@@ -11,12 +11,12 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0028,
+            "cacheRead": 0.0077,
             "cacheWrite": 0.0,
-            "input": 0.14,
-            "output": 0.28
+            "input": 0.242,
+            "output": 0.726
         },
-        "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
+        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-v4-flash",
         "input": ["text"],
         "maxTokens": 384000,
@@ -25,7 +25,7 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
+            "low": "low",
             "max": "max",
             "medium": null,
             "minimal": null,
@@ -44,12 +44,12 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.003625,
+            "cacheRead": 0.0242,
             "cacheWrite": 0.0,
-            "input": 0.435,
-            "output": 0.87
+            "input": 0.726,
+            "output": 2.178
         },
-        "description": "Open MoE flagship with million-token context for coding and long agent runs",
+        "description": "DeepSeek V4 Pro snapshot with million-token context and support for thinking and non-thinking modes",
         "id": "deepseek-v4-pro",
         "input": ["text"],
         "maxTokens": 384000,
@@ -76,16 +76,16 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.2817,
+            "cacheRead": 0.154,
             "cacheWrite": 0.0,
-            "input": 1.1268,
-            "output": 3.9438
+            "input": 1.54,
+            "output": 4.84
         },
         "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "glm-5.2",
         "input": ["text"],
-        "maxTokens": 128000,
-        "name": "GLM-5.2",
+        "maxTokens": 131072,
+        "name": "GLM 5.2",
         "provider": "qwen-token-plan-individual",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -94,7 +94,7 @@
             "max": "max",
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },

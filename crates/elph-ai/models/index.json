@@ -27,7 +27,7 @@
     {
         "providerId": "baseten",
         "rustMod": "baseten",
-        "count": 14
+        "count": 15
     },
     {
         "providerId": "cerebras",
@@ -37,12 +37,12 @@
     {
         "providerId": "cline",
         "rustMod": "cline",
-        "count": 7
+        "count": 8
     },
     {
         "providerId": "cline-pass",
         "rustMod": "cline_pass",
-        "count": 13
+        "count": 14
     },
     {
         "providerId": "cloudflare-ai-gateway",
@@ -67,7 +67,7 @@
     {
         "providerId": "fireworks",
         "rustMod": "fireworks",
-        "count": 17
+        "count": 18
     },
     {
         "providerId": "github-copilot",
@@ -97,7 +97,7 @@
     {
         "providerId": "huggingface",
         "rustMod": "huggingface",
-        "count": 133
+        "count": 135
     },
     {
         "providerId": "hyper",
@@ -112,7 +112,7 @@
     {
         "providerId": "kilo",
         "rustMod": "kilo",
-        "count": 368
+        "count": 366
     },
     {
         "providerId": "kimi-coding",
@@ -147,7 +147,7 @@
     {
         "providerId": "nara-router",
         "rustMod": "nara_router",
-        "count": 55
+        "count": 56
     },
     {
         "providerId": "neuralwatt",
@@ -162,7 +162,7 @@
     {
         "providerId": "ollama-cloud",
         "rustMod": "ollama_cloud",
-        "count": 18
+        "count": 19
     },
     {
         "providerId": "openai",
@@ -182,7 +182,7 @@
     {
         "providerId": "opencode-go",
         "rustMod": "opencode_go",
-        "count": 32
+        "count": 33
     },
     {
         "providerId": "opengateway",
@@ -192,7 +192,7 @@
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 387
+        "count": 396
     },
     {
         "providerId": "orca-router",

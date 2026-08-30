@@ -1584,18 +1584,18 @@
     "deepseek/deepseek-v4-pro": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
-        "contextWindow": 1048600,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.14,
+            "cacheRead": 0.022,
             "cacheWrite": 0.0,
-            "input": 1.74,
-            "output": 3.48
+            "input": 0.66,
+            "output": 1.98
         },
         "description": "Open MoE flagship with million-token context for coding and long agent runs",
         "id": "deepseek/deepseek-v4-pro",
         "input": ["text"],
         "knowledgeCutoff": "2025-05",
-        "maxTokens": 1048600,
+        "maxTokens": 384000,
         "name": "DeepSeek V4 Pro",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
@@ -2202,8 +2202,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 1050281.91,
-            "output": 1050281.91
+            "input": 1042383.24,
+            "output": 1042383.24
         },
         "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/llama-3.3-70b",
@@ -2496,7 +2496,7 @@
     "minimax/minimax-m3": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
-        "contextWindow": 1000000,
+        "contextWindow": 512000,
         "cost": {
             "cacheRead": 0.06,
             "cacheWrite": 0.0,
@@ -2506,7 +2506,7 @@
         "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "id": "minimax/minimax-m3",
         "input": ["text", "image", "pdf"],
-        "maxTokens": 1000000,
+        "maxTokens": 512000,
         "name": "MiniMax M3",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
@@ -3021,7 +3021,7 @@
         "baseUrl": "https://ai-gateway.vercel.sh",
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.19,
+            "cacheRead": 0.16,
             "cacheWrite": 0.0,
             "input": 0.95,
             "output": 4.0
@@ -4563,17 +4563,17 @@
     "tencent/hy3": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
-        "contextWindow": 256000,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.033,
+            "cacheRead": 0.035,
             "cacheWrite": 0.0,
-            "input": 0.132,
-            "output": 0.528
+            "input": 0.14,
+            "output": 0.58
         },
         "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "tencent/hy3",
         "input": ["text"],
-        "maxTokens": 128000,
+        "maxTokens": 262144,
         "name": "Hy3",
         "provider": "vercel-ai-gateway",
         "reasoning": true,

@@ -112,10 +112,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 976000,
         "cost": {
-            "cacheRead": 0.2817,
+            "cacheRead": 0.154,
             "cacheWrite": 0.0,
-            "input": 1.1268,
-            "output": 3.9438
+            "input": 1.54,
+            "output": 4.84
         },
         "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "glm-5.2",
@@ -134,14 +134,41 @@
             "xhigh": null
         }
     },
+    "glm-5.3": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.438,
+            "cacheWrite": 0.0,
+            "input": 1.75,
+            "output": 4.499
+        },
+        "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
+        "id": "glm-5.3",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-5.3",
+        "provider": "ollama-cloud",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "glm-5.3-flash": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.03,
+            "cacheRead": 0.05,
             "cacheWrite": 0.0,
-            "input": 0.15,
+            "input": 0.201,
             "output": 0.5
         },
         "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",

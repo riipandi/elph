@@ -1340,33 +1340,6 @@
             "xhigh": "xhigh"
         }
     },
-    "Qwen/Qwen3.8-27B": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.4,
-            "output": 3.0
-        },
-        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
-        "id": "Qwen/Qwen3.8-27B",
-        "input": ["text", "image"],
-        "maxTokens": 32768,
-        "name": "Qwen3.8 27B",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": "xhigh"
-        }
-    },
     "Sao10K/L3-8B-Lunaris-v1": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -2647,6 +2620,33 @@
             "xhigh": null
         }
     },
+    "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.15,
+            "cacheWrite": 0.5,
+            "input": 0.5,
+            "output": 2.5
+        },
+        "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
+        "id": "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16",
+        "input": ["text"],
+        "maxTokens": 65000,
+        "name": "Nemotron 3 Ultra 550B A55B",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -2655,7 +2655,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.6,
-            "output": 3.6
+            "output": 2.4
         },
         "id": "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4",
         "input": ["text"],
@@ -3339,20 +3339,20 @@
     "zai-org/GLM-4.6V": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
+        "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.15,
+            "cacheRead": 0.055,
             "cacheWrite": 0.0,
             "input": 0.3,
             "output": 0.9
         },
         "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "zai-org/GLM-4.6V",
-        "input": ["text", "image"],
-        "maxTokens": 24000,
+        "input": ["text", "video", "image"],
+        "maxTokens": 32768,
         "name": "GLM 4.6V",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -3453,8 +3453,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 816885.93,
-            "output": 2917449.75
+            "input": 810742.52,
+            "output": 2895509.0
         },
         "id": "zai-org/GLM-4.7-FP8",
         "input": ["text"],
@@ -3646,6 +3646,59 @@
             "xhigh": null
         }
     },
+    "zai-org/GLM-5.3": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 1.4,
+            "output": 4.4
+        },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
+        "id": "zai-org/GLM-5.3",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-5.3",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "zai-org/GLM-5.3-BF16": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "zai-org/GLM-5.3-BF16",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "zai-org/GLM-5.3-BF16",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
     "zai-org/GLM-5.3-Flash": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -3658,7 +3711,7 @@
         },
         "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
         "id": "zai-org/GLM-5.3-Flash",
-        "input": ["text"],
+        "input": ["text", "image"],
         "maxTokens": 131072,
         "name": "GLM-5.3-Flash",
         "provider": "huggingface",

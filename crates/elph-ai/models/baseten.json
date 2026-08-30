@@ -354,6 +354,33 @@
             "xhigh": null
         }
     },
+    "zai-org/GLM-5.3": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.14,
+            "cacheWrite": 0.0,
+            "input": 1.4,
+            "output": 4.4
+        },
+        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
+        "id": "zai-org/GLM-5.3",
+        "input": ["text"],
+        "maxTokens": 262144,
+        "name": "GLM 5.3",
+        "provider": "baseten",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "zai-org/GLM-5.3-Flash": {
         "api": "openai-completions",
         "baseUrl": "https://inference.baseten.co/v1",

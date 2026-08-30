@@ -5,10 +5,10 @@
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.017721200000000003,
+            "cacheRead": 0.015848,
             "cacheWrite": 0.0,
-            "input": 0.088606,
-            "output": 0.177212
+            "input": 0.07924,
+            "output": 0.15848
         },
         "description": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and...",
         "id": "cline-pass/deepseek-v4-flash",
@@ -32,10 +32,10 @@
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0725,
+            "cacheRead": 0.034771,
             "cacheWrite": 0.0,
-            "input": 0.87,
-            "output": 1.74
+            "input": 0.417252,
+            "output": 0.834504
         },
         "description": "DeepSeek V4 Pro is a large-scale Mixture-of-Experts model from DeepSeek with 1.6T total parameters and 49B activated parameters, supporting a 1M-token context window. It is designed for advanced reasoning, coding,...",
         "id": "cline-pass/deepseek-v4-pro",
@@ -84,7 +84,7 @@
     "cline-pass/glm-5.3": {
         "api": "openai-completions",
         "baseUrl": "https://api.cline.bot/api/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1310720,
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 0.0,
@@ -96,6 +96,33 @@
         "input": ["text"],
         "maxTokens": 128000,
         "name": "Z.ai: GLM 5.3",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "cline-pass/glm-5.3-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1310720,
+        "cost": {
+            "cacheRead": 0.015,
+            "cacheWrite": 0.0,
+            "input": 0.075,
+            "output": 0.25
+        },
+        "description": "GLM-5.3-Flash is a native multimodal model from Z.ai. It is suited for efficient coding and long-horizon agent tasks. Its hybrid sparse and linear attention architecture maintains accurate long-context behavior while...",
+        "id": "cline-pass/glm-5.3-flash",
+        "input": ["text", "image", "video"],
+        "maxTokens": 128000,
+        "name": "Z.ai: GLM 5.3 Flash",
         "provider": "cline-pass",
         "reasoning": true,
         "thinkingLevelMap": {

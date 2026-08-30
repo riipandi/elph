@@ -5275,7 +5275,7 @@
         },
         "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
         "id": "z-ai/glm-5.3-flash",
-        "input": ["text", "image", "video"],
+        "input": ["text", "image", "video", "pdf"],
         "maxTokens": 128000,
         "name": "GLM-5.3-Flash",
         "provider": "orca-router",

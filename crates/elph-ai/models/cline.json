@@ -27,15 +27,42 @@
             "xhigh": "xhigh"
         }
     },
+    "cline-free/longcat-2.0": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1048756,
+        "cost": {
+            "cacheRead": 0.006,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 1.2
+        },
+        "description": "LongCat 2.0 is a sparse mixture-of-experts language model from Meituan, with 48B active parameters out of 1.6T total. It is suited for coding, repository-level changes, long-horizon problem solving, and agentic...",
+        "id": "cline-free/longcat-2.0",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Meituan: LongCat 2.0",
+        "provider": "cline",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "deepseek/deepseek-v4-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.017721200000000003,
+            "cacheRead": 0.015848,
             "cacheWrite": 0.0,
-            "input": 0.088606,
-            "output": 0.177212
+            "input": 0.07924,
+            "output": 0.15848
         },
         "description": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and...",
         "id": "deepseek/deepseek-v4-flash",
