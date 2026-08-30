@@ -179,7 +179,7 @@ async fn run(args: &UpdateArgs, paths: &Paths) -> Result<()> {
     }
 
     print_human_update(&release, &current_tag, args.force_reinstall && !update_available);
-    install_release(&client, &release).await?;
+    install_release(&client, &release, paths).await?;
     if let Err(error) = record_install(paths, version_file, &release) {
         log::warn!("binary updated but could not update version.json: {error:#}");
     }
@@ -309,9 +309,10 @@ fn select_release(releases: &[GithubRelease], requested_tag: Option<&str>, chann
     })
 }
 
-async fn install_release(client: &reqwest::Client, release: &Release) -> Result<()> {
+async fn install_release(client: &reqwest::Client, release: &Release, paths: &Paths) -> Result<()> {
     let target = std::env::current_exe().context("locate the running elph binary")?;
-    let parent = target.parent().context("running binary has no parent directory")?;
+    let downloads = paths.downloads_dir();
+    fs::create_dir_all(&downloads).with_context(|| format!("create {}", downloads.display()))?;
     let archive_name = release_asset_name()?;
     let archive_url = release
         .archive_url
@@ -324,16 +325,16 @@ async fn install_release(client: &reqwest::Client, release: &Release) -> Result<
 
     let sty = CliStyle::auto_stderr();
     eprintln!("{}", sty.paint(S_MUTED, format!("  Downloading {archive_name}...")));
-    let archive = download(client, archive_url, parent)
+    let archive = download(client, archive_url, &downloads)
         .await
         .with_context(|| format!("download {archive_name}"))?;
-    let checksums = download(client, checksum_url, parent)
+    let checksums = download(client, checksum_url, &downloads)
         .await
         .context("download SHA256SUMS")?;
     let checksums = fs::read(checksums.path()).context("read SHA256SUMS")?;
     verify_checksum(archive.path(), &checksums, archive_name)?;
 
-    let mut binary = extract_binary(archive.path(), archive_name, parent)?;
+    let mut binary = extract_binary(archive.path(), archive_name, &downloads)?;
     install_binary(&target, binary.as_file_mut())?;
 
     Ok(())
