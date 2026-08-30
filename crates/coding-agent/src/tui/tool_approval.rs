@@ -11,7 +11,7 @@ use crate::agent::{ToolApprovalChoice, ToolApprovalRequest};
 #[cfg_attr(not(test), allow(dead_code))]
 pub const TOOL_APPROVAL_OPTION_COUNT: usize = 4;
 
-/// Default selected row when the dialog opens (Allow once).
+/// Default selected row when the dialog opens (Allow this call).
 pub const TOOL_APPROVAL_DEFAULT_INDEX: usize = 0;
 
 /// Pending approval retained in shell state until the user responds.
@@ -63,7 +63,7 @@ pub fn tool_approval_footer_hint_for(once_only: bool) -> String {
     }
 }
 
-/// Select-list rows for the tool-permission dialog (default selection: Allow once).
+/// Select-list rows for the tool-permission dialog (default selection: Allow this call).
 #[cfg(test)]
 pub fn tool_approval_select_options() -> Vec<SelectOption> {
     tool_approval_select_options_for(false)
@@ -71,13 +71,16 @@ pub fn tool_approval_select_options() -> Vec<SelectOption> {
 
 pub fn tool_approval_select_options_for(once_only: bool) -> Vec<SelectOption> {
     let rows: &[(&str, &str)] = if once_only {
-        &[("Allow once", "Allow this plan step"), ("Deny", "Ask again next time")]
+        &[
+            ("Allow this step", "Allow the tool for this plan step only"),
+            ("Deny this step", "Skip this step and ask for approval again later"),
+        ]
     } else {
         &[
-            ("Allow once", "Allow this one call"),
-            ("Allow session", "Tool on this session"),
-            ("Allow all tools", "All tools this run"),
-            ("Deny", "Ask again next time"),
+            ("Allow this call", "Allow this specific tool call only"),
+            ("Allow for this session", "Allow this tool for the rest of the current session"),
+            ("Allow all tools", "Allow all tools without asking again during this run"),
+            ("Deny this call", "Skip this call and ask for approval again if needed"),
         ]
     };
     rows.iter()
@@ -87,12 +90,12 @@ pub fn tool_approval_select_options_for(once_only: bool) -> Vec<SelectOption> {
 
 /// Map shortcut keys to tool-approval list indices.
 ///
-/// | Index | Choice           | Keys    |
-/// |-------|------------------|---------|
-/// | 0     | Allow once       | `y` `1` |
-/// | 1     | Allow session    | `a` `2` |
-/// | 2     | Allow all tools  | `*` `3` |
-/// | 3     | Deny             | `n` `4` |
+/// | Index | Choice                 | Keys    |
+/// |-------|------------------------|---------|
+/// | 0     | Allow this call        | `y` `1` |
+/// | 1     | Allow for this session | `a` `2` |
+/// | 2     | Allow all tools        | `*` `3` |
+/// | 3     | Deny this call         | `n` `4` |
 #[cfg(test)]
 pub fn pick_tool_approval_index_from_key(modifiers: KeyModifiers, code: KeyCode) -> Option<usize> {
     pick_tool_approval_index_from_key_for(modifiers, code, false)
@@ -433,11 +436,11 @@ mod tests {
     fn select_options_order_allow_then_deny() {
         let options = tool_approval_select_options();
         assert_eq!(options.len(), TOOL_APPROVAL_OPTION_COUNT);
-        assert_eq!(options[0].name, "Allow once");
-        assert_eq!(options[1].name, "Allow session");
+        assert_eq!(options[0].name, "Allow this call");
+        assert_eq!(options[1].name, "Allow for this session");
         assert_eq!(options[2].name, "Allow all tools");
-        assert_eq!(options[3].name, "Deny");
-        assert!(options[2].description.contains("All tools"));
+        assert_eq!(options[3].name, "Deny this call");
+        assert!(options[2].description.contains("Allow all tools"));
     }
 
     #[test]
@@ -453,8 +456,8 @@ mod tests {
     fn plan_once_only_has_two_actions() {
         let options = tool_approval_select_options_for(true);
         assert_eq!(options.len(), 2);
-        assert_eq!(options[0].name, "Allow once");
-        assert_eq!(options[1].name, "Deny");
+        assert_eq!(options[0].name, "Allow this step");
+        assert_eq!(options[1].name, "Deny this step");
         assert_eq!(choice_at_index_for(0, true), Some(ToolApprovalChoice::Approve));
         assert_eq!(choice_at_index_for(1, true), Some(ToolApprovalChoice::Reject));
         assert_eq!(
