@@ -1,6 +1,6 @@
 //! TUI startup bootstrap: staged agent session creation and deferred MCP discovery.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use anyhow::Result;
 use elph_agent::harness::FileSystem;
@@ -329,7 +329,7 @@ pub enum McpFooterLineKind {
 
 pub struct AgentBootstrap {
     pub session: Arc<CodingAgentSession>,
-    pub ui_rx: Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>,
+    pub ui_rx: Arc<tokio::sync::Mutex<UnboundedReceiver<AgentUiEvent>>>,
     pub session_id: String,
     /// Pre-populated transcript messages from the persisted session branch (for --resume).
     /// Empty for a brand-new session.
@@ -391,7 +391,7 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
 
     Ok(AgentBootstrap {
         session,
-        ui_rx: Arc::new(Mutex::new(ui_rx)),
+        ui_rx: Arc::new(tokio::sync::Mutex::new(ui_rx)),
         session_id,
         history_messages,
     })

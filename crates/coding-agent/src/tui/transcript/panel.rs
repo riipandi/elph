@@ -30,7 +30,7 @@ const MAX_MARKDOWN_PARSE_JOBS_PER_TICK: usize = 1;
 #[derive(Props)]
 pub struct TranscriptPanelProps {
     pub screen_width: u16,
-    pub messages: Option<State<Vec<TranscriptMessage>>>,
+    pub messages: Option<State<Arc<RwLock<Vec<TranscriptMessage>>>>>,
     /// Bumped when `messages` changes — avoids re-hashing on scroll-only re-renders.
     /// Also written by clickable process headers when expand/collapse toggles.
     pub messages_revision: Option<State<u64>>,
@@ -104,7 +104,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
     // Cache for full StickyHeaderLayout — avoids WrappedTextLayout per frame.
     let mut sticky_header_cache = hooks.use_ref(StickyHeaderCache::default);
     let mut markdown_layout_revision = hooks.use_state(|| 0u64);
-    let empty_messages = hooks.use_state(Vec::<TranscriptMessage>::new);
+    let empty_messages = hooks.use_state(|| Arc::new(RwLock::new(Vec::<TranscriptMessage>::new())));
     let mut messages_state = props.messages.unwrap_or(empty_messages);
     // Arc<RwLock> decouples panel from shell's State dirt chain.
     // When available, panel reads/writes the arc directly.
@@ -139,7 +139,8 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                 let jobs = collect_markdown_parse_jobs(&msgs);
                 (changed, jobs)
             } else {
-                let mut msgs = messages_state.write();
+                let arc_ref = messages_state.write();
+                let mut msgs = arc_ref.write().unwrap();
                 let changed = partition_assistant_markdown(&mut msgs, width);
                 let jobs = collect_markdown_parse_jobs(&msgs);
                 (changed, jobs)
@@ -158,7 +159,8 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                         parsed = true;
                     }
                 } else {
-                    let mut msgs = messages_state.write();
+                    let arc_ref = messages_state.write();
+                    let mut msgs = arc_ref.write().unwrap();
                     if apply_markdown_parse_result(&mut msgs, &job, document) {
                         parsed = true;
                     }
@@ -171,7 +173,9 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         }
     });
 
-    let messages = messages_state.read();
+    let messages_guard = messages_state.read();
+    let msgs_guard = messages_guard.read().unwrap();
+    let messages: &Vec<TranscriptMessage> = &msgs_guard;
     let messages_revision_value = props.messages_revision.map(|s| s.get()).unwrap_or(0);
 
     // Streaming content changes every tick but `messages_revision` only updates at the
@@ -206,7 +210,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
             .as_ref()
             .map(|c| c.layout_cache.clone())
             .unwrap_or_default();
-        let row_layouts = layout_transcript_rows_cached(&messages, props.screen_width, &mut layout_cache);
+        let row_layouts = layout_transcript_rows_cached(messages, props.screen_width, &mut layout_cache);
         // After archival the message count drops sharply; release the layout cache's
         // retired capacity so it does not hold memory for hundreds of gone messages.
         if layout_cache.capacity_exceeds(row_layouts.len()) {
@@ -409,7 +413,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
     // becomes fixed-height spacers so spinner/chrome re-renders stay cheap on long logs.
     let bubbles = build_transcript_bubbles_windowed(
         props.screen_width,
-        &messages,
+        messages,
         row_layouts,
         effective_scroll_offset,
         scroll_zone as u32,

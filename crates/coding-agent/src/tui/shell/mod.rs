@@ -306,8 +306,18 @@ impl elph_ai::auth::AuthLoginCallbacks for OAuthLoginCallbacksImpl {
 
 // ── Constants ────────────────────────────────────────────────────────
 
-const SHELL_TICK_MS: u64 = 50;
-const CHROME_REFRESH_TICKS: u32 = 20;
+/// Coarse housekeeping tick for the event-driven shell loop: the loop parks on an agent UI
+/// event and only falls back to this interval when idle (to keep periodic tasks like chrome
+/// refresh / ephemeral-expiry / layout polling alive). 200 ms keeps animations smooth while
+/// cutting idle wakeups ~5x versus the old fixed 50 ms poll.
+const SHELL_IDLE_HOUSEKEEPING_MS: u64 = 200;
+/// How often the shell loop re-scans the git worktree for the chrome footer (branch + dirty
+/// counts). The scan goes through `git2` (`git_status_list_new`) and is the single most
+/// expensive periodic task while idle, so it is throttled far below the 1 s chrome cadence.
+/// Branch / dirty state changes rarely between scans, and explicit `chrome_refresh_pending`
+/// events still force an immediate rescan, so 10 s keeps the footer accurate without burning
+/// CPU re-reading the worktree every second.
+const GIT_FOOTER_REFRESH_SECS: u64 = 10;
 /// Base transcript publish interval while streaming (~10 Hz). Status spinner ticks in StatusRow.
 const TRANSCRIPT_PUBLISH_MS: u64 = 100;
 /// Faster transcript refresh while startup status lines are updating.
@@ -342,7 +352,7 @@ pub struct MainShellProps {
     /// Transcript log density for collapsed tool-call items (see `settings.ui.density`).
     pub density: LogDensity,
     pub agent_session: Option<Arc<CodingAgentSession>>,
-    pub ui_events: Option<Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>>,
+    pub ui_events: Option<Arc<tokio::sync::Mutex<UnboundedReceiver<AgentUiEvent>>>>,
     pub hook_host: HookHost,
     pub slash_commands: Vec<SlashCommand>,
     pub prompt_templates: Vec<PromptTemplate>,
@@ -416,10 +426,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let draft = hooks.use_state(String::new);
     let live_draft = hooks.use_ref(String::new);
     let input_prefix_kind = hooks.use_ref(InputPrefixKind::default);
-    let startup_messages = props.startup_messages.clone();
-    let messages = hooks.use_state(move || startup_messages);
     let startup_messages_arc = props.startup_messages.clone();
     let messages_arc = hooks.use_ref(move || Arc::new(RwLock::new(startup_messages_arc)));
+    // Share the same RwLock as `messages_arc` so the transcript is stored exactly once
+    // (the State is just another handle to the buffer the tick loop and panel read/write).
+    let shared_messages = messages_arc.read().clone();
+    let messages = hooks.use_state(move || shared_messages.clone());
 
     let messages_revision = hooks.use_state(|| 0u64);
     let suppress_enter_newline = hooks.use_ref(|| false);
@@ -595,7 +607,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let git_footer = hooks.use_state(|| props.initial_git_footer.clone());
     // Start at 1 so the first Footer paint depends on chrome_revision (iocraft child identity).
     let chrome_ui_revision = hooks.use_state(|| 1u64);
-    let chrome_tick = hooks.use_ref(|| 0u32);
     // A state update only recomputes the canvas; it cannot repair terminal cells overwritten by
     // startup output when the resulting pixels are unchanged. Request one full terminal rewrite
     // after the first chrome pass and after each bootstrap event.
@@ -682,7 +693,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         chrome_full_redraw_pending,
         chrome_refresh_pending,
         chrome_stats,
-        chrome_tick,
         chrome_ui_revision,
         clipboard_toast,
         image_attachments,

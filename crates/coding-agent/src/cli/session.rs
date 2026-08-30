@@ -48,7 +48,8 @@ pub enum SessionCommands {
         /// Report candidates only; do not delete
         #[arg(long)]
         dry_run: bool,
-        /// Apply to all projects in the store (default: current cwd only for listing; GC is global with cwd protect)
+        /// Prune every policy-eligible session, including the latest session of
+        /// each project (by default the most recent session per project is kept).
         #[arg(long)]
         all: bool,
     },
@@ -106,7 +107,7 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
         }
         SessionCommands::Pin { id } => pin_session(&paths, id, true),
         SessionCommands::Unpin { id } => pin_session(&paths, id, false),
-        SessionCommands::Prune { dry_run, all: _all } => prune_sessions(&paths, *dry_run),
+        SessionCommands::Prune { dry_run, all } => prune_sessions(&paths, *dry_run, *all),
     }
 }
 
@@ -130,7 +131,7 @@ fn pin_session(paths: &Paths, id: &str, pinned: bool) -> ExitCode {
     }
 }
 
-fn prune_sessions(paths: &Paths, dry_run: bool) -> ExitCode {
+fn prune_sessions(paths: &Paths, dry_run: bool, all: bool) -> ExitCode {
     match elph_agent::runtime::block_on(async {
         let settings = crate::platform::Settings::load(paths)?;
         let r = &settings.session;
@@ -143,7 +144,9 @@ fn prune_sessions(paths: &Paths, dry_run: bool) -> ExitCode {
             max_sessions_per_cwd: r.max_sessions_per_cwd,
             max_session_age_days: r.max_session_age_days,
             max_store_db_bytes: r.max_store_db_bytes,
-            protect_latest_per_cwd: r.protect_latest_per_cwd,
+            // `--all` also prunes the most recent session of each project
+            // (by default the latest per cwd is kept).
+            protect_latest_per_cwd: r.protect_latest_per_cwd && !all,
             protect_session_id: None,
         };
         elph_agent::session::run_full_session_gc(
@@ -229,8 +232,8 @@ fn list_sessions(manager: &SessionManager, cwd: &std::path::Path, query: Option<
                         out,
                         "   {}  created {}  ·  updated {}  ·  {}",
                         sty.paint(S_MUTED, "·"),
-                        sty.paint(S_MUTED, &meta.created_at[..10]),
-                        sty.paint(S_MUTED, &meta.updated_at[..10]),
+                        sty.paint(S_MUTED, &meta.created_at[..10.min(meta.created_at.len())]),
+                        sty.paint(S_MUTED, &meta.updated_at[..10.min(meta.updated_at.len())]),
                         sty.paint(S_MUTED, &meta.cwd),
                     );
                 }

@@ -4,8 +4,11 @@
 //! Host platform DBs also hold `goals` / `agent_spawn_edges` in the same file;
 //! this backend never mutates those tables.
 
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+use tokio::sync::Mutex;
 
 use crate::datastore::migrations::run as run_migrations;
 use crate::datastore::with_write_transaction;
@@ -54,6 +57,51 @@ pub struct TursoSessionStorage {
     /// connects from this handle instead of opening `db_path` — the host owns
     /// the open/apply-migrations lifetime.
     database: Option<Arc<Database>>,
+    /// A single reused libSQL connection for this storage instance. libSQL has
+    /// no built-in pool, so the old code opened a fresh connection (with its own
+    /// page cache + prepared-statement cache) on every tree-entry write / touch,
+    /// churning memory and cache under a long session. [`TursoSessionStorage::connection`]
+    /// hands out a [`ReusableConn`] that returns the connection to this cache on
+    /// drop, so all writes to one session reuse one connection. Clones share the
+    /// `Arc`, so concurrent writers serialize on the single connection (correct
+    /// for SQLite single-writer).
+    conn_cache: Arc<Mutex<Option<turso::Connection>>>,
+}
+
+/// A `turso::Connection` handle that returns itself to the storage's connection
+/// cache when dropped, so connections are reused instead of re-created per call.
+/// Derefs to `turso::Connection`, so existing call sites (`conn.execute`,
+/// `with_write_transaction(&conn, ...)`) keep working unchanged.
+struct ReusableConn {
+    inner: Option<turso::Connection>,
+    cache: Arc<Mutex<Option<turso::Connection>>>,
+}
+
+impl Deref for ReusableConn {
+    type Target = turso::Connection;
+    fn deref(&self) -> &turso::Connection {
+        self.inner.as_ref().unwrap()
+    }
+}
+
+impl DerefMut for ReusableConn {
+    fn deref_mut(&mut self) -> &mut turso::Connection {
+        self.inner.as_mut().unwrap()
+    }
+}
+
+impl Drop for ReusableConn {
+    fn drop(&mut self) {
+        if let Some(conn) = self.inner.take() {
+            // Return to the cache if it is still empty; otherwise the connection
+            // is closed (a concurrent checkout already refilled the cache).
+            if let Ok(mut guard) = self.cache.try_lock()
+                && guard.is_none()
+            {
+                *guard = Some(conn);
+            }
+        }
+    }
 }
 
 impl TursoSessionStorage {
@@ -134,6 +182,7 @@ impl TursoSessionStorage {
             metadata,
             index,
             database,
+            conn_cache: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -232,6 +281,7 @@ impl TursoSessionStorage {
             metadata,
             index: build_index(Vec::new(), None)?,
             database: Some(database),
+            conn_cache: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -261,14 +311,26 @@ impl TursoSessionStorage {
         Ok(())
     }
 
-    async fn connection(&self) -> Result<turso::Connection, SessionError> {
-        match &self.database {
-            Some(db) => connect_configured(db).await,
-            None => {
-                let db = open_db(&self.db_path).await?;
-                connect_configured(&db).await
-            }
+    async fn connection(&self) -> Result<ReusableConn, SessionError> {
+        // Fast path: reuse a connection already in the cache (no new connection,
+        // no fresh page/statement-cache churn).
+        if let Some(conn) = self.conn_cache.lock().await.take() {
+            return Ok(ReusableConn {
+                inner: Some(conn),
+                cache: self.conn_cache.clone(),
+            });
         }
+        // Slow path: connect (no lock held during the async connect).
+        let db = match &self.database {
+            Some(db) => db.clone(),
+            None => Arc::new(open_db(&self.db_path).await?),
+        };
+        let conn = connect_configured(&db).await?;
+        // Hand out the new connection; it returns to `conn_cache` on drop.
+        Ok(ReusableConn {
+            inner: Some(conn),
+            cache: self.conn_cache.clone(),
+        })
     }
 
     async fn persist_leaf_id(

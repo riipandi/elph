@@ -11,7 +11,7 @@ use crate::agent::{ToolApprovalChoice, ToolApprovalRequest};
 #[cfg_attr(not(test), allow(dead_code))]
 pub const TOOL_APPROVAL_OPTION_COUNT: usize = 4;
 
-/// Default selected row when the dialog opens (Allow this call).
+/// Default selected row when the dialog opens (Allow this once).
 pub const TOOL_APPROVAL_DEFAULT_INDEX: usize = 0;
 
 /// Pending approval retained in shell state until the user responds.
@@ -63,7 +63,7 @@ pub fn tool_approval_footer_hint_for(once_only: bool) -> String {
     }
 }
 
-/// Select-list rows for the tool-permission dialog (default selection: Allow this call).
+/// Select-list rows for the tool-permission dialog (default selection: Allow this once).
 #[cfg(test)]
 pub fn tool_approval_select_options() -> Vec<SelectOption> {
     tool_approval_select_options_for(false)
@@ -77,8 +77,8 @@ pub fn tool_approval_select_options_for(once_only: bool) -> Vec<SelectOption> {
         ]
     } else {
         &[
-            ("Allow this call", "Allow this specific tool call only"),
-            ("Allow for this session", "Allow this tool for the rest of the current session"),
+            ("Allow this once", "Allow this specific tool call only"),
+            ("Allow this session", "Allow this tool for the rest of the current session"),
             ("Allow all tools", "Allow all tools without asking again during this run"),
             ("Deny this call", "Skip this call and ask for approval again if needed"),
         ]
@@ -90,12 +90,12 @@ pub fn tool_approval_select_options_for(once_only: bool) -> Vec<SelectOption> {
 
 /// Map shortcut keys to tool-approval list indices.
 ///
-/// | Index | Choice                 | Keys    |
-/// |-------|------------------------|---------|
-/// | 0     | Allow this call        | `y` `1` |
-/// | 1     | Allow for this session | `a` `2` |
-/// | 2     | Allow all tools        | `*` `3` |
-/// | 3     | Deny this call         | `n` `4` |
+/// | Index | Choice             | Keys    |
+/// |-------|--------------------|---------|
+/// | 0     | Allow this once    | `y` `1` |
+/// | 1     | Allow this session | `a` `2` |
+/// | 2     | Allow all tools    | `*` `3` |
+/// | 3     | Deny this call     | `n` `4` |
 #[cfg(test)]
 pub fn pick_tool_approval_index_from_key(modifiers: KeyModifiers, code: KeyCode) -> Option<usize> {
     pick_tool_approval_index_from_key_for(modifiers, code, false)
@@ -436,8 +436,8 @@ mod tests {
     fn select_options_order_allow_then_deny() {
         let options = tool_approval_select_options();
         assert_eq!(options.len(), TOOL_APPROVAL_OPTION_COUNT);
-        assert_eq!(options[0].name, "Allow this call");
-        assert_eq!(options[1].name, "Allow for this session");
+        assert_eq!(options[0].name, "Allow this once");
+        assert_eq!(options[1].name, "Allow this session");
         assert_eq!(options[2].name, "Allow all tools");
         assert_eq!(options[3].name, "Deny this call");
         assert!(options[2].description.contains("Allow all tools"));

@@ -252,7 +252,8 @@ fn ProcessHeaderToggle(props: &mut ProcessHeaderToggleProps) -> impl Into<AnyEle
         Button(
             has_focus: false,
             handler: move |_| {
-                let mut msgs = messages.write();
+                let arc_ref = messages.write();
+                let mut msgs = arc_ref.write().unwrap();
                 if toggle_collapsible_detail_at(&mut msgs, index) {
                     drop(msgs);
                     messages_revision.set(messages_revision.get().wrapping_add(1));

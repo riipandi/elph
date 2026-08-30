@@ -56,7 +56,7 @@ pub(crate) fn build_shell_view(
         mention_index,
         mut mention_index_requested,
         mut messages,
-        mut messages_arc,
+        messages_arc,
         mut messages_revision,
         mut model_filter,
         mut model_input_focus,
@@ -212,7 +212,6 @@ pub(crate) fn build_shell_view(
                 queue_manager_open: &mut queue_manager_open,
                 queue_manager_selected: &mut queue_manager_selected,
                 queue_manager_action: &mut queue_manager_action,
-                messages_arc: &mut messages_arc,
             },
         );
         if mark_busy_for_idle.is_some() {
@@ -249,7 +248,7 @@ pub(crate) fn build_shell_view(
         let session_title = crate::agent::session_title_for_rename(agent_session.as_ref())
             .ok()
             .filter(|title| !title.trim().is_empty());
-        let submitted = count_submitted_user_prompts(&messages.read());
+        let submitted = count_submitted_user_prompts(&messages.read().read().unwrap());
         let persisted_turns = chrome.turn_count;
         record_if_active(
             ExitSnapshot {
@@ -553,7 +552,6 @@ pub(crate) fn build_shell_view(
                                 let notice = format!("Session renamed to “{}”.", title.trim());
                                 push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(notice, TranscriptStyle::Meta),
@@ -562,7 +560,6 @@ pub(crate) fn build_shell_view(
                             Err(message) => {
                                 push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -1146,7 +1143,6 @@ pub(crate) fn build_shell_view(
                                 {
                                     push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -1176,7 +1172,6 @@ pub(crate) fn build_shell_view(
                                 {
                                     push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -1224,7 +1219,6 @@ pub(crate) fn build_shell_view(
                             {
                                 push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -1277,7 +1271,6 @@ pub(crate) fn build_shell_view(
                             {
                                 push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -1490,7 +1483,8 @@ pub(crate) fn build_shell_view(
                             if let Some(pending) = pending_plan_confirmation.write().take() {
                                 let key = plan_confirmation_transcript_key();
                                 {
-                                    let mut msgs = messages.write();
+                                    let arc_ref = messages.write();
+                                    let mut msgs = arc_ref.write().unwrap();
                                     if let Some(row) =
                                         msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
                                     {
@@ -1560,7 +1554,6 @@ pub(crate) fn build_shell_view(
                             image_attachments.set(Vec::new());
                             push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text("Empty command.", TranscriptStyle::Meta),
@@ -1583,14 +1576,14 @@ pub(crate) fn build_shell_view(
                             submitted.submitted_at = Some(chrono::Utc::now());
                             push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 submitted);
 
                             let tool_id = next_user_shell_tool_id();
                             {
-                                let mut msgs = messages.write();
+                                let arc_ref = messages.write();
+                                let mut msgs = arc_ref.write().unwrap();
                                 if event_applier.write().apply(
                                     &mut msgs,
                                     AgentUiEvent::ToolStart {
@@ -1600,9 +1593,6 @@ pub(crate) fn build_shell_view(
                                         user_shell: true,
                                     },
                                 ) {
-                                    // Sync to shared arc so background ToolUpdate/ToolEnd
-                                    // (which read from messages_arc_inner) find the message.
-                                    *messages_arc.write().write().unwrap() = msgs.clone();
                                     messages_revision.set(messages_revision.get().wrapping_add(1));
                                 }
                             }
@@ -1696,8 +1686,6 @@ pub(crate) fn build_shell_view(
                             );
                             if submitted.style.is_user_input_card() {
                                 submitted.submitted_at = Some(chrono::Utc::now());
-                                // Sync to shared arc so the arc-to-state sync never loses this pre-echoed prompt.
-                                messages_arc.write().write().unwrap().push(submitted.clone());
                                 pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                             }
                             push_transcript_message(
@@ -1758,16 +1746,13 @@ pub(crate) fn build_shell_view(
                                 ));
 
                                 // Reset transcript to a clean "Starting new session…" line
-                                messages.set(vec![TranscriptMessage::startup_status(
+                                messages.write().write().unwrap().push(TranscriptMessage::startup_status(
                                     crate::tui::startup::STARTUP_KEY_PHASE,
                                     "Starting new session…".to_string(),
                                     TranscriptStyle::StatusRunning,
-                                )]);
+                                ));
                                 messages_revision.set(messages_revision.get().wrapping_add(1));
 
-                                // Flush the shared arc so the arc-to-state sync does not
-                                // restore the old transcript on the next tick.
-                                *messages_arc.write().write().unwrap() = messages.read().clone();
 
                                 // Clear prompt history (Arrow Up) so old entries don't
                                 // reappear in the new session.
@@ -1813,7 +1798,6 @@ pub(crate) fn build_shell_view(
                                 suppress_enter_newline.set(true);
                                 push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(
@@ -1826,7 +1810,6 @@ pub(crate) fn build_shell_view(
                             SlashOutcome::Status(message) => {
                                 push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -1835,7 +1818,6 @@ pub(crate) fn build_shell_view(
                             SlashOutcome::TrustChanged { message, trusted } => {
                                 push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -1853,7 +1835,6 @@ pub(crate) fn build_shell_view(
                             SlashOutcome::Unimplemented(message) => {
                                 push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -2251,7 +2232,6 @@ pub(crate) fn build_shell_view(
                             SlashOutcome::OverlayDeferred(overlay) => {
                                 push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
@@ -2289,10 +2269,9 @@ pub(crate) fn build_shell_view(
                                     // The command was already dispatched by handle_slash_submit
                                     // (turn_gate queues it behind the active turn). Tell the user —
                                     // do NOT push raw slash text as a follow-up prompt to the model.
-                                    let notice = format!("Command {slash_input} queued — runs after the current task.");
+                                    let notice = format!("Command {slash_input}queued — runs after the current task.");
                                     push_transcript_message_synced(
                                         &mut messages,
-                                        messages_arc,
                                         &mut messages_revision,
                                         &mut prompt_history,
                                         TranscriptMessage::text(notice, TranscriptStyle::Meta),
@@ -2359,7 +2338,6 @@ pub(crate) fn build_shell_view(
                                     crate::tui::prompt::images::remove_files(&prompt_attachments);
                                     push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(

@@ -42,7 +42,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut live_draft,
         mention_index,
         messages,
-        messages_arc,
         messages_revision,
         model_filter,
         model_input_focus,
@@ -136,8 +135,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     let cwd_for_keys = cwd.clone();
     let mut messages = messages;
     let mut messages_revision = messages_revision;
-    // Copy for terminal-events closure so pre-echo paths can sync to the shared arc.
-    let mut messages_arc = messages_arc;
 
     // Mouse wheel over the `/aside` panel scrolls its answer. The transcript wheel
     // is locked while the panel is open, so the wheel can't also scroll the
@@ -362,8 +359,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             if let Some(session) = agent_session.as_ref() {
                 let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
                 submitted.submitted_at = Some(chrono::Utc::now());
-                // Sync to shared arc so the arc-to-state sync never loses this pre-echoed prompt.
-                messages_arc.write().write().unwrap().push(submitted.clone());
                 push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, submitted);
                 pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                 if agent_turn_active.get() {
@@ -414,8 +409,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
                 let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
                 submitted.submitted_at = Some(chrono::Utc::now());
-                // Sync to shared arc so the arc-to-state sync never loses this pre-echoed prompt.
-                messages_arc.write().write().unwrap().push(submitted.clone());
                 push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, submitted);
                 pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                 if let Some(session) = agent_session.as_ref() {
@@ -473,7 +466,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             // UserPromptCommitted from the agent loop so it does not render twice.
             let mut notice = TranscriptMessage::text(CONTINUE_META_LABEL.to_string(), TranscriptStyle::Meta);
             notice.sticky_meta = true;
-            messages_arc.write().write().unwrap().push(notice.clone());
             push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, notice);
             pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
             agent_turn_active.set(true);
@@ -653,7 +645,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         }
                         push_transcript_message_synced(
                             &mut messages,
-                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(format!("→ {worker_id}: {body}"), TranscriptStyle::Meta),
@@ -757,7 +748,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 if let Some(notice) = notice {
                     push_transcript_message_synced(
                         &mut messages,
-                        messages_arc,
                         &mut messages_revision,
                         &mut prompt_history,
                         crate::tui::transcript::TranscriptMessage::text(
@@ -936,7 +926,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         queue_manager_open: &mut queue_manager_open,
                         queue_manager_selected: &mut queue_manager_selected,
                         queue_manager_action: &mut queue_manager_action,
-                        messages_arc: &mut messages_arc,
                     },
                 );
                 // Send while idle: interject spawn runs the turn; mark shell busy UI only.
@@ -1083,7 +1072,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     save_scoped_models(pending, &paths_snapshot, &mut session_scoped_items.write());
                     push_transcript_message_synced(
                         &mut messages,
-                        messages_arc,
                         &mut messages_revision,
                         &mut prompt_history,
                         TranscriptMessage::text(
@@ -1250,7 +1238,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         }
                         push_transcript_message_synced(
                             &mut messages,
-                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(format!("Resuming session {value}…"), TranscriptStyle::Meta),
@@ -1261,7 +1248,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         let Some(session) = agent_session.as_ref().map(Arc::clone) else {
                             push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(
@@ -1281,7 +1267,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             Ok(Ok(())) => {
                                 push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(
@@ -1298,7 +1283,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             Ok(Err(e)) => {
                                 push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(
@@ -1310,7 +1294,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             Err(e) => {
                                 push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(
@@ -1634,7 +1617,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         Err(err) => {
                             push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
@@ -1837,7 +1819,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             {
                 push_transcript_message_synced(
                     &mut messages,
-                    messages_arc,
                     &mut messages_revision,
                     &mut prompt_history,
                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -1880,7 +1861,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     ToolApprovalChoice::Reject => (TranscriptStyle::StatusFailed, format!("{verb} · denied")),
                 };
                 {
-                    let mut msgs = messages.write();
+                    let arc_ref = messages.write();
+                    let mut msgs = arc_ref.write().unwrap();
                     if let Some(row) = msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str())) {
                         row.content = "Tool approval".to_string();
                         row.status_detail = Some(detail);
@@ -1931,7 +1913,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 agent_mode.set(mode);
                 // Update the transcript status row.
                 {
-                    let mut msgs = messages.write();
+                    let arc_ref = messages.write();
+                    let mut msgs = arc_ref.write().unwrap();
                     let key = "mode-change:pending";
                     let (style, detail) = if approved {
                         (TranscriptStyle::StatusSuccess, format!("Switched to {mode_label}"))
@@ -2058,7 +2041,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                                 PlanChoice::RevisePlan => unreachable!(),
                             };
                             {
-                                let mut msgs = messages.write();
+                                let arc_ref = messages.write();
+                                let mut msgs = arc_ref.write().unwrap();
                                 if let Some(row) =
                                     msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
                                 {
@@ -3037,7 +3021,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     let provider_name = format_provider_name(&pid);
                     push_transcript_message_synced(
                         &mut messages,
-                        messages_arc,
                         &mut messages_revision,
                         &mut prompt_history,
                         TranscriptMessage::text(format!("Signed out from {provider_name}"), TranscriptStyle::Meta),
@@ -3367,7 +3350,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             {
                 push_transcript_message_synced(
                     &mut messages,
-                    messages_arc,
                     &mut messages_revision,
                     &mut prompt_history,
                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -3431,7 +3413,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             ) {
                 push_transcript_message_synced(
                     &mut messages,
-                    messages_arc,
                     &mut messages_revision,
                     &mut prompt_history,
                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -3477,7 +3458,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             {
                 push_transcript_message_synced(
                     &mut messages,
-                    messages_arc,
                     &mut messages_revision,
                     &mut prompt_history,
                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -3604,8 +3584,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         TranscriptMessage::text(formatted_echo, TranscriptStyle::for_slash_turn_echo(&slash_input));
                     if submitted.style.is_user_input_card() {
                         submitted.submitted_at = Some(chrono::Utc::now());
-                        // Sync to shared arc so the arc-to-state sync never loses this pre-echoed prompt.
-                        messages_arc.write().write().unwrap().push(submitted.clone());
                         pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                     }
                     push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, submitted);
@@ -3938,7 +3916,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     SlashOutcome::OverlayDeferred(overlay) => {
                         push_transcript_message_synced(
                             &mut messages,
-                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
@@ -3957,7 +3934,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         suppress_enter_newline.set(true);
                         push_transcript_message_synced(
                             &mut messages,
-                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(format!("Resuming session {session_id}…"), TranscriptStyle::Meta),
@@ -3967,7 +3943,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     SlashOutcome::Status(message) => {
                         push_transcript_message_synced(
                             &mut messages,
-                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -3976,7 +3951,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     SlashOutcome::TrustChanged { message, trusted } => {
                         push_transcript_message_synced(
                             &mut messages,
-                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -3994,7 +3968,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     SlashOutcome::Unimplemented(message) => {
                         push_transcript_message_synced(
                             &mut messages,
-                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -4008,10 +3981,9 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             // The command was already dispatched by handle_slash_submit
                             // (turn_gate queues it behind the active turn). Tell the user —
                             // do NOT push raw slash text as a follow-up prompt to the model.
-                            let notice = format!("Command {slash_input} queued — runs after the current task.");
+                            let notice = format!("Command {slash_input}queued — runs after the current task.");
                             push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(notice, TranscriptStyle::Meta),
@@ -4355,7 +4327,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 Err(err) => {
                     push_transcript_message_synced(
                         &mut messages,
-                        messages_arc,
                         &mut messages_revision,
                         &mut prompt_history,
                         TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
@@ -4461,7 +4432,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         // Ctrl+O: expand/collapse the most recent finished thinking / tool / response block.
         // Click a process header to toggle that specific older result (iocraft Button hit-test).
         (m, KeyCode::Char(c)) if m.contains(KeyModifiers::CONTROL) && matches!(c, 'o' | 'O') => {
-            let mut msgs = messages.write();
+            let arc_ref = messages.write();
+            let mut msgs = arc_ref.write().unwrap();
             if toggle_latest_collapsible_detail(&mut msgs) {
                 drop(msgs);
                 messages_revision.set(messages_revision.get().wrapping_add(1));

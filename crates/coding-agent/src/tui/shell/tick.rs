@@ -22,7 +22,6 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut chrome_full_redraw_pending,
         mut chrome_refresh_pending,
         mut chrome_stats,
-        mut chrome_tick,
         mut chrome_ui_revision,
         mut confetti_frame,
         mut confetti_runtime,
@@ -112,10 +111,33 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         pending_subagent_output,
         ..
     } = ctx;
-    loop {
-        tokio::time::sleep(Duration::from_millis(SHELL_TICK_MS)).await;
 
-        poll_layout_screen_size(&mut layout_screen_size_for_loop);
+    // Idle-CPU guards: track the last messages revision / chrome-refresh / layout-poll
+    // timestamps so the tick loop only performs synchronization work when something actually
+    // changed instead of on every fixed 50 ms wakeup.
+    let mut last_chrome_refresh = Instant::now();
+    let mut last_layout_poll = Instant::now();
+    // Throttle the git worktree scan that feeds the chrome footer (branch / dirty counts).
+    let mut last_git_footer_refresh = Instant::now();
+
+    loop {
+        // Event-driven wake: park the task until an agent UI event arrives (immediate,
+        // low-latency) or the coarse housekeeping deadline elapses (keeps periodic tasks alive
+        // while idle). This replaces the old fixed-rate 50 ms poll so the shell stops burning
+        // CPU when nothing is happening.
+        let ui_events = ui_events_slot.read().clone();
+        let mut wake_event: Option<AgentUiEvent> = None;
+        tokio::select! {
+            ev = wait_one_ui_event(&ui_events) => { wake_event = ev; }
+            _ = tokio::time::sleep(Duration::from_millis(SHELL_IDLE_HOUSEKEEPING_MS)) => {}
+        }
+
+        // Terminal size is also refreshed on resize via the `use_terminal_size` hook in the
+        // render path, so re-poll here at most every 500 ms (cheap syscall throttle).
+        if last_layout_poll.elapsed() >= Duration::from_millis(500) {
+            poll_layout_screen_size(&mut layout_screen_size_for_loop);
+            last_layout_poll = Instant::now();
+        }
 
         // Time-based debounce: auto-clear shift-held after 10 seconds of no Shift
         // key press. The user holds Shift, selects text for several seconds,
@@ -142,7 +164,8 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 activity_started_at.set(Some(Instant::now()));
                 activity_label.set(bootstrap_activity_label(BootstrapPhase::Running, Some("Preparing agent")));
                 {
-                    let mut msgs = messages.write();
+                    let arc_ref = messages.write();
+                    let mut msgs = arc_ref.write().unwrap();
                     begin_agent_startup(&mut msgs);
                 }
                 publish_transcript_now(&mut messages_revision, &mut transcript_pending, &mut last_transcript_publish);
@@ -208,9 +231,12 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             }
         }
 
-        // Sync bootstrap messages from State back to the arc so the arc sync
-        // (which runs on the next agent event) does not overwrite them.
-        *messages_arc_inner.write().unwrap() = messages.read().clone();
+        // Sync bootstrap/transcript messages from State back to the arc so the arc→state
+        // sync (which runs when an agent event is processed) does not overwrite them.
+        // Only re-clone when an *external* writer mutated `messages` State — every such
+        // writer bumps `messages_revision` — which avoids an O(transcript) clone on every
+        // 50 ms tick while idle. The end-of-iteration baseline update below keeps the tick
+        // loop's own revision bumps from forcing a redundant re-clone next iteration.
 
         // Handle `/new` and `/resume <id>`: reload resources + restart bootstrap without exiting TUI.
         let resume_id_req = resume_session_requested.read().clone();
@@ -274,7 +300,6 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             chrome_refresh_pending.set(true);
             // Clear the old live session slot so UI does not keep talking to a dead worker.
             agent_session_slot.set(None);
-            messages.set(Vec::new());
             *messages_arc_inner.write().unwrap() = Vec::new();
 
             if let Some(id) = outgoing_id
@@ -290,8 +315,6 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         let agent_session_for_loop = agent_session_slot.read().clone();
         let agent_session_for_chrome = agent_session_slot.read().clone();
         let agent_session_for_palette = agent_session_slot.read().clone();
-        let ui_events = ui_events_slot.read().clone();
-
         if mention_index_requested.get() && mention_index.read().is_none() {
             let base = cwd_for_mention_index.to_string_lossy().into_owned();
             if let Ok(Ok(index)) = tokio::task::spawn_blocking(move || MentionSearchIndex::build(&base)).await {
@@ -322,8 +345,6 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             palette_refresh_pending.set(false);
         }
 
-        chrome_tick.set(chrome_tick.get().wrapping_add(1));
-
         // ── MCP OAuth completed: close dialog ────────────────────
         if pending_mcp_auth_for_tick.read().as_ref().is_some_and(|p| p.done) {
             let notice = pending_mcp_auth_for_tick
@@ -333,9 +354,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             pending_mcp_auth_for_tick.set(None);
             shell_focus_for_tick.set(ShellFocus::Prompt);
             if let Some(notice) = notice {
-                let mut msgs = messages_for_tick.write().clone();
-                msgs.push(TranscriptMessage::text(notice, TranscriptStyle::Meta));
-                messages_for_tick.set(msgs);
+                messages_for_tick
+                    .write()
+                    .write()
+                    .unwrap()
+                    .push(TranscriptMessage::text(notice, TranscriptStyle::Meta));
                 messages_revision_for_tick.set(messages_revision_for_tick.get().wrapping_add(1));
             }
         }
@@ -373,9 +396,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             provider_connect_input_focus_for_tick.set(ProviderConnectFocus::default());
             shell_focus_for_tick.set(ShellFocus::Prompt);
             if let Some(notice) = notice {
-                let mut msgs = messages_for_tick.write().clone();
-                msgs.push(TranscriptMessage::text(notice, TranscriptStyle::Meta));
-                messages_for_tick.set(msgs);
+                messages_for_tick
+                    .write()
+                    .write()
+                    .unwrap()
+                    .push(TranscriptMessage::text(notice, TranscriptStyle::Meta));
                 messages_revision_for_tick.set(messages_revision_for_tick.get().wrapping_add(1));
             }
         }
@@ -389,22 +414,33 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             pending_provider_disconnect_for_tick.set(None);
             shell_focus_for_tick.set(ShellFocus::Prompt);
             // Push transcript notification
-            let mut msgs = messages_for_tick.write().clone();
-            msgs.push(TranscriptMessage::text(
+            messages_for_tick.write().write().unwrap().push(TranscriptMessage::text(
                 "Signed out from all providers".to_string(),
                 TranscriptStyle::Meta,
             ));
-            messages_for_tick.set(msgs);
             messages_revision_for_tick.set(messages_revision_for_tick.get().wrapping_add(1));
         }
 
-        let chrome_due = chrome_refresh_pending.get() || chrome_tick.get() % CHROME_REFRESH_TICKS == 0;
+        let chrome_due = chrome_refresh_pending.get() || last_chrome_refresh.elapsed() >= Duration::from_secs(1);
         if chrome_due {
+            // Reset the cadence even when there is no live session, so chrome I/O does not
+            // re-run on every tick after bootstrap settles.
+            last_chrome_refresh = Instant::now();
             let paths = paths.read().clone();
-            let next_git_footer = read_git_footer_info(paths.project_dir());
-            if git_footer.read().clone() != next_git_footer {
-                git_footer.set(next_git_footer);
-                bump_chrome_ui_revision(&mut chrome_ui_revision);
+            // The git worktree scan (`read_git_footer_info` → `git2` status list) is the most
+            // expensive periodic task while idle, so refresh it at most every
+            // `GIT_FOOTER_REFRESH_SECS` instead of on every 1 s chrome pass. Explicit
+            // `chrome_refresh_pending` events (e.g. a git checkout) still force an immediate
+            // rescan so the footer stays correct after a state change.
+            let git_footer_due = chrome_refresh_pending.get()
+                || last_git_footer_refresh.elapsed() >= Duration::from_secs(GIT_FOOTER_REFRESH_SECS);
+            if git_footer_due {
+                last_git_footer_refresh = Instant::now();
+                let next_git_footer = read_git_footer_info(paths.project_dir());
+                if git_footer.read().clone() != next_git_footer {
+                    git_footer.set(next_git_footer);
+                    bump_chrome_ui_revision(&mut chrome_ui_revision);
+                }
             }
 
             if let Some(session) = agent_session_for_chrome.as_ref() {
@@ -498,23 +534,24 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         // RunCompleted in the same drained batch — the turn is still alive.
         let mut live_after_run_completed = false;
 
-        let drained_events: Vec<AgentUiEvent> = if let Some(rx) = ui_events.as_ref() {
-            if let Ok(mut guard) = rx.lock() {
-                let mut raw = Vec::with_capacity(MAX_UI_EVENTS_PER_TICK);
-                while raw.len() < MAX_UI_EVENTS_PER_TICK {
-                    let Ok(event) = guard.try_recv() else {
-                        break;
-                    };
-                    raw.push(event);
-                }
-                drop(guard);
-                last_event_burst.set(raw.len());
-                crate::tui::agent_bridge::coalesce_agent_ui_events(raw)
-            } else {
-                Vec::new()
+        let drained_events: Vec<AgentUiEvent> = {
+            let mut raw: Vec<AgentUiEvent> = Vec::with_capacity(MAX_UI_EVENTS_PER_TICK);
+            // The event that woke the `select!` (if any) is prepended; the rest are drained
+            // from the shared receiver without blocking.
+            if let Some(ev) = wake_event.take() {
+                raw.push(ev);
             }
-        } else {
-            Vec::new()
+            if let Some(rx) = ui_events.as_ref() {
+                let mut guard = rx.lock().await;
+                while raw.len() < MAX_UI_EVENTS_PER_TICK {
+                    match guard.try_recv() {
+                        Ok(event) => raw.push(event),
+                        Err(_) => break,
+                    }
+                }
+            }
+            last_event_burst.set(raw.len());
+            crate::tui::agent_bridge::coalesce_agent_ui_events(raw)
         };
 
         // Worker inbox events land in the worker chat overlay (never the transcript).
@@ -1085,7 +1122,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         if transcript_changed {
             // Sync the arc to State at controlled interval (one dirty per tick
             // instead of per-token). Panel reads from the arc directly.
-            *messages.write() = messages_arc_inner.read().unwrap().clone();
+            *messages.write() = messages_arc_inner.clone();
             transcript_pending.set(true);
         }
 
@@ -1110,7 +1147,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             };
             if retention_changed {
                 // Re-sync the State copy so it also releases the freed caches.
-                *messages.write() = messages_arc_inner.read().unwrap().clone();
+                *messages.write() = messages_arc_inner.clone();
                 messages_revision.set(messages_revision.get().wrapping_add(1));
             }
 
@@ -1187,10 +1224,22 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                         msgs.push(msg);
                     }
                     // Repaint immediately: the transcript sync already ran this tick.
-                    *messages.write() = messages_arc_inner.read().unwrap().clone();
+                    *messages.write() = messages_arc_inner.clone();
                     messages_revision.set(messages_revision.get().wrapping_add(1));
                 }
             }
         }
     }
+}
+
+/// Park until the next agent UI event is available and return it. Used by the event-driven
+/// shell tick loop so the task sleeps (near-zero CPU) while idle instead of polling at a fixed
+/// rate. Returns `None` only when the channel is not wired up yet (pre-bootstrap); in that case
+/// the loop's housekeeping timer drives it instead.
+async fn wait_one_ui_event(
+    ui_events: &Option<Arc<tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<AgentUiEvent>>>>,
+) -> Option<AgentUiEvent> {
+    let rx = ui_events.as_ref()?;
+    let mut guard = rx.lock().await;
+    guard.recv().await
 }
