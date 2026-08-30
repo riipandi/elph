@@ -334,16 +334,16 @@
         },
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.004375,
+            "cacheRead": 0.035,
             "cacheWrite": 0.0,
-            "input": 0.0175,
-            "output": 0.0725
+            "input": 0.14,
+            "output": 0.58
         },
         "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "hy3",
         "input": ["text"],
         "maxTokens": 64000,
-        "name": "Hy3 (8x usage)",
+        "name": "Hy3",
         "provider": "opencode-go",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -376,6 +376,33 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "hy4-preview": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "contextWindow": 1024000,
+        "cost": {
+            "cacheRead": 0.042,
+            "cacheWrite": 0.0,
+            "input": 0.834,
+            "output": 2.501
+        },
+        "description": "A next-generation productivity model with significantly enhanced Agent and complex task execution capabilities.",
+        "id": "hy4-preview",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "Hy4 preview",
+        "provider": "opencode-go",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
@@ -899,12 +926,12 @@
         "provider": "opencode-go",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
+            "high": null,
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -926,12 +953,12 @@
         "provider": "opencode-go",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
+            "high": null,
             "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": "xhigh"
         }
     }

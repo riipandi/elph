@@ -2225,6 +2225,33 @@
             "xhigh": null
         }
     },
+    "infron/auto": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.25,
+            "output": 1.5
+        },
+        "description": "Automatic model router for matching prompts to suitable backends and budgets",
+        "id": "infron/auto",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Auto Route",
+        "provider": "infron",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "interfaze/interfaze-beta": {
         "api": "openai-completions",
         "baseUrl": "https://llm.onerouter.pro/v1",
@@ -3086,32 +3113,6 @@
         "provider": "infron",
         "reasoning": true,
         "releaseDate": "2026-04-21",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "moonshotai/kimi-k2.6:free": {
-        "api": "openai-completions",
-        "baseUrl": "https://llm.onerouter.pro/v1",
-        "contextWindow": 256000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "moonshotai/kimi-k2.6:free",
-        "input": ["text"],
-        "maxTokens": 256000,
-        "name": "Kimi K2.6 (free)",
-        "provider": "infron",
-        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -6478,14 +6479,14 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.1,
+            "cacheRead": 0.2,
             "cacheWrite": 0.625,
             "input": 0.212,
             "output": 0.848
         },
         "description": "Dense 27B vision-language model for coding, agent tasks, and image and video understanding",
         "id": "qwen/qwen3.8-27b",
-        "input": ["text", "image", "video"],
+        "input": ["text", "image", "video", "pdf"],
         "maxTokens": 65536,
         "name": "Qwen3.8 27B",
         "provider": "infron",
@@ -6841,7 +6842,7 @@
         "id": "tencent/hy4-preview",
         "input": ["text"],
         "maxTokens": 64000,
-        "name": "Tencent: Hy4 preview",
+        "name": "Hy4 preview",
         "provider": "infron",
         "reasoning": true,
         "releaseDate": "2026-08-28",
@@ -7238,7 +7239,7 @@
         "cost": {
             "cacheRead": 0.08,
             "cacheWrite": 0.16,
-            "input": 0.105,
+            "input": 0.14,
             "output": 0.28
         },
         "description": "MiMo omni model for text, image, video, audio, and agents",
@@ -7805,7 +7806,7 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.4,
+            "cacheRead": 0.231,
             "cacheWrite": 0.0,
             "input": 2.29,
             "output": 8.0
@@ -7814,17 +7815,17 @@
         "id": "z-ai/glm-5.2-fast",
         "input": ["text"],
         "maxTokens": 128000,
-        "name": "GLM-5.2",
+        "name": "GLM 5.2 Fast",
         "provider": "infron",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
+            "low": null,
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "z-ai/glm-5.3": {

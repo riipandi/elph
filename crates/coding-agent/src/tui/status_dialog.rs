@@ -153,16 +153,18 @@ fn render_tool_approval_dialog(
                     padding_top: OPTIONS_LIST_TOP_GAP,
                     flex_shrink: 0f32,
                 ) {
-                    SelectList(
-                        width: body_width,
-                        height: plan.list_height,
-                        options: options,
-                        selected_index: props.approval_selected,
-                        has_focus: props.approval_has_focus,
-                        show_description: false,
-                        compact: true,
-                        theme: Some(theme),
-                    )
+                        SelectList(
+                            width: body_width,
+                            height: plan.list_height,
+                            options: options,
+                            selected_index: props.approval_selected,
+                            has_focus: props.approval_has_focus,
+                            show_description: true,
+                            inline_description: true,
+                            hide_more_overflow: true,
+                            compact: true,
+                            theme: Some(theme),
+                        )
                 }
             }
         }

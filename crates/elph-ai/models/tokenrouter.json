@@ -582,7 +582,7 @@
         "id": "deepseek/deepseek-v3.2",
         "input": ["text"],
         "knowledgeCutoff": "2024-07",
-        "maxTokens": 147456,
+        "maxTokens": 65536,
         "name": "DeepSeek V3.2",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -1596,7 +1596,7 @@
     "mistralai/voxtral-small-24b-2507": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
-        "contextWindow": 32000,
+        "contextWindow": 32768,
         "cost": {
             "cacheRead": 0.01,
             "cacheWrite": 0.0,
@@ -1606,7 +1606,7 @@
         "description": "Efficient Mistral model for fast chat, extraction, and production assistants",
         "id": "mistralai/voxtral-small-24b-2507",
         "input": ["text", "audio", "pdf"],
-        "maxTokens": 25600,
+        "maxTokens": 26214,
         "name": "Mistral: Voxtral Small 24B 2507",
         "provider": "tokenrouter",
         "reasoning": false,
@@ -1803,7 +1803,7 @@
         "description": "NVIDIA Nemotron 3.5 Lightning is an open mixture-of-experts model from NVIDIA, with 3B active parameters out of 30B total. It is suited for high-throughput agentic workloads and specialized tasks that...",
         "id": "nvidia/nemotron-3.5-lightning",
         "input": ["text"],
-        "maxTokens": 235929,
+        "maxTokens": 131072,
         "name": "Nemotron 3.5 Lightning 30B A3B",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2398,7 +2398,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-122b-a10b",
         "input": ["text", "image", "video"],
-        "maxTokens": 235929,
+        "maxTokens": 81920,
         "name": "Qwen3.5 122B-A10B",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2679,32 +2679,6 @@
             "medium": "medium",
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
-        }
-    },
-    "qwen/qwen3.8-max-free": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.tokenrouter.com/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "qwen/qwen3.8-max-free",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "qwen/qwen3.8-max-free",
-        "provider": "tokenrouter",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
             "xhigh": "xhigh"
         }
     },
@@ -3597,6 +3571,33 @@
         "input": ["text", "image", "video"],
         "maxTokens": 128000,
         "name": "GLM-5.3-Flash",
+        "provider": "tokenrouter",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "z-ai/glm-5.3-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
+        "id": "z-ai/glm-5.3-free",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-5.3 (free)",
         "provider": "tokenrouter",
         "reasoning": true,
         "thinkingLevelMap": {

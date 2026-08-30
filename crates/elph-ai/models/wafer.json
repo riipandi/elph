@@ -66,19 +66,19 @@
         },
         "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
         "id": "GLM-5.3-Flash",
-        "input": ["text", "image", "video"],
-        "maxTokens": 1048576,
-        "name": "GLM5.3 Flash",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "GLM-5.3-Flash",
         "provider": "wafer",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
-            "max": null,
-            "medium": "medium",
+            "low": "low",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "Kimi-K2.6": {

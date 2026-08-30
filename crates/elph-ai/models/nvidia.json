@@ -1245,8 +1245,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 1.937788,
-            "output": 9.688936
+            "input": 1.934631,
+            "output": 9.673151
         },
         "description": "Balanced Mistral model for enterprise assistants, multilingual work, and tools",
         "headers": {
@@ -1277,8 +1277,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 2.11,
+            "output": 10.55
         },
         "description": "Mistral model for multilingual chat, reasoning, and tool-assisted workflows",
         "id": "mistralai/mistral-nemotron",

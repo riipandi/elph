@@ -307,6 +307,9 @@ pub fn SelectList(props: &mut SelectListProps, mut hooks: Hooks) -> impl Into<An
     let mut rows: Vec<AnyElement<'static>> = Vec::new();
     let mut used_rows = 0usize;
 
+    // Widest option name, used to align inline hints in a shared right column.
+    let max_name_len = options.iter().map(|o| o.name.chars().count()).max().unwrap_or(0) as u16;
+
     if len == 0 {
         rows.push(
             element! {
@@ -352,14 +355,15 @@ pub fn SelectList(props: &mut SelectListProps, mut hooks: Hooks) -> impl Into<An
             let show_desc = show_description && !opt.description.is_empty();
 
             let inner_content: AnyElement<'static> = if props.inline_description && show_desc {
-                // Inline: name and hint on the same row
                 let desc_w = (content_width / 3).clamp(12, 20);
-                let name_w = content_width.saturating_sub(desc_w).saturating_sub(1).max(4);
+                let name_w = max_name_len
+                    .min(content_width.saturating_sub(desc_w).saturating_sub(2))
+                    .max(1);
                 element! {
                     View(
                         width: content_width,
                         flex_direction: FlexDirection::Row,
-                        gap: 1,
+                        gap: 2,
                         flex_shrink: 0f32,
                         align_items: AlignItems::Center,
                     ) {
