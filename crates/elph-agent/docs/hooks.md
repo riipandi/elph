@@ -215,10 +215,11 @@ adapter, JSON configuration, trust checks, and reload behavior live in
 ### Hook child environment (coding-agent)
 
 `HookHost::execute_hook` clears the environment and passes an allowlist:
-`HOME`, `PATH`, temp dirs, `ELPH_HOOK_ID`, plus `ELPH_SESSION_ID` and
-`ELPH_PROJECT_DIR` when set. When elph runs inside a Herdr pane, the
-Herdr-injected variables (`HERDR_ENV`, `HERDR_PANE_ID`, `HERDR_SOCKET_PATH`,
-`HERDR_BIN_PATH`) are forwarded so a hook can call
+`HOME`, `PATH`, temp dirs, `ELPH_HOOK_ID`, plus `ELPH_SESSION_ID` (resolved
+from the runtime session id captured by `bind_to_harness`, falling back to a
+caller-provided env var) and `ELPH_PROJECT_DIR` when set. When elph runs inside
+a Herdr pane, the Herdr-injected variables (`HERDR_ENV`, `HERDR_PANE_ID`,
+`HERDR_SOCKET_PATH`, `HERDR_BIN_PATH`) are forwarded so a hook can call
 `herdr pane report-agent` / `pane report-agent-session`. `sessionStart` is
 delivered with the harness session id:
 

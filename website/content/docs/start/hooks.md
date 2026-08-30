@@ -296,13 +296,14 @@ Use native approval, sandbox, agent mode, MCP policy, and tool-schema
 validation for security enforcement.
 
 The child process receives a small environment allowlist plus `ELPH_HOOK_ID`.
-`ELPH_SESSION_ID` and `ELPH_PROJECT_DIR` are forwarded when the parent sets
-them. When elph runs inside a Herdr pane, the Herdr-injected variables
-(`HERDR_ENV`, `HERDR_PANE_ID`, `HERDR_SOCKET_PATH`, `HERDR_BIN_PATH`) are also
-forwarded so hooks can report pane state. Credentials, provider headers,
-auth-store values, and arbitrary environment variables are not passed to hooks.
-The `context` event intentionally receives the current provider-bound message
-array, but changes to it are not persisted to the session transcript.
+`ELPH_SESSION_ID` (the runtime session id, always set when hooks are bound to
+a harness) and `ELPH_PROJECT_DIR` are forwarded. When elph runs inside a Herdr
+pane, the Herdr-injected variables (`HERDR_ENV`, `HERDR_PANE_ID`,
+`HERDR_SOCKET_PATH`, `HERDR_BIN_PATH`) are also forwarded so hooks can report
+pane state. Credentials, provider headers, auth-store values, and arbitrary
+environment variables are not passed to hooks. The `context` event
+intentionally receives the current provider-bound message array, but changes
+to it are not persisted to the session transcript.
 
 The `sessionStart` payload includes the session id:
 
@@ -336,9 +337,10 @@ A minimal setup lives in `CONFIG_DIR/hooks.json` (see
 
 The script is a no-op outside a Herdr pane: it exits immediately when
 `HERDR_ENV != 1`. Inside a pane it runs `herdr pane report-agent --source
-elph-hooks` (and `pane report-agent-session` with `--agent-session-id` when
-`ELPH_SESSION_ID` is set) for each event. Hooks are awaited serially, so a
-`beforeAgent` report lands before the provider request starts and the `stop`
+elph-hooks` for each event, and on `sessionStart` it also runs
+`pane report-agent-session --agent-session-id "$ELPH_SESSION_ID"` so Herdr
+stores the native session reference for restore. Hooks are awaited serially, so
+a `beforeAgent` report lands before the provider request starts and the `stop`
 report lands after the turn settles.
 
 Keep the report source stable and provide a strictly increasing `--seq` when

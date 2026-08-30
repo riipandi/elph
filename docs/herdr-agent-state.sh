@@ -6,7 +6,8 @@
 #
 # Fields: HERDR_ENV=1, HERDR_PANE_ID, HERDR_SOCKET_PATH, HERDR_BIN_PATH are
 # injected by Herdr into pane processes and forwarded to hook children by elph.
-# ELPH_SESSION_ID and ELPH_PROJECT_DIR are forwarded when set.
+# ELPH_SESSION_ID (runtime session id, always set when hooks are bound to a
+# harness) and ELPH_PROJECT_DIR are forwarded to hook children by elph.
 # NOTE on seq and source: reports use a monotonic nanosecond timestamp as
 # `--seq`. Herdr rejects a report whose seq is not greater than the last
 # accepted seq for the same source. `SOURCE` is configurable (default

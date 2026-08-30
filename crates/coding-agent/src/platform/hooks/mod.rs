@@ -1,4 +1,9 @@
 //! Native lifecycle hooks configured by `hooks.json`.
+//!
+//! The `ELPH_SESSION_ID` env var passed to hook children is read from the
+//! parent process environment. `bind_to_harness` stores the runtime session id
+//! on `HookHost` so callers that run hooks after `bind_to_harness` on a
+//! different thread can still resolve it.
 
 use std::collections::HashSet;
 use std::future::Future;
@@ -87,6 +92,7 @@ pub struct HookStatus {
 #[derive(Clone, Default)]
 pub struct HookHost {
     config: Arc<RwLock<HookStatus>>,
+    session_id: Arc<RwLock<Option<String>>>,
 }
 
 impl std::fmt::Debug for HookHost {
@@ -154,29 +160,34 @@ impl HookHost {
         S: SessionStorage + Clone + Send + Sync + 'static,
         S::Metadata: HasSessionId + Send + Sync,
     {
+        let session_id = harness.session_metadata().await.session_id().to_string();
+        *self.session_id.write() = Some(session_id.clone());
         for hook in self.handlers(HookEvent::SessionStart) {
             deliver_session_start(harness, &hook).await;
         }
 
+        let session_id_for_hooks = session_id.clone();
         if !self.handlers(HookEvent::UserPromptSubmit).is_empty() || !self.handlers(HookEvent::BeforeAgent).is_empty() {
             let host = self.clone();
+            let value = session_id_for_hooks.clone();
             harness
                 .on_before_agent_start(move |event: &BeforeAgentStartEvent| {
                     let user_prompt_submit = host.handlers(HookEvent::UserPromptSubmit);
                     let handlers = host.handlers(HookEvent::BeforeAgent);
                     let event = serde_json::to_value(BeforeAgentPayload::from(event)).unwrap_or_default();
+                    let session_id = value.clone();
                     Box::pin(async move {
                         let user_prompt_event = serde_json::json!({
                             "event": "userPromptSubmit",
                             "payload": event.clone(),
                         });
                         for hook in user_prompt_submit {
-                            let _ = execute_hook(&hook, &user_prompt_event).await;
+                            let _ = execute_hook_with_session(&hook, &user_prompt_event, Some(&session_id)).await;
                         }
                         let mut system_prompt = None;
                         let mut messages = Vec::new();
                         for hook in handlers {
-                            if let Some(output) = execute_hook(&hook, &event).await {
+                            if let Some(output) = execute_hook_with_session(&hook, &event, Some(&session_id)).await {
                                 if let Some(prompt) = bounded_string(output.get("systemPrompt")) {
                                     append_prompt_fragment(
                                         system_prompt.get_or_insert_with(|| {
@@ -211,10 +222,12 @@ impl HookHost {
 
         if !self.handlers(HookEvent::Context).is_empty() {
             let host = self.clone();
+            let value = session_id_for_hooks.clone();
             harness
                 .on_context(move |event| {
                     let handlers = host.handlers(HookEvent::Context);
                     let original_messages = event.messages.clone();
+                    let session_id = value.clone();
                     Box::pin(async move {
                         let mut messages = original_messages;
                         let mut changed = false;
@@ -223,7 +236,7 @@ impl HookHost {
                                 "event": "context",
                                 "messages": messages.clone(),
                             });
-                            if let Some(output) = execute_hook(&hook, &payload).await
+                            if let Some(output) = execute_hook_with_session(&hook, &payload, Some(&session_id)).await
                                 && let Some(replacement) = hook_messages(&output, &hook.id)
                             {
                                 messages = replacement;
@@ -238,12 +251,14 @@ impl HookHost {
 
         if !self.handlers(HookEvent::PreToolUse).is_empty() {
             let host = self.clone();
+            let value = session_id_for_hooks.clone();
             harness
                 .on_tool_call(move |event: &ToolCallEvent| {
                     let handlers = host.handlers(HookEvent::PreToolUse);
                     let tool_name = event.tool_name.clone();
                     let tool_call_id = event.tool_call_id.clone();
                     let original_input = event.input.clone();
+                    let session_id = value.clone();
                     Box::pin(async move {
                         let mut input = original_input.clone();
                         let mut blocked = None;
@@ -257,7 +272,7 @@ impl HookHost {
                                 tool_input: &input,
                             })
                             .unwrap_or_default();
-                            if let Some(output) = execute_hook(&hook, &payload).await {
+                            if let Some(output) = execute_hook_with_session(&hook, &payload, Some(&session_id)).await {
                                 if let Some(replacement) = output.get("toolInput") {
                                     input = replacement.clone();
                                 }
@@ -293,12 +308,14 @@ impl HookHost {
         if !self.handlers(HookEvent::PostToolUse).is_empty() || !self.handlers(HookEvent::PostToolUseFailure).is_empty()
         {
             let host = self.clone();
+            let value = session_id_for_hooks.clone();
             harness
                 .on_tool_result(move |event: &ToolResultEvent| {
                     let post_tool = host.handlers(HookEvent::PostToolUse);
                     let post_tool_failure = host.handlers(HookEvent::PostToolUseFailure);
                     let handlers = if event.is_error { post_tool_failure } else { post_tool };
                     let mut payload = serde_json::to_value(ToolResultPayload::from(event)).unwrap_or_default();
+                    let session_id = value.clone();
                     Box::pin(async move {
                         let mut patch = elph_agent::harness::ToolResultPatch::default();
                         let mut changed = false;
@@ -306,7 +323,7 @@ impl HookHost {
                             if !matches_tool(hook.matcher.as_ref(), payload["toolName"].as_str().unwrap_or_default()) {
                                 continue;
                             }
-                            if let Some(output) = execute_hook(&hook, &payload).await {
+                            if let Some(output) = execute_hook_with_session(&hook, &payload, Some(&session_id)).await {
                                 if let Some(content) = output.get("content")
                                     && let Some(content) = hook_tool_result_content(content, &hook.id)
                                 {
@@ -338,15 +355,17 @@ impl HookHost {
 
         if !self.handlers(HookEvent::PreCompact).is_empty() {
             let host = self.clone();
+            let value = session_id_for_hooks.clone();
             harness
                 .on_session_before_compact(move |event: &SessionBeforeCompactEvent| {
                     let handlers = host.handlers(HookEvent::PreCompact);
                     let payload = serde_json::to_value(CompactPayload::from(event)).unwrap_or_default();
+                    let session_id = value.clone();
                     Box::pin(async move {
                         let mut result = elph_agent::harness::SessionBeforeCompactResult::default();
                         let mut changed = false;
                         for hook in handlers {
-                            if let Some(output) = execute_hook(&hook, &payload).await {
+                            if let Some(output) = execute_hook_with_session(&hook, &payload, Some(&session_id)).await {
                                 if output.get("cancel").and_then(Value::as_bool).unwrap_or(false) {
                                     result.cancel = true;
                                     changed = true;
@@ -365,8 +384,10 @@ impl HookHost {
 
         if !self.handlers(HookEvent::PostCompact).is_empty() || !self.handlers(HookEvent::Stop).is_empty() {
             let host = self.clone();
+            let session_id = session_id_for_hooks.clone();
             harness
                 .subscribe(move |event, _signal| -> Pin<Box<dyn Future<Output = ()> + Send>> {
+                    let session_id = session_id.clone();
                     let (handlers, payload) = match event {
                         elph_agent::harness::AgentHarnessEvent::Own(
                             elph_agent::harness::AgentHarnessOwnEvent::SessionCompact(_),
@@ -387,7 +408,7 @@ impl HookHost {
                     };
                     Box::pin(async move {
                         for hook in handlers {
-                            let _ = execute_hook(&hook, &payload).await;
+                            let _ = execute_hook_with_session(&hook, &payload, Some(&session_id)).await;
                         }
                     })
                 })
@@ -416,7 +437,7 @@ where
         "event": "sessionStart",
         "sessionId": session_id,
     });
-    let _ = execute_hook(hook, &payload).await;
+    let _ = execute_hook_with_session(hook, &payload, Some(&session_id)).await;
 }
 
 fn default_timeout_ms() -> u64 {
@@ -463,7 +484,7 @@ fn wildcard(pattern: &str, value: &str) -> bool {
     }
 }
 
-async fn execute_hook(hook: &HookDefinition, payload: &Value) -> Option<Value> {
+async fn execute_hook_with_session(hook: &HookDefinition, payload: &Value, session_id: Option<&str>) -> Option<Value> {
     let mut input = match serde_json::to_vec(payload) {
         Ok(input) if input.len() <= MAX_INPUT_BYTES => input,
         Ok(_) => {
@@ -504,7 +525,7 @@ async fn execute_hook(hook: &HookDefinition, payload: &Value) -> Option<Value> {
         }
     }
     process.env("ELPH_HOOK_ID", &hook.id);
-    for (name, value) in hook_env() {
+    for (name, value) in hook_env(session_id) {
         if let Some(value) = value {
             process.env(name, value);
         }
@@ -592,10 +613,16 @@ fn bounded_string(value: Option<&Value>) -> Option<String> {
     (value.len() <= MAX_CONTEXT_BYTES).then(|| value.to_string())
 }
 
-fn hook_env() -> Vec<(&'static str, Option<std::ffi::OsString>)> {
+fn hook_env(session_id: Option<&str>) -> Vec<(&'static str, Option<String>)> {
+    // Runtime session id from `HookHost` wins; fall back to a caller-provided
+    // variable (workers, headless child processes) when present.
+    let session_id = session_id
+        .map(str::to_string)
+        .or_else(|| std::env::var("ELPH_SESSION_ID").ok())
+        .filter(|id| !id.is_empty());
     vec![
-        ("ELPH_SESSION_ID", std::env::var_os("ELPH_SESSION_ID")),
-        ("ELPH_PROJECT_DIR", std::env::var_os("ELPH_PROJECT_DIR")),
+        ("ELPH_SESSION_ID", session_id),
+        ("ELPH_PROJECT_DIR", std::env::var("ELPH_PROJECT_DIR").ok()),
     ]
 }
 
@@ -612,9 +639,21 @@ mod env_tests {
 
     #[test]
     fn hook_env_forwards_elph_identity_vars() {
-        let names: Vec<&str> = hook_env().into_iter().map(|(name, _)| name).collect();
+        let names: Vec<&str> = hook_env(None).into_iter().map(|(name, _)| name).collect();
         for name in ["ELPH_SESSION_ID", "ELPH_PROJECT_DIR"] {
             assert!(names.contains(&name), "hook must forward {name}");
+        }
+    }
+
+    #[test]
+    fn hook_env_prefers_runtime_session_id() {
+        unsafe {
+            std::env::set_var("ELPH_SESSION_ID", "env-session");
+        }
+        let env = hook_env(Some("runtime-session"));
+        assert_eq!(env[0].1.as_deref(), Some("runtime-session"), "runtime wins");
+        unsafe {
+            std::env::remove_var("ELPH_SESSION_ID");
         }
     }
 }
