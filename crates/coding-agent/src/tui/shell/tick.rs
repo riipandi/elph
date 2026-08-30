@@ -120,7 +120,16 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
     let mut last_layout_poll = Instant::now();
 
     loop {
-        tokio::time::sleep(Duration::from_millis(SHELL_TICK_MS)).await;
+        // Event-driven wake: park the task until an agent UI event arrives (immediate,
+        // low-latency) or the coarse housekeeping deadline elapses (keeps periodic tasks alive
+        // while idle). This replaces the old fixed-rate 50 ms poll so the shell stops burning
+        // CPU when nothing is happening.
+        let ui_events = ui_events_slot.read().clone();
+        let mut wake_event: Option<AgentUiEvent> = None;
+        tokio::select! {
+            ev = wait_one_ui_event(&ui_events) => { wake_event = ev; }
+            _ = tokio::time::sleep(Duration::from_millis(SHELL_IDLE_HOUSEKEEPING_MS)) => {}
+        }
 
         // Terminal size is also refreshed on resize via the `use_terminal_size` hook in the
         // render path, so re-poll here at most every 500 ms (cheap syscall throttle).
@@ -309,8 +318,6 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         let agent_session_for_loop = agent_session_slot.read().clone();
         let agent_session_for_chrome = agent_session_slot.read().clone();
         let agent_session_for_palette = agent_session_slot.read().clone();
-        let ui_events = ui_events_slot.read().clone();
-
         if mention_index_requested.get() && mention_index.read().is_none() {
             let base = cwd_for_mention_index.to_string_lossy().into_owned();
             if let Ok(Ok(index)) = tokio::task::spawn_blocking(move || MentionSearchIndex::build(&base)).await {
@@ -518,23 +525,24 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         // RunCompleted in the same drained batch — the turn is still alive.
         let mut live_after_run_completed = false;
 
-        let drained_events: Vec<AgentUiEvent> = if let Some(rx) = ui_events.as_ref() {
-            if let Ok(mut guard) = rx.lock() {
-                let mut raw = Vec::with_capacity(MAX_UI_EVENTS_PER_TICK);
-                while raw.len() < MAX_UI_EVENTS_PER_TICK {
-                    let Ok(event) = guard.try_recv() else {
-                        break;
-                    };
-                    raw.push(event);
-                }
-                drop(guard);
-                last_event_burst.set(raw.len());
-                crate::tui::agent_bridge::coalesce_agent_ui_events(raw)
-            } else {
-                Vec::new()
+        let drained_events: Vec<AgentUiEvent> = {
+            let mut raw: Vec<AgentUiEvent> = Vec::with_capacity(MAX_UI_EVENTS_PER_TICK);
+            // The event that woke the `select!` (if any) is prepended; the rest are drained
+            // from the shared receiver without blocking.
+            if let Some(ev) = wake_event.take() {
+                raw.push(ev);
             }
-        } else {
-            Vec::new()
+            if let Some(rx) = ui_events.as_ref() {
+                let mut guard = rx.lock().await;
+                while raw.len() < MAX_UI_EVENTS_PER_TICK {
+                    match guard.try_recv() {
+                        Ok(event) => raw.push(event),
+                        Err(_) => break,
+                    }
+                }
+            }
+            last_event_burst.set(raw.len());
+            crate::tui::agent_bridge::coalesce_agent_ui_events(raw)
         };
 
         // Worker inbox events land in the worker chat overlay (never the transcript).
@@ -1217,4 +1225,16 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         // next tick only re-clones the arc when an *external* writer changed `messages`.
         last_messages_revision = messages_revision.get();
     }
+}
+
+/// Park until the next agent UI event is available and return it. Used by the event-driven
+/// shell tick loop so the task sleeps (near-zero CPU) while idle instead of polling at a fixed
+/// rate. Returns `None` only when the channel is not wired up yet (pre-bootstrap); in that case
+/// the loop's housekeeping timer drives it instead.
+async fn wait_one_ui_event(
+    ui_events: &Option<Arc<tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<AgentUiEvent>>>>,
+) -> Option<AgentUiEvent> {
+    let rx = ui_events.as_ref()?;
+    let mut guard = rx.lock().await;
+    guard.recv().await
 }

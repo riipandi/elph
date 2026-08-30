@@ -306,7 +306,11 @@ impl elph_ai::auth::AuthLoginCallbacks for OAuthLoginCallbacksImpl {
 
 // ── Constants ────────────────────────────────────────────────────────
 
-const SHELL_TICK_MS: u64 = 50;
+/// Coarse housekeeping tick for the event-driven shell loop: the loop parks on an agent UI
+/// event and only falls back to this interval when idle (to keep periodic tasks like chrome
+/// refresh / ephemeral-expiry / layout polling alive). 200 ms keeps animations smooth while
+/// cutting idle wakeups ~5x versus the old fixed 50 ms poll.
+const SHELL_IDLE_HOUSEKEEPING_MS: u64 = 200;
 /// Base transcript publish interval while streaming (~10 Hz). Status spinner ticks in StatusRow.
 const TRANSCRIPT_PUBLISH_MS: u64 = 100;
 /// Faster transcript refresh while startup status lines are updating.
@@ -341,7 +345,7 @@ pub struct MainShellProps {
     /// Transcript log density for collapsed tool-call items (see `settings.ui.density`).
     pub density: LogDensity,
     pub agent_session: Option<Arc<CodingAgentSession>>,
-    pub ui_events: Option<Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>>,
+    pub ui_events: Option<Arc<tokio::sync::Mutex<UnboundedReceiver<AgentUiEvent>>>>,
     pub hook_host: HookHost,
     pub slash_commands: Vec<SlashCommand>,
     pub prompt_templates: Vec<PromptTemplate>,

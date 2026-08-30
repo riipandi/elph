@@ -194,7 +194,7 @@ pub(crate) struct ShellCtx {
     /// `ui.turnStats` — show the dimmed per-turn stats card after each completed turn.
     pub(crate) turn_stats_enabled: bool,
     pub(crate) pending_approval_label: Ref<bool>,
-    pub(crate) ui_events_slot: Ref<Option<Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>>>,
+    pub(crate) ui_events_slot: Ref<Option<Arc<tokio::sync::Mutex<UnboundedReceiver<AgentUiEvent>>>>>,
     pub(crate) user_shell_abort: Ref<Option<CancellationToken>>,
     pub(crate) user_shell_channel: Ref<UserShellChannel>,
     /// Current session todo list (for structured work tracking).

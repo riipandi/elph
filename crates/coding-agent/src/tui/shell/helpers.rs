@@ -658,7 +658,7 @@ pub(crate) async fn apply_bootstrap_ui_event(
     fallback_context_limit: u64,
     palette_refresh_pending: &mut State<bool>,
     agent_session_slot: &mut Ref<Option<Arc<CodingAgentSession>>>,
-    ui_events_slot: &mut Ref<Option<Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>>>,
+    ui_events_slot: &mut Ref<Option<Arc<tokio::sync::Mutex<UnboundedReceiver<AgentUiEvent>>>>>,
     messages: &mut State<Vec<TranscriptMessage>>,
     prompt_history: &mut Ref<Vec<String>>,
     thinking_level: &mut State<ThinkingLevel>,
