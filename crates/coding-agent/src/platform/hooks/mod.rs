@@ -154,10 +154,8 @@ impl HookHost {
         S: SessionStorage + Clone + Send + Sync + 'static,
         S::Metadata: HasSessionId + Send + Sync,
     {
-        let session_start = self.handlers(HookEvent::SessionStart);
-        for hook in session_start {
-            let payload = serde_json::json!({"event": "sessionStart"});
-            let _ = execute_hook(&hook, &payload).await;
+        for hook in self.handlers(HookEvent::SessionStart) {
+            deliver_session_start(harness, &hook).await;
         }
 
         if !self.handlers(HookEvent::UserPromptSubmit).is_empty() || !self.handlers(HookEvent::BeforeAgent).is_empty() {
@@ -408,6 +406,19 @@ impl HookHost {
     }
 }
 
+async fn deliver_session_start<S>(harness: &AgentHarness<S>, hook: &HookDefinition)
+where
+    S: SessionStorage + Clone + Send + Sync + 'static,
+    S::Metadata: HasSessionId + Send + Sync,
+{
+    let session_id = harness.session_metadata().await.session_id().to_string();
+    let payload = serde_json::json!({
+        "event": "sessionStart",
+        "sessionId": session_id,
+    });
+    let _ = execute_hook(hook, &payload).await;
+}
+
 fn default_timeout_ms() -> u64 {
     DEFAULT_TIMEOUT_MS
 }
@@ -493,6 +504,16 @@ async fn execute_hook(hook: &HookDefinition, payload: &Value) -> Option<Value> {
         }
     }
     process.env("ELPH_HOOK_ID", &hook.id);
+    for (name, value) in hook_env() {
+        if let Some(value) = value {
+            process.env(name, value);
+        }
+    }
+    for name in ["HERDR_ENV", "HERDR_PANE_ID", "HERDR_SOCKET_PATH", "HERDR_BIN_PATH"] {
+        if let Some(value) = std::env::var_os(name) {
+            process.env(name, value);
+        }
+    }
     process.stdin(std::process::Stdio::piped());
     process.stdout(std::process::Stdio::piped());
     process.stderr(std::process::Stdio::piped());
@@ -571,11 +592,31 @@ fn bounded_string(value: Option<&Value>) -> Option<String> {
     (value.len() <= MAX_CONTEXT_BYTES).then(|| value.to_string())
 }
 
+fn hook_env() -> Vec<(&'static str, Option<std::ffi::OsString>)> {
+    vec![
+        ("ELPH_SESSION_ID", std::env::var_os("ELPH_SESSION_ID")),
+        ("ELPH_PROJECT_DIR", std::env::var_os("ELPH_PROJECT_DIR")),
+    ]
+}
+
 fn append_prompt_fragment(prompt: &mut String, fragment: &str) {
     if !prompt.is_empty() {
         prompt.push_str("\n\n");
     }
     prompt.push_str(fragment);
+}
+
+#[cfg(test)]
+mod env_tests {
+    use super::*;
+
+    #[test]
+    fn hook_env_forwards_elph_identity_vars() {
+        let names: Vec<&str> = hook_env().into_iter().map(|(name, _)| name).collect();
+        for name in ["ELPH_SESSION_ID", "ELPH_PROJECT_DIR"] {
+            assert!(names.contains(&name), "hook must forward {name}");
+        }
+    }
 }
 
 fn hook_messages(output: &Value, hook_id: &str) -> Option<Vec<AgentMessage>> {

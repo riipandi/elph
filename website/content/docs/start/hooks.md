@@ -296,10 +296,62 @@ Use native approval, sandbox, agent mode, MCP policy, and tool-schema
 validation for security enforcement.
 
 The child process receives a small environment allowlist plus `ELPH_HOOK_ID`.
-Credentials, provider headers, auth-store values, and arbitrary environment
-variables are not passed to hooks. The `context` event intentionally receives
-the current provider-bound message array, but changes to it are not persisted
-to the session transcript.
+`ELPH_SESSION_ID` and `ELPH_PROJECT_DIR` are forwarded when the parent sets
+them. When elph runs inside a Herdr pane, the Herdr-injected variables
+(`HERDR_ENV`, `HERDR_PANE_ID`, `HERDR_SOCKET_PATH`, `HERDR_BIN_PATH`) are also
+forwarded so hooks can report pane state. Credentials, provider headers,
+auth-store values, and arbitrary environment variables are not passed to hooks.
+The `context` event intentionally receives the current provider-bound message
+array, but changes to it are not persisted to the session transcript.
+
+The `sessionStart` payload includes the session id:
+
+```json
+{
+  "event": "sessionStart",
+  "sessionId": "01HXZQ..."
+}
+```
+
+## Herdr integration
+
+[Herdr](https://herdr.dev/docs/integrations/) shows agent lifecycle state
+(`idle` / `working` / `blocked`) and can restore native agent sessions. Elph
+does not ship a bundled Herdr integration; use lifecycle hooks to report state
+through Herdr's CLI or socket API.
+
+A minimal setup lives in `CONFIG_DIR/hooks.json` (see
+[`herdr-agent-state.sh`](https://github.com/riipandi/elph/blob/main/docs/herdr-agent-state.sh)):
+
+```json
+{
+  "$schema": "https://elph.space/hooks-schema.json",
+  "hooks": [
+    { "id": "herdr-state", "event": "sessionStart", "command": "hooks/herdr-agent-state.sh" },
+    { "id": "herdr-before", "event": "beforeAgent", "command": "hooks/herdr-agent-state.sh" },
+    { "id": "herdr-stop", "event": "stop", "command": "hooks/herdr-agent-state.sh" }
+  ]
+}
+```
+
+The script is a no-op outside a Herdr pane: it exits immediately when
+`HERDR_ENV != 1`. Inside a pane it runs `herdr pane report-agent --source
+elph-hooks` (and `pane report-agent-session` with `--agent-session-id` when
+`ELPH_SESSION_ID` is set) for each event. Hooks are awaited serially, so a
+`beforeAgent` report lands before the provider request starts and the `stop`
+report lands after the turn settles.
+
+Keep the report source stable and provide a strictly increasing `--seq` when
+reports can arrive out of order. Reports are ignored when their sequence
+number is not newer than the last accepted report for the same source: a
+per-process counter that restarts at 0 is lost once Herdr has accepted a
+higher sequence for that source, and a source that was `release`d cannot
+re-acquire authority until Herdr restarts. The bundled script uses a monotonic
+nanosecond timestamp as the sequence and lets `SOURCE` pick a per-session
+source so each session starts a fresh sequence space.
+
+`elph doctor` lists the active hooks. Use `/reload` after editing either hook
+file.
 
 ## Reload and integration boundaries
 
