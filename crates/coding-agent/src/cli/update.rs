@@ -4,7 +4,7 @@
 //! naming rules here in sync with that workflow and the install scripts.
 
 use std::fs;
-use std::io::{Read, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::time::Duration;
 
@@ -364,7 +364,10 @@ fn extract_binary(archive: &Path, archive_name: &str, directory: &Path) -> Resul
     bail!("{} is missing from {archive_name}", binary_name())
 }
 
-fn install_binary(target: &Path, binary: &mut impl Read) -> Result<()> {
+fn install_binary(target: &Path, binary: &mut (impl Read + Seek)) -> Result<()> {
+    // The extracted file was just written to, so its cursor is at EOF.
+    // Rewind it before copying; otherwise the staged replacement is empty.
+    binary.seek(SeekFrom::Start(0)).context("rewind extracted binary")?;
     let parent = target.parent().context("running binary has no parent directory")?;
     let mut staged = NamedTempFile::new_in(parent).context("create staged binary")?;
     std::io::copy(binary, &mut staged).context("write staged binary")?;
@@ -668,6 +671,20 @@ mod tests {
         let sums = format!("{hash}  elph-linux-x86_64.tar.gz\n");
         verify_checksum(archive.path(), sums.as_bytes(), "elph-linux-x86_64.tar.gz").expect("checksum");
         assert!(verify_checksum(archive.path(), b"bad  elph-linux-x86_64.tar.gz", "elph-linux-x86_64.tar.gz").is_err());
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn installs_the_entire_extracted_binary() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let target = directory.path().join(binary_name());
+        fs::write(&target, b"old binary").expect("write existing binary");
+
+        let mut binary = NamedTempFile::new_in(directory.path()).expect("extracted binary");
+        binary.write_all(b"new binary").expect("write extracted binary");
+        install_binary(&target, binary.as_file_mut()).expect("install binary");
+
+        assert_eq!(fs::read(target).expect("read installed binary"), b"new binary");
     }
 
     #[test]
