@@ -4011,7 +4011,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             // The command was already dispatched by handle_slash_submit
                             // (turn_gate queues it behind the active turn). Tell the user —
                             // do NOT push raw slash text as a follow-up prompt to the model.
-                            let notice = format!("Command {slash_input} queued — runs after the current task.");
+                            let notice = format!("Command {slash_input}queued — runs after the current task.");
                             push_transcript_message_synced(
                                 &mut messages,
                                 messages_arc,
