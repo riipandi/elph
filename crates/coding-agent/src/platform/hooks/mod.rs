@@ -1,9 +1,12 @@
 //! Native lifecycle hooks configured by `hooks.json`.
 //!
-//! The `ELPH_SESSION_ID` env var passed to hook children is read from the
-//! parent process environment. `bind_to_harness` stores the runtime session id
-//! on `HookHost` so callers that run hooks after `bind_to_harness` on a
-//! different thread can still resolve it.
+//! The `ELPH_SESSION_ID` env var passed to hook children is resolved from the
+//! runtime session id captured by [`HookHost::bind_to_harness`]; when hooks run
+//! before binding (or in processes without a harness, e.g. headless workers) it
+//! falls back to the `ELPH_SESSION_ID` exported in the parent process
+//! environment. Each harness callback captures the resolved id up front so the
+//! same session value reaches every hook child, regardless of the thread that
+//! later executes the callback.
 
 use std::collections::HashSet;
 use std::future::Future;
