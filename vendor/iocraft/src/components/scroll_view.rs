@@ -132,6 +132,21 @@ fn clamp_offset(offset: i32, content_height: u16, viewport_height: u16) -> i32 {
     offset.clamp(0, max_offset(content_height, viewport_height))
 }
 
+fn user_scrolled_up_after_scroll(
+    user_scrolled_up: bool,
+    current_offset: i32,
+    new_offset: i32,
+    max_offset: i32,
+) -> bool {
+    if new_offset < current_offset {
+        true
+    } else if new_offset > current_offset && new_offset >= max_offset {
+        false
+    } else {
+        user_scrolled_up
+    }
+}
+
 const DEFAULT_SCROLL_STEP: u16 = 3;
 
 // -- Scrollbar component --
@@ -392,6 +407,7 @@ pub fn ScrollView<'a>(mut hooks: Hooks, props: &mut ScrollViewProps<'a>) -> impl
                 let vh_val = vh.get();
                 let max = max_offset(ch, vh_val);
                 let pinned = auto_scroll && !user_scrolled_up.get();
+                let current_offset = if pinned { max } else { scroll_offset.get() };
 
                 let new_offset = if delta == i32::MIN / 2 {
                     0
@@ -399,18 +415,23 @@ pub fn ScrollView<'a>(mut hooks: Hooks, props: &mut ScrollViewProps<'a>) -> impl
                     max
                 } else if pinned {
                     if delta < 0 {
-                        clamp_offset(max + delta, ch, vh_val)
+                        clamp_offset(current_offset.saturating_add(delta), ch, vh_val)
                     } else {
                         max
                     }
                 } else {
-                    clamp_offset(scroll_offset.get() + delta, ch, vh_val)
+                    clamp_offset(current_offset.saturating_add(delta), ch, vh_val)
                 };
 
                 scroll_offset.set(new_offset);
 
                 if auto_scroll {
-                    user_scrolled_up.set(new_offset < max);
+                    user_scrolled_up.set(user_scrolled_up_after_scroll(
+                        user_scrolled_up.get(),
+                        current_offset,
+                        new_offset,
+                        max,
+                    ));
                 }
             }
         }
@@ -552,10 +573,17 @@ fn ScrollViewContentMeasurer<'a>(
 
 #[cfg(test)]
 mod tests {
+    use super::user_scrolled_up_after_scroll;
     use crate::prelude::*;
     use futures::stream::{self, StreamExt};
     use macro_rules_attribute::apply;
     use smol_macros::test;
+
+    #[test]
+    fn test_auto_scroll_state_preserves_noop_input() {
+        assert!(user_scrolled_up_after_scroll(true, 0, 0, 0));
+        assert!(!user_scrolled_up_after_scroll(false, 0, 0, 0));
+    }
 
     #[component]
     fn TestScrollView(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {

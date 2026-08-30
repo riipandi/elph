@@ -2,6 +2,7 @@ use crate::{
     render::MeasureFunc, segmented_string::SegmentedString, strip_ansi::sanitize_terminal_text,
     CanvasTextStyle, Color, Component, ComponentDrawer, ComponentUpdater, Hooks, Props, Weight,
 };
+use std::sync::Arc;
 use taffy::{AvailableSpace, Size};
 use unicode_width::UnicodeWidthStr;
 
@@ -64,6 +65,9 @@ pub struct TextProps {
 
     /// Whether to invert the text's foreground and background colors.
     pub invert: bool,
+
+    /// The OSC 8 hyperlink target, if the text is a link.
+    pub hyperlink: Option<String>,
 }
 
 /// `Text` is a component that renders a text string.
@@ -84,6 +88,7 @@ pub struct Text {
     content: String,
     wrap: TextWrap,
     align: TextAlign,
+    hyperlink: Option<Arc<str>>,
 }
 
 impl Text {
@@ -209,7 +214,7 @@ impl<'a, 'b> TextDrawer<'a, 'b> {
         &mut self,
         lines: impl IntoIterator<Item = &'c str>,
         style: CanvasTextStyle,
-        hyperlink: Option<std::sync::Arc<str>>,
+        hyperlink: Option<Arc<str>>,
     ) {
         let mut lines = lines.into_iter().peekable();
         while let Some(mut line) = lines.next() {
@@ -262,6 +267,7 @@ impl Component for Text {
         self.content = sanitize_terminal_text(&props.content).into_owned();
         self.wrap = props.wrap;
         self.align = props.align;
+        self.hyperlink = props.hyperlink.as_deref().map(Arc::from);
         updater.set_measure_func(Self::measure_func(self.content.clone(), props.wrap));
     }
 
@@ -275,7 +281,7 @@ impl Component for Text {
         );
         let (x_offset, content) = Self::align(content, self.align, width as _);
         let mut drawer = TextDrawer::new(drawer, x_offset, self.align != TextAlign::Left);
-        drawer.append_lines(content.lines(), self.style);
+        drawer.append_lines_with_hyperlink(content.lines(), self.style, self.hyperlink.clone());
     }
 }
 
@@ -387,6 +393,25 @@ mod tests {
     fn test_text_invert() {
         let canvas = element!(Text(content: "foo", invert: true)).render(None);
         assert!(canvas.cell(0, 0).unwrap().text_style().unwrap().invert);
+    }
+
+    #[test]
+    fn test_text_hyperlink() {
+        let canvas = element! {
+            View(width: 10) {
+                Text(content: "click", hyperlink: Some("http://example.com".to_owned()))
+            }
+        }
+        .render(None);
+        assert_eq!(
+            canvas.cell(0, 0).unwrap().hyperlink.as_deref(),
+            Some("http://example.com")
+        );
+        assert_eq!(
+            canvas.cell(4, 0).unwrap().hyperlink.as_deref(),
+            Some("http://example.com")
+        );
+        assert_eq!(canvas.cell(5, 0).unwrap().hyperlink, None);
     }
 
     #[test]

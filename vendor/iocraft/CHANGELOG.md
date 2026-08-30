@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.5](https://github.com/ccbrown/iocraft/compare/iocraft-v0.8.4...iocraft-v0.8.5) - 2026-08-20
+
+### Added
+
+- support OSC 8 hyperlinks in `Text`, `MixedText`, and the canvas ([#216](https://github.com/ccbrown/iocraft/pull/216), [#224](https://github.com/ccbrown/iocraft/pull/224))
+- add `auto_grow` to `TextInput` ([#225](https://github.com/ccbrown/iocraft/pull/225))
+
+### Fixed
+
+- propagate terminal input errors instead of silently dropping them ([#218](https://github.com/ccbrown/iocraft/pull/218))
+- preserve auto-scroll state for no-op input ([#220](https://github.com/ccbrown/iocraft/pull/220))
+- distinguish empty rows from missing rows during canvas diffing ([#222](https://github.com/ccbrown/iocraft/pull/222))
+- fix full-width root layout and terminal-loop exit handling ([#223](https://github.com/ccbrown/iocraft/pull/223), [#226](https://github.com/ccbrown/iocraft/pull/226))
+- correct ANSI sequence parsing and strip DCS/APC/PM/SOS strings ([#214](https://github.com/ccbrown/iocraft/pull/214))
+
 ## [0.8.4](https://github.com/ccbrown/iocraft/compare/iocraft-v0.8.3...iocraft-v0.8.4) - 2026-07-13
 
 ### Added
