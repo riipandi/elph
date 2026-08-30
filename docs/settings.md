@@ -2,6 +2,31 @@
 
 User preferences live in JSON. The host (`elph`) maps them into `elph-agent` / `elph-ai` at session create.
 
+## Visual editor
+
+Inside the interactive TUI, press `Ctrl+,` (or run `/settings`) to open a keyboard-first editor
+with five focused tabs: General, Appearance, Models, Memory, and Advanced. Related schema groups
+are combined to keep navigation compact: notifications live under Appearance, prompt encoding
+and compaction under Models, sessions under Memory, and workers, resources, and logging under
+Advanced. The editor shows the effective home-layer values with a short description for the
+selected field; project overrides are called out in the footer.
+
+- `[` / `]` or `Tab` changes category; `1`–`5` jump directly to a category.
+- `↑` / `↓` selects a field. `Enter` toggles booleans and cycles choices; press it on a text or
+  number field to edit.
+- While editing, type a value, press `Enter` to apply it, or `Esc` to cancel the edit.
+- While idle on a selected field, `R` resets that field to its schema default.
+- `Ctrl+S` saves to the home settings file. `Esc` closes; press it twice to discard unsaved changes.
+
+The editor validates numbers and enumerated choices before saving. Settings that affect process
+startup (for example logging and the shell) take effect after a restart; the selected theme is
+applied immediately. The editor writes only the home layer, so project settings are never baked
+into global settings.
+
+If the home settings file cannot be loaded, the editor shows the parse error and disables saving
+until the file is fixed. This prevents opening the editor and accidentally overwriting a malformed
+settings file with defaults.
+
 ## Files
 
 | File | Path | Role |
@@ -129,4 +154,4 @@ See [elph-agent observability](../crates/elph-agent/docs/observability.md).
 ## Not in settings.json
 
 - **MCP cache** — `mcp.json` keys `cacheTtlSecs` (default 60) and `cacheMaxEntries` (default 2048). Per-server `cacheTtlMs` still wins.
-- **Trust** — `trust.json` keys `directories` and `defaultProjectTrust` (`ask` / `always` / `never`). Only gates **project hooks**. `ask` has no prompt yet and behaves like `never`.
+- **Trust** — `trust.json` keys `directories` and `defaultProjectTrust` (`ask` / `always` / `never`). Only gates **project hooks**. Interactive TUI startup prompts for trust when the value is `ask`; `always` skips the prompt and `never` refuses untrusted projects. `/trust` and `/untrust` update the current directory decision, with `/untrust` available only for trusted projects.

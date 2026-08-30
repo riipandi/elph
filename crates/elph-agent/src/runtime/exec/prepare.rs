@@ -95,6 +95,14 @@ pub(super) async fn prepare_tool_call(
                 };
             }
             if let Some(args) = result.args {
+                let mut mutated_tool_call = prepared_tool_call.clone();
+                mutated_tool_call.arguments = args.clone();
+                if let Err(msg) = validate_tool_call(&tool.tool, &mutated_tool_call) {
+                    return Preparation::Immediate {
+                        result: AgentToolResult::error(msg),
+                        is_error: true,
+                    };
+                }
                 validated_args = args;
             }
         }

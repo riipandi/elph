@@ -12,7 +12,7 @@ use elph_agent::harness::{
     AgentHarness, BeforeAgentStartEvent, SessionBeforeCompactEvent, ToolCallEvent, ToolResultEvent,
 };
 use elph_agent::session::types::{HasSessionId, SessionStorage};
-use elph_agent::types::ToolResultContent;
+use elph_agent::types::{AgentMessage, ToolResultContent};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -68,6 +68,7 @@ pub enum HookEvent {
     SessionStart,
     UserPromptSubmit,
     BeforeAgent,
+    Context,
     PreToolUse,
     PostToolUse,
     PostToolUseFailure,
@@ -175,20 +176,63 @@ impl HookHost {
                             let _ = execute_hook(&hook, &user_prompt_event).await;
                         }
                         let mut system_prompt = None;
+                        let mut messages = Vec::new();
                         for hook in handlers {
                             if let Some(output) = execute_hook(&hook, &event).await {
-                                if let Some(context) = bounded_string(output.get("additionalContext")) {
-                                    log::debug!("hook {} supplied {} context bytes", hook.id, context.len());
-                                }
                                 if let Some(prompt) = bounded_string(output.get("systemPrompt")) {
-                                    system_prompt = Some(prompt);
+                                    append_prompt_fragment(
+                                        system_prompt.get_or_insert_with(|| {
+                                            event["systemPrompt"].as_str().unwrap_or_default().to_string()
+                                        }),
+                                        &prompt,
+                                    );
+                                }
+                                if let Some(context) = bounded_string(output.get("additionalContext")) {
+                                    append_prompt_fragment(
+                                        system_prompt.get_or_insert_with(|| {
+                                            event["systemPrompt"].as_str().unwrap_or_default().to_string()
+                                        }),
+                                        &context,
+                                    );
+                                }
+                                if let Some(extra) = hook_messages(&output, &hook.id) {
+                                    messages.extend(extra);
                                 }
                             }
                         }
-                        system_prompt.map(|system_prompt| elph_agent::harness::BeforeAgentStartResult {
-                            system_prompt: Some(system_prompt),
-                            messages: None,
-                        })
+                        (system_prompt.is_some() || !messages.is_empty()).then_some(
+                            elph_agent::harness::BeforeAgentStartResult {
+                                system_prompt,
+                                messages: (!messages.is_empty()).then_some(messages),
+                            },
+                        )
+                    })
+                })
+                .await;
+        }
+
+        if !self.handlers(HookEvent::Context).is_empty() {
+            let host = self.clone();
+            harness
+                .on_context(move |event| {
+                    let handlers = host.handlers(HookEvent::Context);
+                    let original_messages = event.messages.clone();
+                    Box::pin(async move {
+                        let mut messages = original_messages;
+                        let mut changed = false;
+                        for hook in handlers {
+                            let payload = serde_json::json!({
+                                "event": "context",
+                                "messages": messages.clone(),
+                            });
+                            if let Some(output) = execute_hook(&hook, &payload).await
+                                && let Some(replacement) = hook_messages(&output, &hook.id)
+                            {
+                                messages = replacement;
+                                changed = true;
+                            }
+                        }
+                        Ok(changed.then_some(elph_agent::harness::ContextResult { messages }))
                     })
                 })
                 .await;
@@ -200,29 +244,49 @@ impl HookHost {
                 .on_tool_call(move |event: &ToolCallEvent| {
                     let handlers = host.handlers(HookEvent::PreToolUse);
                     let tool_name = event.tool_name.clone();
-                    let payload = serde_json::to_value(ToolCallPayload::from(event)).unwrap_or_default();
+                    let tool_call_id = event.tool_call_id.clone();
+                    let original_input = event.input.clone();
                     Box::pin(async move {
-                        let mut result = None;
+                        let mut input = original_input.clone();
+                        let mut blocked = None;
                         for hook in handlers {
                             if !matches_tool(hook.matcher.as_ref(), &tool_name) {
                                 continue;
                             }
+                            let payload = serde_json::to_value(ToolCallPayload {
+                                tool_name: &tool_name,
+                                tool_call_id: &tool_call_id,
+                                tool_input: &input,
+                            })
+                            .unwrap_or_default();
                             if let Some(output) = execute_hook(&hook, &payload).await {
-                                let blocked = output
+                                if let Some(replacement) = output.get("toolInput") {
+                                    input = replacement.clone();
+                                }
+                                let is_blocked = output
                                     .get("decision")
                                     .and_then(Value::as_str)
                                     .is_some_and(|decision| decision == "deny")
                                     || output.get("block").and_then(Value::as_bool).unwrap_or(false);
-                                if blocked {
-                                    result = Some(elph_agent::harness::ToolCallHookResult {
-                                        block: true,
-                                        reason: bounded_string(output.get("reason")),
-                                    });
+                                if is_blocked {
+                                    blocked = Some(bounded_string(output.get("reason")));
                                     break;
                                 }
                             }
                         }
-                        result
+                        blocked
+                            .map(|reason| elph_agent::harness::ToolCallHookResult {
+                                block: true,
+                                reason,
+                                args: None,
+                            })
+                            .or_else(|| {
+                                (input != original_input).then_some(elph_agent::harness::ToolCallHookResult {
+                                    block: false,
+                                    reason: None,
+                                    args: Some(input),
+                                })
+                            })
                     })
                 })
                 .await;
@@ -236,7 +300,7 @@ impl HookHost {
                     let post_tool = host.handlers(HookEvent::PostToolUse);
                     let post_tool_failure = host.handlers(HookEvent::PostToolUseFailure);
                     let handlers = if event.is_error { post_tool_failure } else { post_tool };
-                    let payload = serde_json::to_value(ToolResultPayload::from(event)).unwrap_or_default();
+                    let mut payload = serde_json::to_value(ToolResultPayload::from(event)).unwrap_or_default();
                     Box::pin(async move {
                         let mut patch = elph_agent::harness::ToolResultPatch::default();
                         let mut changed = false;
@@ -245,12 +309,25 @@ impl HookHost {
                                 continue;
                             }
                             if let Some(output) = execute_hook(&hook, &payload).await {
+                                if let Some(content) = output.get("content")
+                                    && let Some(content) = hook_tool_result_content(content, &hook.id)
+                                {
+                                    payload["content"] = serde_json::to_value(&content).unwrap_or_default();
+                                    patch.content = Some(content);
+                                    changed = true;
+                                }
                                 if let Some(value) = output.get("isError").and_then(Value::as_bool) {
+                                    payload["isError"] = Value::Bool(value);
                                     patch.is_error = Some(value);
                                     changed = true;
                                 }
                                 if let Some(value) = output.get("details") {
+                                    payload["details"] = value.clone();
                                     patch.details = Some(value.clone());
+                                    changed = true;
+                                }
+                                if let Some(value) = output.get("terminate").and_then(Value::as_bool) {
+                                    patch.terminate = Some(value);
                                     changed = true;
                                 }
                             }
@@ -494,6 +571,43 @@ fn bounded_string(value: Option<&Value>) -> Option<String> {
     (value.len() <= MAX_CONTEXT_BYTES).then(|| value.to_string())
 }
 
+fn append_prompt_fragment(prompt: &mut String, fragment: &str) {
+    if !prompt.is_empty() {
+        prompt.push_str("\n\n");
+    }
+    prompt.push_str(fragment);
+}
+
+fn hook_messages(output: &Value, hook_id: &str) -> Option<Vec<AgentMessage>> {
+    let value = output.get("messages")?;
+    match serde_json::from_value(value.clone()) {
+        Ok(messages) => Some(messages),
+        Err(error) => {
+            log::warn!("hook {hook_id} returned invalid messages: {error}");
+            None
+        }
+    }
+}
+
+fn hook_tool_result_content(output: &Value, hook_id: &str) -> Option<Vec<ToolResultContent>> {
+    let content: Vec<ToolResultContent> = match serde_json::from_value(output.clone()) {
+        Ok(content) => content,
+        Err(error) => {
+            log::warn!("hook {hook_id} returned invalid tool result content: {error}");
+            return None;
+        }
+    };
+    if content.iter().all(|block| match block {
+        ToolResultContent::Text(text) => text.kind == "text",
+        ToolResultContent::Image(image) => image.kind == "image",
+    }) {
+        Some(content)
+    } else {
+        log::warn!("hook {hook_id} returned an unsupported tool result content type");
+        None
+    }
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct BeforeAgentPayload<'a> {
@@ -516,16 +630,6 @@ struct ToolCallPayload<'a> {
     tool_name: &'a str,
     tool_call_id: &'a str,
     tool_input: &'a Value,
-}
-
-impl<'a> From<&'a ToolCallEvent> for ToolCallPayload<'a> {
-    fn from(event: &'a ToolCallEvent) -> Self {
-        Self {
-            tool_name: &event.tool_name,
-            tool_call_id: &event.tool_call_id,
-            tool_input: &event.input,
-        }
-    }
 }
 
 #[derive(Serialize)]
@@ -591,6 +695,21 @@ mod tests {
     }
 
     #[test]
+    fn schema_accepts_context_hooks() {
+        let value = serde_json::json!({
+            "hooks": [{
+                "id": "trim-context",
+                "event": "context",
+                "command": "trim-context"
+            }]
+        });
+        let schema: Value = serde_json::from_str(HOOK_SCHEMA_JSON).expect("schema");
+        assert!(jsonschema::validate(&schema, &value).is_ok());
+        let config: HookConfig = serde_json::from_value(value).expect("config");
+        assert_eq!(config.hooks[0].event, HookEvent::Context);
+    }
+
+    #[test]
     fn schema_rejects_unknown_fields_and_events() {
         let schema: Value = serde_json::from_str(HOOK_SCHEMA_JSON).expect("schema");
         for value in [
@@ -608,6 +727,27 @@ mod tests {
         assert!(wildcard("write_*", "write_file"));
         assert!(wildcard("*file", "write_file"));
         assert!(!wildcard("write_*", "read_file"));
+    }
+
+    #[test]
+    fn prompt_fragments_are_appended_with_boundaries() {
+        let mut prompt = "base".to_string();
+        append_prompt_fragment(&mut prompt, "first");
+        append_prompt_fragment(&mut prompt, "second");
+        assert_eq!(prompt, "base\n\nfirst\n\nsecond");
+    }
+
+    #[test]
+    fn tool_result_content_accepts_text_and_image_blocks() {
+        let content = hook_tool_result_content(
+            &serde_json::json!([
+                {"type": "text", "text": "replacement"},
+                {"type": "image", "data": "AA==", "mime_type": "image/png"}
+            ]),
+            "replace-result",
+        )
+        .expect("content");
+        assert_eq!(content.len(), 2);
     }
 
     #[test]

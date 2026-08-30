@@ -14,7 +14,7 @@ Library crates (`elph-ai`, `elph-agent`, `elph-tui`, `floppy`) are consumed by `
 
 | Consumer        | Typical features                                |
 | --------------- | ----------------------------------------------- |
-| `elph` binary   | `mcp`, `extensions`, `builtin-tools`, `tracing` |
+| `elph` binary   | `mcp`, `builtin-tools`, `tracing`                |
 | Minimal embed   | `mcp` only (`--no-default-features`)            |
 | Custom tool set | `tools-core`, `tools-explore`, … à la carte     |
 
@@ -55,7 +55,11 @@ to `rustc` instead of failing the build.
 | `make run`     | `cargo run --bin elph`                                                         |
 | `make watch`   | `cargo watch` + `cargo run --bin elph`                                         |
 | `make install` | Copy debug → `~/.local/bin/elph-debug` or release → `~/.local/bin/elph-canary` |
-| `make help`    | List all targets                                                               |
+| `make web-deps`  | Install website dependencies from `website/pnpm-lock.yaml` |
+| `make web-dev`   | Start the website development server                     |
+| `make web-build` | Build the website for production                         |
+| `make web-start` | Serve the built website from `website/dist/`             |
+| `make help`      | List all targets                                         |
 
 ### Installed binaries
 

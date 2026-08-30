@@ -9,7 +9,7 @@ use crate::agent::{
     CodingAgentSession, SlashDispatch, clone_session_message, dispatch_slash_command, export_session_message,
     fork_session_message, format_help_message, import_session_from_jsonl, import_slash_message, resume_list_message,
     slash_commands_for_palette, system_prompt_slash_message, tree_slash_message, trust_slash_message,
-    workers_slash_message,
+    untrust_slash_message, workers_slash_message,
 };
 use crate::platform::Paths;
 use crate::platform::acp::state::{AcpAgentState, lookup_session};
@@ -34,6 +34,7 @@ const ACP_COMMANDS: &[(&str, &str, Option<&str>)] = &[
     ("export", "Export session as JSONL", Some("[path]")),
     ("import", "Import session JSONL", Some("[path]")),
     ("trust", "Save project trust decision", None),
+    ("untrust", "Remove project trust decision", None),
     ("aside", "Ask a side question without interrupting", Some("<question>")),
     ("mcp", "List or logout MCP servers", Some("[list|logout <name>]")),
 ];
@@ -65,13 +66,26 @@ pub async fn slash_catalog(session: &CodingAgentSession) -> Vec<AdvertisedSlash>
     let resources = session.harness().get_resources().await;
     let palette =
         slash_commands_for_palette(Some(resources.prompt_templates.as_slice()), Some(resources.skills.as_slice()));
-    merge_advertised(&palette)
+    let project_trusted = Paths::resolve()
+        .ok()
+        .and_then(|paths| {
+            crate::platform::scaffold::TrustStore::is_trusted(
+                &paths,
+                std::path::Path::new(session.session_manager().project_key()),
+            )
+            .ok()
+        })
+        .unwrap_or(false);
+    merge_advertised(&palette, project_trusted)
 }
 
-fn merge_advertised(palette: &[SlashCommand]) -> Vec<AdvertisedSlash> {
+fn merge_advertised(palette: &[SlashCommand], project_trusted: bool) -> Vec<AdvertisedSlash> {
     let mut out = Vec::new();
     let mut seen = std::collections::HashSet::new();
     for (name, desc, hint) in ACP_COMMANDS {
+        if (*name == "trust" && project_trusted) || (*name == "untrust" && !project_trusted) {
+            continue;
+        }
         seen.insert((*name).to_string());
         out.push(AdvertisedSlash {
             name: (*name).to_string(),
@@ -260,6 +274,11 @@ pub async fn resolve_slash(state: &Arc<Mutex<AcpAgentState>>, key: &str, input: 
             let (_, _, cwd) = lookup_session(state, key)?;
             let paths = Paths::resolve().map_err(|e| anyhow::anyhow!("{e}"))?;
             trust_slash_message(&paths, &cwd).map_err(|e| anyhow::anyhow!("{e}"))?
+        }
+        Some(SlashDispatch::Untrust) => {
+            let (_, _, cwd) = lookup_session(state, key)?;
+            let paths = Paths::resolve().map_err(|e| anyhow::anyhow!("{e}"))?;
+            untrust_slash_message(&paths, &cwd).map_err(|e| anyhow::anyhow!("{e}"))?
         }
         Some(SlashDispatch::Fork) => {
             let (session, _, _) = lookup_session(state, key)?;
@@ -479,7 +498,7 @@ mod tests {
             SlashCommand::new("model", "Select model"),
             SlashCommand::new("help", "duplicate builtin"),
         ];
-        let cmds = merge_advertised(&palette);
+        let cmds = merge_advertised(&palette, false);
         assert!(cmds.iter().any(|c| c.name == "help"));
         assert!(
             cmds.iter()
@@ -490,5 +509,9 @@ mod tests {
         assert!(!cmds.iter().any(|c| c.name == "model"));
         assert!(!cmds.iter().any(|c| c.name == "hotkeys" || c.name == "workers"));
         assert_eq!(cmds.iter().filter(|c| c.name == "help").count(), 1);
+
+        let trusted = merge_advertised(&palette, true);
+        assert!(!trusted.iter().any(|c| c.name == "trust"));
+        assert!(trusted.iter().any(|c| c.name == "untrust"));
     }
 }

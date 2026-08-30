@@ -13,7 +13,7 @@ use elph_agent::runtime::LocalExecutionEnv;
 
 use super::agents_load::{AgentConflict, WorkspaceAgents, load_workspace_agents};
 use super::conflict_notice::{self, CrossKindConflict, TemplateConflict};
-use super::resource_paths::{dedupe_resource_dirs, resource_dir_identity};
+use super::resource_paths::{dedupe_resource_dirs, resource_path_identity};
 use super::skills_load::{SkillConflict, WorkspaceSkills, load_workspace_skills};
 use crate::platform::{Paths, Settings};
 
@@ -134,12 +134,15 @@ async fn load_prompt_templates_resolved(
     for (path, label) in
         prompt_template_dir_entries(paths, cwd, settings.include_project_resources(), &settings.extra_prompt_paths())
     {
-        let identity = resource_dir_identity(&path, &bases).to_string_lossy().into_owned();
         let loaded = load_prompt_templates(env, &[path.as_str()]).await;
         for diagnostic in loaded.diagnostics {
             warnings.push(format!("prompt template ({}): {}", diagnostic.path, diagnostic.message));
         }
-        for template in loaded.prompt_templates {
+        let templates = settings.filter_prompts(loaded.prompt_templates);
+        for template in templates {
+            let identity = resource_path_identity(&template.file_path, &bases)
+                .to_string_lossy()
+                .into_owned();
             if let Some((previous_id, previous_label)) = source_by_name.get(&template.name)
                 && previous_id != &identity
             {
@@ -155,7 +158,6 @@ async fn load_prompt_templates_resolved(
     }
 
     let mut prompt_templates: Vec<PromptTemplate> = by_name.into_values().collect();
-    prompt_templates = settings.filter_prompts(prompt_templates);
     prompt_templates.sort_by(|a, b| a.name.cmp(&b.name));
     conflicts.sort_by(|a, b| a.name.cmp(&b.name));
     (prompt_templates, conflicts, warnings)
@@ -269,5 +271,67 @@ mod tests {
         let loaded = load_resources(&paths, paths.project_dir(), &env, &settings).await;
         assert_eq!(loaded.template_count(), 1);
         assert!(loaded.template_conflicts.is_empty());
+    }
+
+    #[tokio::test]
+    async fn extra_nested_prompt_dir_does_not_conflict_with_parent_scan() {
+        let tmp = TempDir::new().unwrap();
+        let paths = test_paths(&tmp);
+        let prompt_dir = paths.project_dir().join(".agents/prompts/identify");
+        std::fs::create_dir_all(&prompt_dir).unwrap();
+        std::fs::write(prompt_dir.join("prompt.md"), "---\ndescription: once\n---\nPrompt body\n").unwrap();
+
+        let env = LocalExecutionEnv::new(paths.project_dir());
+        let mut settings = Settings::defaults();
+        settings.project_layer_loaded = true;
+        settings.resources.prompts = vec![".agents/prompts/identify".into()];
+        let loaded = load_resources(&paths, paths.project_dir(), &env, &settings).await;
+
+        assert_eq!(loaded.template_count(), 1);
+        assert!(loaded.template_conflicts.is_empty());
+    }
+
+    #[tokio::test]
+    async fn same_name_skill_and_template_are_separate_namespaces() {
+        let tmp = TempDir::new().unwrap();
+        let paths = test_paths(&tmp);
+        let skill_dir = paths.project_dir().join(".agents/skills/identify");
+        let prompt_dir = paths.project_dir().join(".agents/prompts");
+        std::fs::create_dir_all(&skill_dir).unwrap();
+        std::fs::create_dir_all(&prompt_dir).unwrap();
+        std::fs::write(
+            skill_dir.join("SKILL.md"),
+            "---\nname: identify\ndescription: skill\n---\nSkill body\n",
+        )
+        .unwrap();
+        std::fs::write(prompt_dir.join("identify.md"), "---\ndescription: prompt\n---\nPrompt body\n").unwrap();
+
+        let env = LocalExecutionEnv::new(paths.project_dir());
+        let mut settings = Settings::defaults();
+        settings.project_layer_loaded = true;
+        settings.resources.skills = vec!["!~/.agents/skills/*".into()];
+        let loaded = load_resources(&paths, paths.project_dir(), &env, &settings).await;
+
+        assert_eq!(
+            loaded
+                .resources
+                .skills
+                .iter()
+                .filter(|skill| skill.name == "identify")
+                .count(),
+            1
+        );
+        assert_eq!(
+            loaded
+                .resources
+                .prompt_templates
+                .iter()
+                .filter(|template| template.name == "identify")
+                .count(),
+            1
+        );
+        assert!(loaded.skill_conflicts.is_empty());
+        assert!(loaded.template_conflicts.is_empty());
+        assert!(loaded.cross_kind_conflicts.is_empty());
     }
 }

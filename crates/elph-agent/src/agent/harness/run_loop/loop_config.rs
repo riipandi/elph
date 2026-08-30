@@ -149,7 +149,7 @@ where
                     Some(BeforeToolCallResult {
                         block: result.block,
                         reason: result.reason,
-                        args: None,
+                        args: result.args,
                         terminate: None,
                     })
                 })

@@ -97,6 +97,9 @@ pub(crate) struct ShellCtx {
     pub(crate) pending_retry_prompt: Ref<Option<String>>,
     pub(crate) pending_mcp_auth: Ref<Option<PendingMcpAuthDialog>>,
     pub(crate) pending_mcp_auth_for_tick: Ref<Option<PendingMcpAuthDialog>>,
+    pub(crate) pending_mcp_add: Ref<Option<crate::tui::mcp_auth_dialog::PendingMcpAddDialog>>,
+    pub(crate) mcp_add_input: State<String>,
+    pub(crate) mcp_add_field: State<crate::tui::mcp_auth_dialog::McpAddField>,
     pub(crate) pending_provider_api_key: Ref<Option<PendingProviderApiKeyDialog>>,
     pub(crate) pending_provider_connect: Ref<Option<PendingProviderConnectDialog>>,
     pub(crate) pending_provider_connect_for_tick: Ref<Option<PendingProviderConnectDialog>>,
@@ -110,6 +113,8 @@ pub(crate) struct ShellCtx {
     pub(crate) pending_thinking_selector: Ref<Option<crate::tui::thinking_selector::PendingThinkingSelector>>,
     pub(crate) thinking_selector_selected: State<usize>,
     pub(crate) pending_scoped_models: Ref<Option<PendingScopedModels>>,
+    pub(crate) pending_settings: Ref<Option<crate::tui::settings_dialog::PendingSettings>>,
+    pub(crate) settings_revision: State<u64>,
     pub(crate) pending_subagent_output: Ref<Option<PendingSubagentOutputDialog>>,
     pub(crate) pending_system_prompt: Ref<Option<PendingSystemPromptDialog>>,
     /// Inline `/aside` panel above the status row (Grok `/btw` parity).

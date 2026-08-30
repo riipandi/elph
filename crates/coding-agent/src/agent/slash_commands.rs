@@ -64,6 +64,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("clone", "Clone current session"),
         builtin("tree", "Navigate session tree"),
         builtin("trust", "Save project trust decision"),
+        builtin("untrust", "Remove project trust decision"),
         builtin_with_args("provider", "Manage providers"),
         builtin_with_args("transfer", "Resume a foreign coding-agent session"),
         builtin_with_args("mcp", "MCP servers"),
@@ -94,7 +95,7 @@ pub fn slash_commands_for_palette(
     prompt_templates: Option<&[PromptTemplate]>,
     skills: Option<&[Skill]>,
 ) -> Vec<SlashCommand> {
-    slash_commands_for_palette_with(prompt_templates, skills, true)
+    slash_commands_for_palette_with_trust(prompt_templates, skills, true, false)
 }
 
 pub fn slash_commands_for_palette_with(
@@ -102,10 +103,25 @@ pub fn slash_commands_for_palette_with(
     skills: Option<&[Skill]>,
     enable_skill_commands: bool,
 ) -> Vec<SlashCommand> {
+    slash_commands_for_palette_with_trust(prompt_templates, skills, enable_skill_commands, false)
+}
+
+/// Build the command palette with exactly one project trust action.
+///
+/// The TUI passes the current effective trust state so `/trust` and `/untrust`
+/// never appear together. The simpler palette helpers retain the untrusted
+/// default for callers that do not have a project context.
+pub fn slash_commands_for_palette_with_trust(
+    prompt_templates: Option<&[PromptTemplate]>,
+    skills: Option<&[Skill]>,
+    enable_skill_commands: bool,
+    project_trusted: bool,
+) -> Vec<SlashCommand> {
     // Include hidden builtins (e.g. `/confetti`) so Tab can still complete them when the
     // typed query matches. Empty-query palette + `/help` filter them out via `hidden`.
     let mut commands: Vec<SlashCommand> = builtin_slash_commands()
         .into_iter()
+        .filter(|cmd| (project_trusted || cmd.name != "untrust") && (!project_trusted || cmd.name != "trust"))
         .map(|cmd| {
             let mut entry = SlashCommand::new(cmd.name, truncate_palette_description(cmd.description, None));
             if let Some(hint) = cmd.args_hint {
@@ -246,6 +262,10 @@ pub enum SlashDispatch {
     },
     /// List MCP servers in the transcript (`/mcp list`).
     McpList,
+    /// Open the quick MCP server form (`/mcp add [name -- command]`).
+    McpAdd {
+        args: String,
+    },
     /// Resume a foreign coding-agent session (`/transfer claude [ref]`).
     ///
     /// `args` is the raw slash body after `/transfer ` — the first token selects
@@ -274,6 +294,8 @@ pub enum SlashDispatch {
     },
     /// Mark project trusted (`/trust`).
     Trust,
+    /// Mark project untrusted (`/untrust`).
+    Untrust,
     /// Fork current session (`/fork`).
     Fork,
     /// Clone current session (`/clone`).
@@ -393,6 +415,10 @@ const PROVIDER_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
 ];
 
 const MCP_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
+    SlashArgCompletion {
+        value: "add",
+        description: "Add or update an MCP server",
+    },
     SlashArgCompletion {
         value: "auth",
         description: "OAuth login for a remote MCP server",
@@ -613,6 +639,7 @@ pub fn slash_palette_submit_on_enter(command_name: &str) -> bool {
             | "changelog"
             | "settings"
             | "trust"
+            | "untrust"
             | "fork"
             | "clone"
     )
@@ -655,6 +682,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "export" => Some(SlashDispatch::Export { args }),
         "import" => Some(SlashDispatch::Import { args }),
         "trust" => Some(SlashDispatch::Trust),
+        "untrust" => Some(SlashDispatch::Untrust),
         "fork" => Some(SlashDispatch::Fork),
         "clone" => Some(SlashDispatch::CloneSession),
         "copy" => Some(SlashDispatch::CloneSession),
@@ -695,20 +723,22 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
             let args = args.trim();
             if args.is_empty() || args == "list" || args == "ls" {
                 Some(SlashDispatch::McpList)
-            } else if let Some(rest) = args
-                .strip_prefix("auth")
-                .or_else(|| args.strip_prefix("login"))
-                .or_else(|| args.strip_prefix("connect"))
-            {
-                let rest = rest.trim();
-                let server_name = if rest.is_empty() { None } else { Some(rest.to_string()) };
-                Some(SlashDispatch::McpAuth { server_name })
-            } else if let Some(rest) = args.strip_prefix("logout").or_else(|| args.strip_prefix("disconnect")) {
-                let rest = rest.trim();
-                let server_name = if rest.is_empty() { None } else { Some(rest.to_string()) };
-                Some(SlashDispatch::McpLogout { server_name })
             } else {
-                Some(SlashDispatch::Unimplemented(format!("/mcp {args}")))
+                let (subcommand, rest) = args
+                    .split_once(' ')
+                    .map_or((args, ""), |(cmd, rest)| (cmd, rest.trim()));
+                match subcommand {
+                    "add" => Some(SlashDispatch::McpAdd { args: rest.to_string() }),
+                    "auth" | "login" | "connect" => {
+                        let server_name = (!rest.is_empty()).then(|| rest.to_string());
+                        Some(SlashDispatch::McpAuth { server_name })
+                    }
+                    "logout" | "disconnect" => {
+                        let server_name = (!rest.is_empty()).then(|| rest.to_string());
+                        Some(SlashDispatch::McpLogout { server_name })
+                    }
+                    _ => Some(SlashDispatch::Unimplemented(format!("/mcp {args}"))),
+                }
             }
         }
         "transfer" => Some(SlashDispatch::Transfer { args }),
@@ -826,6 +856,24 @@ mod tests {
                 server_name: Some("figma".to_string())
             })
         );
+    }
+
+    #[test]
+    fn mcp_add_dispatch_preserves_arguments() {
+        assert_eq!(
+            dispatch_slash_command("/mcp add", None, None),
+            Some(SlashDispatch::McpAdd { args: String::new() })
+        );
+        assert_eq!(
+            dispatch_slash_command("/mcp add filesystem -- npx -y server-filesystem /tmp", None, None),
+            Some(SlashDispatch::McpAdd {
+                args: "filesystem -- npx -y server-filesystem /tmp".to_string()
+            })
+        );
+        assert!(matches!(
+            dispatch_slash_command("/mcp authentic", None, None),
+            Some(SlashDispatch::Unimplemented(_))
+        ));
     }
 
     #[test]
@@ -1038,6 +1086,7 @@ mod tests {
         assert!(slash_arg_completions("mcp").is_some());
         assert!(slash_arg_completions("model").is_none());
         let mcp = slash_arg_completions("mcp").unwrap();
+        assert!(mcp.iter().any(|c| c.value == "add"));
         assert!(mcp.iter().any(|c| c.value == "auth"));
         assert!(mcp.iter().any(|c| c.value == "logout"));
         assert!(mcp.iter().any(|c| c.value == "list"));
@@ -1051,6 +1100,25 @@ mod tests {
         assert!(names.contains(&"mcp"));
         assert!(names.contains(&"session"));
         assert!(names.contains(&"rename"));
+    }
+
+    #[test]
+    fn trust_commands_dispatch_and_palette_is_state_aware() {
+        assert_eq!(dispatch_slash_command("/untrust", None, None), Some(SlashDispatch::Untrust));
+
+        let untrusted_names: Vec<_> = slash_commands_for_palette_with_trust(None, None, true, false)
+            .into_iter()
+            .map(|command| command.name)
+            .collect();
+        assert!(untrusted_names.iter().any(|name| name == "trust"));
+        assert!(!untrusted_names.iter().any(|name| name == "untrust"));
+
+        let trusted_names: Vec<_> = slash_commands_for_palette_with_trust(None, None, true, true)
+            .into_iter()
+            .map(|command| command.name)
+            .collect();
+        assert!(!trusted_names.iter().any(|name| name == "trust"));
+        assert!(trusted_names.iter().any(|name| name == "untrust"));
     }
 
     #[test]

@@ -74,6 +74,7 @@ pub(crate) fn build_shell_view(
         mut pending_model_selector,
         mut pending_plan_confirmation,
         mut pending_mcp_auth,
+        mut pending_mcp_add,
         pending_provider_api_key,
         mut pending_provider_connect,
         mut pending_provider_disconnect,
@@ -85,6 +86,8 @@ pub(crate) fn build_shell_view(
         mut pending_thinking_selector,
         mut thinking_selector_selected,
         mut pending_scoped_models,
+        mut pending_settings,
+        settings_revision,
         pending_subagent_output,
         mut pending_system_prompt,
         pending_aside,
@@ -103,6 +106,8 @@ pub(crate) fn build_shell_view(
         mut prompt_queue,
         prompt_templates,
         mut provider_connect_api_key,
+        mut mcp_add_input,
+        mut mcp_add_field,
         mut provider_connect_filter,
         mut provider_connect_input_focus,
         mut provider_connect_selected,
@@ -133,7 +138,7 @@ pub(crate) fn build_shell_view(
         show_thinking,
         skills,
         skills_count,
-        slash_commands,
+        mut slash_commands,
         mut slash_palette_active,
         mut slash_palette_index,
         mut slash_palette_query,
@@ -311,6 +316,7 @@ pub(crate) fn build_shell_view(
     let confetti_open = pending_confetti.read().is_some();
     let provider_connect_open = pending_provider_connect.read().is_some();
     let mcp_auth_open = pending_mcp_auth.read().is_some();
+    let mcp_add_open = pending_mcp_add.read().is_some();
     let provider_disconnect_open = pending_provider_disconnect.read().is_some();
     let provider_api_key_open = pending_provider_api_key.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
@@ -330,6 +336,7 @@ pub(crate) fn build_shell_view(
         || confetti_open
         || provider_connect_open
         || mcp_auth_open
+        || mcp_add_open
         || provider_disconnect_open
         || provider_api_key_open
         || queue_manager_is_open
@@ -352,6 +359,7 @@ pub(crate) fn build_shell_view(
             || confetti_open
             || provider_connect_open
             || mcp_auth_open
+            || mcp_add_open
             || provider_api_key_open
             || queue_manager_is_open
             || aside_open);
@@ -412,6 +420,7 @@ pub(crate) fn build_shell_view(
         || *pending_feedback.read()
         || provider_connect_open
         || mcp_auth_open
+        || mcp_add_open
         || provider_disconnect_open
         || provider_api_key_open)
         && !user_question_open
@@ -730,6 +739,24 @@ pub(crate) fn build_shell_view(
             }
             .into()
         });
+    let _settings_revision = settings_revision.get();
+    let settings_overlay = pending_settings.read().as_ref().map(|pending| -> AnyElement<'static> {
+        let mut pending_settings = pending_settings;
+        let mut shell_focus = shell_focus;
+        element! {
+            crate::tui::settings_dialog::SettingsDialogOverlay(
+                screen_width: screen_width,
+                screen_height: screen_height,
+                pending: pending.clone(),
+                revision: settings_revision.get(),
+                on_esc: move |_| {
+                    pending_settings.set(None);
+                    shell_focus.set(ShellFocus::Prompt);
+                },
+            )
+        }
+        .into()
+    });
     let user_question_view = pending_user_question.read().as_ref().map(|pending| {
         UserQuestionView::from_pending(
             pending,
@@ -787,6 +814,7 @@ pub(crate) fn build_shell_view(
             dialog
         })
         .or_else(|| build_provider_api_key_dialog_kind(pending_provider_api_key.read().as_ref(), approval_has_focus))
+        .or_else(|| build_mcp_add_dialog_kind(pending_mcp_add.read().as_ref(), approval_has_focus))
         .or_else(|| build_mcp_auth_dialog_kind(pending_mcp_auth.read().as_ref(), approval_has_focus))
         .or_else(|| {
             let pending = pending_provider_disconnect.read();
@@ -874,6 +902,7 @@ pub(crate) fn build_shell_view(
     // prompt editor is hidden (the footer stays at the bottom). Recomputed here so
     // the closure below always sees the current value.
     let aside_open = pending_aside.read().is_some();
+    let settings_open = pending_settings.read().is_some();
 
     // Hide the prompt editor whenever a bottom-band overlay owns that band — the
     // `/aside` panel or any StatusZone dialog (tool approval, mode change, plan,
@@ -883,6 +912,7 @@ pub(crate) fn build_shell_view(
     // excluded. Computed as a `bool` here because `status_dialog` is moved into
     // `StatusZone` later.
     let editor_hidden = aside_open
+        || settings_open
         || status_dialog
             .as_ref()
             .is_some_and(|d| !matches!(d, StatusDialogKind::PromptQueue { .. }));
@@ -1302,6 +1332,8 @@ pub(crate) fn build_shell_view(
                         .map(|p| p.oauth_provider_name.clone())
                         .unwrap_or_default(),
                 ),
+                mcp_add_input: Some(mcp_add_input),
+                mcp_add_field: Some(mcp_add_field),
                 queue_count: queue_count,
                 suppress_status_row: aside_open,
                 on_queue_action: on_queue_action_click,
@@ -1800,6 +1832,24 @@ pub(crate) fn build_shell_view(
                                 TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
+                            SlashOutcome::TrustChanged { message, trusted } => {
+                                push_transcript_message_synced(
+                                    &mut messages,
+                                    messages_arc,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(message, TranscriptStyle::Meta),
+                                );
+                                let enable_skill_commands = Settings::load(&paths_snapshot)
+                                    .map(|settings| settings.resources.enable_skill_commands)
+                                    .unwrap_or(true);
+                                slash_commands.set(crate::agent::slash_commands_for_palette_with_trust(
+                                    Some(&templates),
+                                    Some(&loaded_skills),
+                                    enable_skill_commands,
+                                    trusted,
+                                ));
+                            }
                             SlashOutcome::Unimplemented(message) => {
                                 push_transcript_message_synced(
                                 &mut messages,
@@ -1859,6 +1909,22 @@ pub(crate) fn build_shell_view(
                                 }
                                 draft.set(String::new());
                                 live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenMcpAddDialog { initial } => {
+                                open_mcp_add_dialog(OpenMcpAddDialogArgs {
+                                    pending: &mut pending_mcp_add,
+                                    input: &mut mcp_add_input,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    initial,
+                                });
+                                if let Some(pending) = pending_mcp_add.read().as_ref() {
+                                    mcp_add_field.set(pending.field);
+                                }
                                 force_editor_clear.set(true);
                                 suppress_enter_newline.set(true);
                                 return;
@@ -1991,6 +2057,19 @@ pub(crate) fn build_shell_view(
                                 suppress_enter_newline.set(true);
                                 return;
                             }
+                            SlashOutcome::OpenSettings => {
+                                let paths_snapshot = paths.read().clone();
+                                crate::tui::settings_dialog::open_settings_dialog(
+                                    &mut pending_settings,
+                                    &paths_snapshot,
+                                    &mut draft,
+                                    &mut live_draft,
+                                    &mut shell_focus,
+                                );
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
                             SlashOutcome::OpenProviderListDialog { text } => {
                                 let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
                                 open_scroll_text_dialog(OpenScrollTextDialogArgs {
@@ -1999,6 +2078,23 @@ pub(crate) fn build_shell_view(
                                     title: "Configured Providers".to_string(),
                                     text,
                                     width_pct: 55,
+                                    body_height: Some(body_height),
+                                    show_copy: false,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenMcpListDialog { text } => {
+                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(7, 32);
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "MCP Servers".to_string(),
+                                    text,
+                                    width_pct: 65,
                                     body_height: Some(body_height),
                                     show_copy: false,
                                 });
@@ -2284,6 +2380,7 @@ pub(crate) fn build_shell_view(
             )
             #(confetti_overlay)
             #(system_prompt_overlay)
+            #(settings_overlay)
             #(pending_subagent_output.read().as_ref().map(|pending| -> AnyElement<'static> {
                 let (chrome, body_height) = crate::tui::subagent_output_dialog::subagent_output_dialog_chrome(
                     screen_width, screen_height, pending.width_pct

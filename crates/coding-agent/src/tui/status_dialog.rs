@@ -366,6 +366,10 @@ pub enum StatusDialogKind {
     McpAuth {
         pending: crate::tui::mcp_auth_dialog::PendingMcpAuthDialog,
     },
+    /// Quick MCP server configuration dialog (`/mcp add`).
+    McpAdd {
+        pending: crate::tui::mcp_auth_dialog::PendingMcpAddDialog,
+    },
     /// Numbered prompt queue — rendered **above** StatusRow.
     PromptQueue {
         items: Vec<crate::agent::QueuedPromptItem>,
@@ -414,6 +418,9 @@ pub struct StatusZoneProps {
     pub provider_connect_oauth_code: Option<String>,
     /// Provider connect OAuth provider name (shown on the OAuth device code step).
     pub provider_connect_oauth_provider_name: Option<String>,
+    /// Current input and field for the quick MCP add dialog.
+    pub mcp_add_input: Option<State<String>>,
+    pub mcp_add_field: Option<State<crate::tui::mcp_auth_dialog::McpAddField>>,
     /// Queued prompt count for StatusRow badge (independent of manager open).
     pub queue_count: u32,
     /// Mouse click on `[Send]` / `[Edit]` / `[Cancel]` — `(display_index, action)`.
@@ -451,6 +458,8 @@ impl Default for StatusZoneProps {
             provider_connect_oauth_url: None,
             provider_connect_oauth_code: None,
             provider_connect_oauth_provider_name: None,
+            mcp_add_input: None,
+            mcp_add_field: None,
             queue_count: 0,
             on_queue_action: Handler::default(),
             suppress_status_row: false,
@@ -572,22 +581,28 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
                 selected_index,
             ))
         }
-        Some(StatusDialogKind::McpAuth { pending }) => {
-            let selected_index = props
-                .provider_connect_selected
-                .or(props.approval_selected)
-                .map(|s| *s.read())
-                .unwrap_or(pending.selected);
-            let filter = props
-                .provider_connect_filter
-                .map(|s| s.read().clone())
-                .unwrap_or_else(|| pending.filter.clone());
-            Some(crate::tui::mcp_auth_dialog::render_mcp_auth_dialog(
+        Some(StatusDialogKind::McpAuth { pending }) => Some(crate::tui::mcp_auth_dialog::render_mcp_auth_dialog(
+            props.screen_width,
+            props.screen_height,
+            props.approval_has_focus,
+            pending.selected,
+            &pending.filter,
+            &pending,
+        )),
+        Some(StatusDialogKind::McpAdd { pending }) => {
+            let field = props
+                .mcp_add_field
+                .map(|state| *state.read())
+                .unwrap_or(crate::tui::mcp_auth_dialog::McpAddField::Name);
+            let input = props
+                .mcp_add_input
+                .map(|state| state.read().clone())
+                .unwrap_or_default();
+            Some(crate::tui::mcp_auth_dialog::render_mcp_add_dialog(
                 props.screen_width,
-                props.screen_height,
                 props.approval_has_focus,
-                selected_index,
-                &filter,
+                &input,
+                field,
                 &pending,
             ))
         }
@@ -885,6 +900,17 @@ pub fn build_mcp_auth_dialog_kind(
         return None;
     }
     pending.cloned().map(|pending| StatusDialogKind::McpAuth { pending })
+}
+
+/// Build the quick MCP add dialog when pending.
+pub fn build_mcp_add_dialog_kind(
+    pending: Option<&crate::tui::mcp_auth_dialog::PendingMcpAddDialog>,
+    has_focus: bool,
+) -> Option<StatusDialogKind> {
+    if !has_focus {
+        return None;
+    }
+    pending.cloned().map(|pending| StatusDialogKind::McpAdd { pending })
 }
 
 /// Build the dedicated API key input dialog when pending.

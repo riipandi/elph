@@ -1,0 +1,13 @@
+{
+    "$schema": "../schemas/hooks-schema.json",
+    "hooks": [
+        {
+            "id": "audit-tool-calls",
+            "event": "sessionStart",
+            "command": "hooks/audit-tool-calls.sh",
+            "args": [],
+            "timeoutMs": 5000,
+            "enabled": true
+        }
+    ]
+}

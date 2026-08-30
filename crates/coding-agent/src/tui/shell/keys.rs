@@ -57,6 +57,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut pending_retry_prompt,
         mut pending_plan_confirmation,
         mut pending_mcp_auth,
+        mut pending_mcp_add,
         mut pending_provider_api_key,
         mut pending_provider_connect,
         mut pending_provider_disconnect,
@@ -67,6 +68,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut pending_thinking_selector,
         mut thinking_selector_selected,
         mut pending_scoped_models,
+        mut pending_settings,
         mut pending_system_prompt,
         mut pending_aside,
         mut pending_worker_chat,
@@ -83,6 +85,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut prompt_queue,
         prompt_templates,
         mut provider_connect_api_key,
+        mut mcp_add_input,
+        mut mcp_add_field,
         mut provider_connect_filter,
         mut provider_connect_input_focus,
         mut provider_connect_selected,
@@ -97,6 +101,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut queue_manager_open,
         mut queue_manager_selected,
         mut queue_ui_revision,
+        mut settings_revision,
         mut rename_value,
         mut scoped_filter,
         mut scoped_selected_index,
@@ -109,7 +114,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut shift_last_pressed,
         mut should_exit,
         skills,
-        slash_commands,
+        mut slash_commands,
         mut slash_palette_active,
         mut slash_palette_index,
         mut slash_palette_query,
@@ -292,7 +297,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     // Persistent until toggled again. Skipped when scoped-models editor needs Ctrl+S to save
     // (that handler runs later while the overlay is open).
     let scoped_models_open_early = pending_scoped_models.read().is_some();
-    if !scoped_models_open_early && is_text_select_toggle_key(modifiers, code) {
+    let settings_open_early = pending_settings.read().is_some();
+    if !scoped_models_open_early && !settings_open_early && is_text_select_toggle_key(modifiers, code) {
         let next = !select_mode.get();
         select_mode.set(next);
         let expire_tx = ephemeral_expire.read().tx.clone();
@@ -787,9 +793,22 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     let thinking_selector_open = pending_thinking_selector.read().is_some();
     let provider_connect_open = pending_provider_connect.read().is_some();
     let mcp_auth_open = pending_mcp_auth.read().is_some();
+    let mcp_add_open = pending_mcp_add.read().is_some();
     let provider_disconnect_open = pending_provider_disconnect.read().is_some();
     let provider_api_key_open = pending_provider_api_key.read().is_some();
+    let settings_open = pending_settings.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
+    if settings_open && !shell_global_shortcut(modifiers, code) {
+        crate::tui::settings_dialog::handle_settings_key(
+            &mut pending_settings,
+            &mut settings_revision,
+            &paths,
+            &mut shell_focus,
+            code,
+            modifiers,
+        );
+        return;
+    }
     let status_dialog_open = pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
         || pending_plan_confirmation.read().is_some()
@@ -805,9 +824,28 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         || confetti_open
         || provider_connect_open
         || mcp_auth_open
+        || mcp_add_open
         || provider_disconnect_open
         || provider_api_key_open
+        || settings_open
+        || pending_quit_confirm.get()
         || queue_manager_is_open;
+
+    if modifiers.contains(KeyModifiers::CONTROL)
+        && !modifiers.intersects(KeyModifiers::SHIFT | KeyModifiers::ALT | KeyModifiers::META)
+        && code == KeyCode::Char(',')
+        && !status_dialog_open
+    {
+        crate::tui::settings_dialog::open_settings_dialog(
+            &mut pending_settings,
+            &paths,
+            &mut draft,
+            &mut live_draft,
+            &mut shell_focus,
+        );
+        force_editor_clear.set(true);
+        return;
+    }
 
     if status_dialog_open {
         if confetti_open {
@@ -1508,12 +1546,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             // Search is rendered as a compact status row (like the Resume
             // selector), so the shell owns editing while it has focus.
             if model_input_focus.get() == ModelSelectorFocus::Search {
-                if modifiers.is_empty() && code == KeyCode::Enter {
-                    if let Some(pending) = pending_model_selector.write().as_mut() {
-                        focus_model_selector_list(&mut model_input_focus, pending);
-                    }
-                    return;
-                }
                 if modifiers.is_empty() && code == KeyCode::Backspace {
                     let mut next = model_filter.read().clone();
                     if pop_model_filter_char(&mut next) {
@@ -2214,6 +2246,102 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             }
         }
 
+        // ── MCP add dialog ─────────────────────────────────────────
+        if mcp_add_open {
+            use crate::tui::mcp_auth_dialog::{McpAddField, McpAddStep, close_mcp_add_dialog, submit_mcp_add};
+
+            if modifiers.is_empty() && code == KeyCode::Esc && kind == KeyEventKind::Press {
+                close_mcp_add_dialog(
+                    &mut pending_mcp_add,
+                    &mut mcp_add_input,
+                    &mut draft,
+                    &mut live_draft,
+                    &mut shell_focus,
+                );
+                force_editor_clear.set(true);
+                return;
+            }
+            let step = pending_mcp_add.read().as_ref().map(|p| p.step);
+            if step == Some(McpAddStep::Done) {
+                if modifiers.is_empty() && code == KeyCode::Enter && kind == KeyEventKind::Press {
+                    close_mcp_add_dialog(
+                        &mut pending_mcp_add,
+                        &mut mcp_add_input,
+                        &mut draft,
+                        &mut live_draft,
+                        &mut shell_focus,
+                    );
+                    force_editor_clear.set(true);
+                }
+                return;
+            }
+            if step == Some(McpAddStep::ConfirmUpdate) {
+                if modifiers.is_empty()
+                    && code == KeyCode::Enter
+                    && kind == KeyEventKind::Press
+                    && let Err(error) = submit_mcp_add(&mut pending_mcp_add, &mut mcp_add_input, &paths)
+                    && let Some(pending) = pending_mcp_add.write().as_mut()
+                {
+                    pending.error = Some(error);
+                }
+                return;
+            }
+            if kind != KeyEventKind::Press {
+                return;
+            }
+            if modifiers == KeyModifiers::CONTROL && code == KeyCode::Char('p') {
+                if let Some(pending) = pending_mcp_add.write().as_mut() {
+                    pending.project_scope = !pending.project_scope;
+                }
+                return;
+            }
+            if modifiers.is_empty() && code == KeyCode::Tab {
+                let current = mcp_add_input.read().clone();
+                let next = match *mcp_add_field.read() {
+                    McpAddField::Name => McpAddField::Source,
+                    McpAddField::Source => McpAddField::Name,
+                };
+                if let Some(pending) = pending_mcp_add.write().as_mut() {
+                    match pending.field {
+                        McpAddField::Name => pending.name = current,
+                        McpAddField::Source => pending.source = current,
+                    }
+                    match next {
+                        McpAddField::Name => mcp_add_input.set(pending.name.clone()),
+                        McpAddField::Source => mcp_add_input.set(pending.source.clone()),
+                    }
+                    pending.field = next;
+                    pending.error = None;
+                }
+                mcp_add_field.set(next);
+                return;
+            }
+            if modifiers.is_empty() && code == KeyCode::Enter {
+                if let Err(error) = submit_mcp_add(&mut pending_mcp_add, &mut mcp_add_input, &paths)
+                    && let Some(pending) = pending_mcp_add.write().as_mut()
+                {
+                    pending.error = Some(error);
+                }
+                return;
+            }
+            if modifiers.is_empty() && code == KeyCode::Backspace {
+                let mut value = mcp_add_input.read().clone();
+                value.pop();
+                mcp_add_input.set(value);
+                return;
+            }
+            if !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META)
+                && let KeyCode::Char(c) = code
+                && !c.is_control()
+            {
+                let mut value = mcp_add_input.read().clone();
+                value.push(c);
+                mcp_add_input.set(value);
+                return;
+            }
+            return;
+        }
+
         // ── MCP OAuth dialog ───────────────────────────────────────
         if mcp_auth_open {
             use crate::tui::mcp_auth_dialog::{
@@ -2228,8 +2356,11 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             }
 
             let step = pending_mcp_auth.read().as_ref().map(|p| p.step);
-            let filter = provider_connect_filter.read().clone();
-            let selected = *provider_connect_selected.read();
+            let (filter, selected) = pending_mcp_auth
+                .read()
+                .as_ref()
+                .map(|pending| (pending.filter.clone(), pending.selected))
+                .unwrap_or_default();
 
             if step == Some(McpAuthStep::SelectServer) {
                 if modifiers.is_empty() && kind == KeyEventKind::Press {
@@ -2242,7 +2373,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                                 .unwrap_or(0);
                             if count > 0 {
                                 let next = selected.saturating_sub(1);
-                                provider_connect_selected.set(next);
                                 if let Some(p) = pending_mcp_auth.write().as_mut() {
                                     p.selected = next;
                                 }
@@ -2257,7 +2387,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                                 .unwrap_or(0);
                             if count > 0 {
                                 let next = (selected + 1).min(count - 1);
-                                provider_connect_selected.set(next);
                                 if let Some(p) = pending_mcp_auth.write().as_mut() {
                                     p.selected = next;
                                 }
@@ -2288,8 +2417,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         KeyCode::Backspace => {
                             let mut f = filter;
                             f.pop();
-                            provider_connect_filter.set(f.clone());
-                            provider_connect_selected.set(0);
                             if let Some(p) = pending_mcp_auth.write().as_mut() {
                                 p.filter = f;
                                 p.selected = 0;
@@ -2299,8 +2426,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         KeyCode::Char(c) if !c.is_control() => {
                             let mut f = filter;
                             f.push(c);
-                            provider_connect_filter.set(f.clone());
-                            provider_connect_selected.set(0);
                             if let Some(p) = pending_mcp_auth.write().as_mut() {
                                 p.filter = f;
                                 p.selected = 0;
@@ -3600,6 +3725,16 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         });
                         force_editor_clear.set(true);
                     }
+                    SlashOutcome::OpenSettings => {
+                        crate::tui::settings_dialog::open_settings_dialog(
+                            &mut pending_settings,
+                            &paths,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                        );
+                        force_editor_clear.set(true);
+                    }
                     SlashOutcome::OpenProviderListDialog { text } => {
                         let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
                         open_scroll_text_dialog(OpenScrollTextDialogArgs {
@@ -3608,6 +3743,19 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             title: "Configured Providers".to_string(),
                             text,
                             width_pct: 55,
+                            body_height: Some(body_height),
+                            show_copy: false,
+                        });
+                        force_editor_clear.set(true);
+                    }
+                    SlashOutcome::OpenMcpListDialog { text } => {
+                        let body_height = (text.lines().count() as u16).saturating_add(3).clamp(7, 32);
+                        open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                            pending: &mut pending_system_prompt,
+                            shell_focus: &mut shell_focus,
+                            title: "MCP Servers".to_string(),
+                            text,
+                            width_pct: 65,
                             body_height: Some(body_height),
                             show_copy: false,
                         });
@@ -3753,6 +3901,23 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         force_editor_clear.set(true);
                         return;
                     }
+                    SlashOutcome::OpenMcpAddDialog { initial } => {
+                        open_mcp_add_dialog(OpenMcpAddDialogArgs {
+                            pending: &mut pending_mcp_add,
+                            input: &mut mcp_add_input,
+                            draft: &mut draft,
+                            live_draft: &mut live_draft,
+                            shell_focus: &mut shell_focus,
+                            initial,
+                        });
+                        if let Some(pending) = pending_mcp_add.read().as_ref() {
+                            mcp_add_field.set(pending.field);
+                        }
+                        approval_selected.set(0);
+                        suppress_enter_newline.set(true);
+                        force_editor_clear.set(true);
+                        return;
+                    }
                     SlashOutcome::OpenProviderDisconnectDialog { provider_id } => {
                         let auth_store_path = paths.auth_store_path();
                         open_provider_disconnect_dialog(
@@ -3807,6 +3972,24 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             &mut prompt_history,
                             TranscriptMessage::text(message, TranscriptStyle::Meta),
                         );
+                    }
+                    SlashOutcome::TrustChanged { message, trusted } => {
+                        push_transcript_message_synced(
+                            &mut messages,
+                            messages_arc,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            TranscriptMessage::text(message, TranscriptStyle::Meta),
+                        );
+                        let enable_skill_commands = Settings::load(&paths)
+                            .map(|settings| settings.resources.enable_skill_commands)
+                            .unwrap_or(true);
+                        slash_commands.set(crate::agent::slash_commands_for_palette_with_trust(
+                            Some(&prompt_templates.read()),
+                            Some(&skills.read()),
+                            enable_skill_commands,
+                            trusted,
+                        ));
                     }
                     SlashOutcome::Unimplemented(message) => {
                         push_transcript_message_synced(

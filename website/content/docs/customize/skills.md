@@ -58,4 +58,10 @@ For example, to keep project skills while selecting only two shared user skills:
 
 `resources.disabledSkills` is applied after discovery and removes matching names even if a path entry includes them.
 
+Skills and prompt templates use separate namespaces. For example,
+`~/.agents/skills/identify/SKILL.md` and
+`<project>/.agents/prompts/identify.md` can coexist without a resource conflict.
+Conflicts are reported only when different files of the same resource type
+share a name.
+
 `enableSkillCommands: false` keeps skills in the model catalog (`list_skills`) but does not register `/name` commands.

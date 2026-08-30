@@ -77,13 +77,14 @@ pub use skills_load::{parse_skill_slash, skill_slash_name};
 pub use slash_commands::{OverlayCommand, SlashDispatch};
 pub use slash_commands::{
     SlashArgCompletion, slash_arg_completions, slash_commands_for_palette, slash_commands_for_palette_with,
-    slash_palette_submit_on_enter, slash_unimplemented_message,
+    slash_commands_for_palette_with_trust, slash_palette_submit_on_enter, slash_unimplemented_message,
 };
 pub use slash_commands::{confetti_mode_from_args, dispatch_slash_command, format_help_message};
 pub use slash_misc::{
     HOTKEYS_TEXT, changelog_text, clone_session_message, export_session_message, fork_session_message,
     import_session_from_jsonl, import_slash_message, path_command_argument, resume_list_message,
-    settings_slash_message, tree_list_message, tree_slash_message, trust_slash_message, workers_slash_message,
+    settings_slash_message, tree_list_message, tree_slash_message, trust_slash_message, untrust_slash_message,
+    workers_slash_message,
 };
 pub use system_prompt_slash::system_prompt_slash_message;
 pub use tool_policy::agent_mode_from_setting;

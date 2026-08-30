@@ -212,6 +212,41 @@ fn command_needs_datastore(cmd: &Commands) -> bool {
     )
 }
 
+fn ensure_project_trust(paths: &crate::platform::Paths) -> Result<(), ExitCode> {
+    let trusted = crate::platform::TrustStore::is_trusted(paths, paths.project_dir()).map_err(|err| {
+        help::cli_error(format!("failed to check project trust: {err:#}"));
+        crate::platform::EXIT_ERROR
+    })?;
+    if trusted {
+        return Ok(());
+    }
+
+    let trust_store = crate::platform::TrustStore::load(paths).map_err(|err| {
+        help::cli_error(format!("failed to load project trust: {err:#}"));
+        crate::platform::EXIT_ERROR
+    })?;
+
+    match trust_store.default_project_trust {
+        crate::platform::DefaultProjectTrust::Always => Ok(()),
+        crate::platform::DefaultProjectTrust::Never => {
+            eprintln!("elph: project is not trusted ({})", paths.project_dir().display());
+            Err(crate::platform::EXIT_PERMISSION_DENIED)
+        }
+        crate::platform::DefaultProjectTrust::Ask => {
+            if !interactive::confirm_project_trust(paths.project_dir()) {
+                eprintln!("elph: project trust declined; exiting");
+                return Err(crate::platform::EXIT_PERMISSION_DENIED);
+            }
+
+            crate::platform::TrustStore::trust_directory(paths, paths.project_dir()).map_err(|err| {
+                help::cli_error(format!("failed to save project trust: {err:#}"));
+                crate::platform::EXIT_ERROR
+            })?;
+            Ok(())
+        }
+    }
+}
+
 /// Best-effort logs directory when full [`Paths::resolve`] fails.
 fn fallback_logs_dir() -> Option<std::path::PathBuf> {
     use std::path::PathBuf;
@@ -223,7 +258,14 @@ fn fallback_logs_dir() -> Option<std::path::PathBuf> {
     }
     std::env::var_os("HOME")
         .or_else(|| std::env::var_os("USERPROFILE"))
-        .map(|home| PathBuf::from(home).join(".local/share/elph/logs"))
+        .map(|home| {
+            PathBuf::from(home)
+                .join(".local")
+                .join("share")
+                .join("elph")
+                .join("logs")
+        })
+        .or_else(|| Some(PathBuf::from(".local").join("share").join("elph").join("logs")))
 }
 
 pub fn run(cli: &Cli) -> ExitCode {
@@ -238,6 +280,13 @@ pub fn run(cli: &Cli) -> ExitCode {
         .quiet_env("ELPH_QUIET")
         .console_enabled(console_enabled);
 
+    // Path resolution itself can fail before the normal logger is ready.
+    // Install a provisional hook first; logger::init replaces its directory
+    // with the resolved one when initialization succeeds.
+    if let Some(logs) = fallback_logs_dir() {
+        elph_agent::logger::install_panic_hook(logs);
+    }
+
     let _log_guard = match crate::platform::Paths::resolve() {
         Ok(paths) => {
             elph_agent::logger::install_panic_hook(paths.logs_dir());
@@ -251,9 +300,6 @@ pub fn run(cli: &Cli) -> ExitCode {
         }
         Err(_) => {
             log::warn!("path resolve failed; using fallback logs directory");
-            if let Some(logs) = fallback_logs_dir() {
-                elph_agent::logger::install_panic_hook(logs);
-            }
             let init = agent_builder.build();
             elph_agent::logger::init(init.logging)
         }
@@ -276,6 +322,9 @@ pub fn run(cli: &Cli) -> ExitCode {
     };
 
     let Some(cmd) = &cli.command else {
+        if let Err(code) = ensure_project_trust(&paths) {
+            return code;
+        }
         if let Err(code) = init_datastore(&paths) {
             return code;
         }

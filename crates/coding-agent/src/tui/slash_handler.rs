@@ -9,8 +9,8 @@ use crate::agent::RETRY_CONTINUE_PROMPT;
 use crate::agent::{
     HOTKEYS_TEXT, changelog_text, clone_session_message, confetti_mode_from_args, dispatch_slash_command,
     export_session_message, fork_session_message, format_help_message, import_session_from_jsonl, import_slash_message,
-    session_info_slash_message, session_title_for_rename, settings_slash_message, slash_unimplemented_message,
-    system_prompt_slash_message, tools_slash_message, tree_slash_message, trust_slash_message, workers_slash_message,
+    session_info_slash_message, session_title_for_rename, slash_unimplemented_message, system_prompt_slash_message,
+    tools_slash_message, tree_slash_message, trust_slash_message, workers_slash_message,
 };
 use crate::agent::{OverlayCommand, SlashDispatch, TransferError, TransferSession, spawn_aside};
 use crate::platform::Paths;
@@ -74,6 +74,10 @@ pub enum SlashOutcome {
     NewSession,
     BackgroundTask,
     Status(String),
+    TrustChanged {
+        message: String,
+        trusted: bool,
+    },
     Unimplemented(String),
     SpawnAgentTurn,
     /// Spawn agent turn from a skill (transcript echoes `/skill:name`).
@@ -109,8 +113,14 @@ pub enum SlashOutcome {
     OpenSessionInfoDialog {
         text: String,
     },
+    /// Open the keyboard-first visual settings editor.
+    OpenSettings,
     /// Provider list viewer (ScrollTextDialog).
     OpenProviderListDialog {
+        text: String,
+    },
+    /// MCP server list viewer (ScrollTextDialog).
+    OpenMcpListDialog {
         text: String,
     },
     /// Provider catalog update result viewer (ScrollTextDialog).
@@ -147,6 +157,10 @@ pub enum SlashOutcome {
     /// Open MCP OAuth dialog (`/mcp auth [name]`).
     OpenMcpAuthDialog {
         server_name: Option<String>,
+    },
+    /// Open the quick MCP add dialog.
+    OpenMcpAddDialog {
+        initial: String,
     },
     /// A background `/transfer` task was dispatched directly. Unlike
     /// [`SlashOutcome::BackgroundTask`], the work's final user-visible text is
@@ -455,6 +469,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             }
         }
         SlashDispatch::McpAuth { server_name } => SlashOutcome::OpenMcpAuthDialog { server_name },
+        SlashDispatch::McpAdd { args } => SlashOutcome::OpenMcpAddDialog { initial: args },
         SlashDispatch::McpLogout { server_name } => {
             let Some(paths) = ctx.paths else {
                 return SlashOutcome::Status("Paths required for /mcp logout.".into());
@@ -473,7 +488,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             let Some(paths) = ctx.paths else {
                 return SlashOutcome::Status("Paths required for /mcp list.".into());
             };
-            SlashOutcome::OpenProviderListDialog {
+            SlashOutcome::OpenMcpListDialog {
                 text: crate::tui::mcp_auth_dialog::mcp_list_slash_message(paths),
             }
         }
@@ -485,12 +500,10 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         },
         SlashDispatch::Changelog => SlashOutcome::OpenSessionInfoDialog { text: changelog_text() },
         SlashDispatch::Settings => {
-            let Some(paths) = ctx.paths else {
+            if ctx.paths.is_none() {
                 return SlashOutcome::Status("Paths required for /settings.".into());
-            };
-            SlashOutcome::OpenSessionInfoDialog {
-                text: settings_slash_message(paths),
             }
+            SlashOutcome::OpenSettings
         }
         SlashDispatch::Import { args } => {
             if args.trim().is_empty() {
@@ -520,7 +533,25 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                 return SlashOutcome::Status("Working directory required for /trust.".into());
             };
             match trust_slash_message(paths, cwd) {
-                Ok(text) => SlashOutcome::Status(text),
+                Ok(text) => SlashOutcome::TrustChanged {
+                    message: text,
+                    trusted: true,
+                },
+                Err(message) => SlashOutcome::Status(message),
+            }
+        }
+        SlashDispatch::Untrust => {
+            let Some(paths) = ctx.paths else {
+                return SlashOutcome::Status("Paths required for /untrust.".into());
+            };
+            let Some(cwd) = ctx.cwd else {
+                return SlashOutcome::Status("Working directory required for /untrust.".into());
+            };
+            match crate::agent::untrust_slash_message(paths, cwd) {
+                Ok(text) => SlashOutcome::TrustChanged {
+                    message: text,
+                    trusted: false,
+                },
                 Err(message) => SlashOutcome::Status(message),
             }
         }
@@ -701,6 +732,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
     matches!(
         outcome,
         SlashOutcome::Status(_)
+            | SlashOutcome::TrustChanged { .. }
             | SlashOutcome::Unimplemented(_)
             | SlashOutcome::NewSession
             | SlashOutcome::BackgroundTask
@@ -712,6 +744,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OpenViewPlanDialog { .. }
             | SlashOutcome::OpenToolsDialog { .. }
             | SlashOutcome::OpenSessionInfoDialog { .. }
+            | SlashOutcome::OpenSettings
             | SlashOutcome::OpenRenameDialog { .. }
             | SlashOutcome::PlayConfetti { .. }
             | SlashOutcome::OverlayDeferred(_)
@@ -720,8 +753,10 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OpenProviderConnectDialog { .. }
             | SlashOutcome::OpenProviderDisconnectDialog { .. }
             | SlashOutcome::OpenProviderListDialog { .. }
+            | SlashOutcome::OpenMcpListDialog { .. }
             | SlashOutcome::OpenProviderUpdateDialog { .. }
             | SlashOutcome::OpenMcpAuthDialog { .. }
+            | SlashOutcome::OpenMcpAddDialog { .. }
             | SlashOutcome::OpenMemoryResultDialog { .. }
             | SlashOutcome::ResumeSession { .. }
             | SlashOutcome::OpenItemSelector { .. }

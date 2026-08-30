@@ -22,7 +22,7 @@ use crate::agent::CONTINUE_META_LABEL;
 use crate::agent::RETRY_CONTINUE_PROMPT;
 use crate::agent::TRANSFER_PROMPT_PREFIX;
 use crate::agent::load_resources;
-use crate::agent::slash_commands_for_palette_with;
+use crate::agent::slash_commands_for_palette_with_trust;
 use crate::agent::{AgentUiEvent, CodingAgentSession, ToolApprovalChoice};
 use crate::platform::exit_message::{ExitSnapshot, record_if_active, session_had_user_activity};
 use crate::platform::hooks::HookHost;
@@ -62,7 +62,8 @@ use crate::tui::item_selector::{
 use crate::tui::item_selector_bar::ItemSelectorBar;
 use crate::tui::labels::GitFooterInfo;
 use crate::tui::mcp_auth_dialog::{
-    OpenMcpAuthDialogArgs, PendingMcpAuthDialog, open_mcp_auth_dialog, start_mcp_oauth_for_server,
+    OpenMcpAddDialogArgs, OpenMcpAuthDialogArgs, PendingMcpAuthDialog, open_mcp_add_dialog, open_mcp_auth_dialog,
+    start_mcp_oauth_for_server,
 };
 use crate::tui::model_selector::{ModelSelectorFocus, PendingModelSelector};
 use crate::tui::model_selector_bar::{ModelSelectorBar, ModelSelectorView};
@@ -120,10 +121,10 @@ use crate::tui::startup::{
     mark_agent_startup_ready, mcp_server_status_label, spawn_bootstrap_worker,
 };
 use crate::tui::status_dialog::{
-    PromptQueueAction, StatusDialogKind, StatusZone, build_feedback_dialog_kind, build_mcp_auth_dialog_kind,
-    build_memory_flush_dialog_kind, build_mode_change_dialog_kind, build_plan_confirmation_dialog_kind,
-    build_prompt_queue_dialog_kind, build_provider_api_key_dialog_kind, build_provider_connect_dialog_kind,
-    build_status_dialog_kind,
+    PromptQueueAction, StatusDialogKind, StatusZone, build_feedback_dialog_kind, build_mcp_add_dialog_kind,
+    build_mcp_auth_dialog_kind, build_memory_flush_dialog_kind, build_mode_change_dialog_kind,
+    build_plan_confirmation_dialog_kind, build_prompt_queue_dialog_kind, build_provider_api_key_dialog_kind,
+    build_provider_connect_dialog_kind, build_status_dialog_kind,
 };
 use crate::tui::subagent_output_dialog::{PendingSubagentOutputDialog, SubagentOutputDialogOverlay};
 use crate::tui::system_prompt_dialog::{
@@ -505,6 +506,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let model_filter = hooks.use_state(String::new);
     let model_input_focus = hooks.use_state(ModelSelectorFocus::default);
     let pending_scoped_models = hooks.use_ref(|| None::<PendingScopedModels>);
+    let pending_settings = hooks.use_ref(|| None::<crate::tui::settings_dialog::PendingSettings>);
+    let settings_revision = hooks.use_state(|| 0u64);
     let scoped_selected_index = hooks.use_state(|| 0usize);
     let scoped_filter = hooks.use_state(String::new);
     let session_scoped_items = hooks.use_ref(|| {
@@ -533,6 +536,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let pending_provider_disconnect = hooks.use_ref(|| None::<PendingProviderDisconnectDialog>);
     let pending_provider_api_key = hooks.use_ref(|| None::<PendingProviderApiKeyDialog>);
     let pending_mcp_auth = hooks.use_ref(|| None::<PendingMcpAuthDialog>);
+    let pending_mcp_add = hooks.use_ref(|| None::<crate::tui::mcp_auth_dialog::PendingMcpAddDialog>);
+    let mcp_add_input = hooks.use_state(String::new);
+    let mcp_add_field = hooks.use_state(|| crate::tui::mcp_auth_dialog::McpAddField::Name);
     let provider_disconnect_selected = hooks.use_state(|| 0usize);
     let provider_connect_selected = hooks.use_state(|| 0usize);
     let provider_connect_filter = hooks.use_state(String::new);
@@ -746,6 +752,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         pending_provider_api_key,
         pending_mcp_auth,
         pending_mcp_auth_for_tick,
+        pending_mcp_add,
+        mcp_add_input,
+        mcp_add_field,
         pending_provider_connect,
         pending_provider_connect_for_tick,
         pending_provider_disconnect,
@@ -758,6 +767,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         pending_thinking_selector,
         thinking_selector_selected,
         pending_scoped_models,
+        pending_settings,
+        settings_revision,
         pending_subagent_output,
         pending_system_prompt,
         pending_aside,

@@ -17,7 +17,10 @@
 | `skills/<name>/SKILL.md` | User skills                         |
 | `bundled/`               | Built-in skills and this user guide |
 
-Project overrides: `<project>/.elph/settings.json`, `hooks.json`, `skills/`, `prompts/` always load (project wins; arrays replace). MCP cache: `mcp.json`. Project hooks are gated by `trust.json` (`defaultProjectTrust: always`).
+Project overrides: `<project>/.elph/settings.json`, `hooks.json`, `skills/`,
+`prompts/` always load (project wins; arrays replace). MCP cache: `mcp.json`.
+Project hooks are gated by `trust.json`; interactive TUI startup prompts for
+untrusted projects when `defaultProjectTrust` is `ask`.
 
 `models.defaultModel` seeds **new** sessions only. Live model, thinking level, and agent mode are per-session.
 

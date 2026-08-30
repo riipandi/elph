@@ -132,9 +132,13 @@ pub fn model_selector_scope_delta(modifiers: KeyModifiers, code: KeyCode) -> Opt
     }
 }
 
-/// Plain Enter confirms the highlighted model only when focus is on the list, not the filter field.
-pub fn model_selector_confirm_on_enter(focus: ModelSelectorFocus) -> bool {
-    focus == ModelSelectorFocus::List
+/// Plain Enter confirms the highlighted model from either the filter or list.
+///
+/// The picker opens with the filter focused so users can immediately type a query. Enter should
+/// still confirm the highlighted result from that initial state instead of requiring a second
+/// Enter just to move focus to the list.
+pub fn model_selector_confirm_on_enter(_focus: ModelSelectorFocus) -> bool {
+    true
 }
 
 pub fn model_selector_list_nav_delta(modifiers: KeyModifiers, code: KeyCode) -> Option<isize> {
@@ -434,8 +438,8 @@ mod tests {
     }
 
     #[test]
-    fn confirm_on_enter_requires_list_focus() {
-        assert!(!model_selector_confirm_on_enter(ModelSelectorFocus::Search));
+    fn confirm_on_enter_works_from_initial_search_focus() {
+        assert!(model_selector_confirm_on_enter(ModelSelectorFocus::Search));
         assert!(model_selector_confirm_on_enter(ModelSelectorFocus::List));
     }
 

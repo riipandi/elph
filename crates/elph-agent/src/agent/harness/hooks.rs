@@ -287,13 +287,28 @@ impl HookRegistry {
         event: &ToolCallEvent,
     ) -> std::result::Result<Option<ToolCallHookResult>, AgentHarnessError> {
         let handlers = self.typed.lock().await.tool_call.clone();
-        let mut last = None;
+        let mut result = ToolCallHookResult::default();
+        let mut changed = false;
+        let mut input = event.input.clone();
         for handler in &handlers {
-            if let Some(result) = handler(event).await {
-                last = Some(result);
+            let current_event = ToolCallEvent {
+                tool_call_id: event.tool_call_id.clone(),
+                tool_name: event.tool_name.clone(),
+                input: input.clone(),
+            };
+            if let Some(handler_result) = handler(&current_event).await {
+                changed = true;
+                result.block |= handler_result.block;
+                if handler_result.block && handler_result.reason.is_some() {
+                    result.reason = handler_result.reason;
+                }
+                if let Some(args) = handler_result.args {
+                    input = args;
+                    result.args = Some(input.clone());
+                }
             }
         }
-        Ok(last)
+        Ok(changed.then_some(result))
     }
 
     pub async fn emit_tool_result(
@@ -364,4 +379,51 @@ pub fn normalize_harness_error(error: impl std::fmt::Display, fallback: AgentHar
         return AgentHarnessError::new(AgentHarnessErrorCode::Session, message);
     }
     AgentHarnessError::new(fallback, message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn tool_call_handlers_chain_arguments_and_merge_blocking() {
+        let registry = HookRegistry::new();
+        registry
+            .register_tool_call(Arc::new(|event| {
+                let value = event.input["value"].as_i64().expect("value");
+                Box::pin(async move {
+                    Some(ToolCallHookResult {
+                        args: Some(serde_json::json!({"value": value + 1})),
+                        ..Default::default()
+                    })
+                })
+            }))
+            .await;
+        registry
+            .register_tool_call(Arc::new(|event| {
+                assert_eq!(event.input["value"], 2);
+                Box::pin(async {
+                    Some(ToolCallHookResult {
+                        block: true,
+                        reason: Some("blocked".to_string()),
+                        ..Default::default()
+                    })
+                })
+            }))
+            .await;
+
+        let result = registry
+            .emit_tool_call(&ToolCallEvent {
+                tool_call_id: "call-1".to_string(),
+                tool_name: "write_file".to_string(),
+                input: serde_json::json!({"value": 1}),
+            })
+            .await
+            .expect("emit")
+            .expect("result");
+
+        assert!(result.block);
+        assert_eq!(result.reason.as_deref(), Some("blocked"));
+        assert_eq!(result.args, Some(serde_json::json!({"value": 2})));
+    }
 }

@@ -132,6 +132,10 @@ overwritten). Checksums for newly written files are merged into `bundled/manifes
 
 Skill discovery includes `CONFIG_DIR/bundled/skills` as the lowest-priority directory so
 built-ins (e.g. `create-skill`) appear unless a user/project skill overrides the same name.
+Skill and prompt-template names are resolved in separate namespaces; a skill at
+`~/.agents/skills/identify/SKILL.md` and a template at
+`<project>/.agents/prompts/identify.md` do not conflict. Conflicts are reported
+only when different files of the same resource type share a name.
 
 ### Provider catalogs (`CONFIG_DIR/providers/`)
 
@@ -191,6 +195,12 @@ event-specific JSON payload on stdin and returns an optional JSON outcome on
 stdout. Elph does not implicitly invoke a shell. Relative commands resolve
 against the directory containing their defining config file, while the process
 working directory is the active project directory.
+
+For project hooks, an executable may live under `<project>/.elph/hooks/` and be
+referenced from `<project>/.elph/hooks.json`. Elph does not scan that directory;
+every executable must be declared as a hook. The sample at
+`.elph/hooks/audit-tool-calls.sh` records `sessionStart` payloads in
+`.elph/hook-audit.log` and requires a POSIX-compatible `sh` environment.
 
 Supported events are `sessionStart`, `userPromptSubmit`, `beforeAgent`,
 `preToolUse`, `postToolUse`, `postToolUseFailure`, `preCompact`, `postCompact`,
@@ -472,12 +482,24 @@ You are a careful code reviewer. Focus on correctness and security.
     "directories": {
         "~/Developer/Experimental": true,
         "$HOME/Developer/github.com": true,
-        "/Users/johndoe/gitlab.com": true
+        "/Users/johndoe/gitlab.com": true,
+        "/Users/johndoe/gitlab.com/private": false
     }
 }
 ```
 
 Empty default: `{ "directories": {} }`.
+
+When `defaultProjectTrust` is `ask` (the default), interactive TUI startup asks
+whether the current project should be trusted before opening the datastore or
+TUI. A positive answer records the canonical project path in `directories`;
+declining, non-interactive startup, or `never` exits without launching the
+project. `always` skips this prompt.
+
+Inside the TUI, `/trust` writes `true` for the current project and `/untrust`
+writes an explicit `false` only when the project is currently trusted. An
+explicit child-project decision overrides a trusted parent directory. The
+command palette shows only the action available for the current trust state.
 
 ## `version.json`
 

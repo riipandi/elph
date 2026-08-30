@@ -31,12 +31,12 @@ impl DefaultProjectTrust {
 /// `defaultProjectTrust` is global-only (project files do not carry this file).
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TrustStore {
-    #[serde(default)]
-    pub directories: BTreeMap<String, bool>,
     /// When no directory decision applies: load executable project resources (`always`) or skip (`ask`/`never`).
-    /// `ask` has no prompt UI yet and behaves like `never`.
+    /// Interactive TUI startup asks the user when this is `ask`.
     #[serde(default)]
     pub default_project_trust: DefaultProjectTrust,
+    #[serde(default)]
+    pub directories: BTreeMap<String, bool>,
 }
 
 impl TrustStore {
@@ -84,12 +84,31 @@ impl TrustStore {
         Ok(key)
     }
 
+    /// Mark `cwd` untrusted and persist to `CONFIG_DIR/trust.json`.
+    ///
+    /// An explicit `false` decision overrides a trusted ancestor, so a nested
+    /// project can opt out without changing the parent's trust decision.
+    pub fn untrust_directory<P: AppPaths>(paths: &P, cwd: &Path) -> Result<String> {
+        let mut store = Self::load(paths)?;
+        let key = Self::storage_key(cwd);
+        if !Self::is_trusted_in_store(&store, &key) {
+            anyhow::bail!("project is not trusted");
+        }
+        store.directories.insert(key.clone(), false);
+        store.save(paths)?;
+        Ok(key)
+    }
+
     /// Whether `cwd` is trusted (exact key or ancestor prefix match).
     pub fn is_trusted<P: AppPaths>(paths: &P, cwd: &Path) -> Result<bool> {
         let store = Self::load(paths)?;
         let key = Self::storage_key(cwd);
-        if store.directories.get(&key) == Some(&true) {
-            return Ok(true);
+        Ok(Self::is_trusted_in_store(&store, &key))
+    }
+
+    fn is_trusted_in_store(store: &Self, key: &str) -> bool {
+        if let Some(decision) = store.directories.get(key) {
+            return *decision;
         }
         // Ancestor: if `~/Projects` is trusted, `~/Projects/foo` is trusted.
         for (stored, flag) in &store.directories {
@@ -98,20 +117,24 @@ impl TrustStore {
             }
             let stored_exp = expand_user_path(Path::new(stored));
             let stored_can = stored_exp.canonicalize().unwrap_or(stored_exp);
-            let key_path = PathBuf::from(&key);
+            let key_path = PathBuf::from(key);
             if key_path.starts_with(&stored_can) {
-                return Ok(true);
+                return true;
             }
         }
-        Ok(false)
+        false
     }
 
     /// Whether project-local hook commands may load.
     pub fn project_hooks_allowed<P: AppPaths>(paths: &P, cwd: &Path) -> Result<bool> {
-        if Self::is_trusted(paths, cwd)? {
+        let store = Self::load(paths)?;
+        let key = Self::storage_key(cwd);
+        if let Some(decision) = store.directories.get(&key) {
+            return Ok(*decision);
+        }
+        if Self::is_trusted_in_store(&store, &key) {
             return Ok(true);
         }
-        let store = Self::load(paths)?;
         Ok(matches!(store.default_project_trust, DefaultProjectTrust::Always))
     }
 }
@@ -182,5 +205,30 @@ mod tests {
         let loaded = TrustStore::load(&paths).expect("load");
         assert_eq!(loaded.directories.get(&key), Some(&true));
         assert!(TrustStore::is_trusted(&paths, &cwd).expect("is_trusted"));
+    }
+
+    #[test]
+    fn untrust_directory_writes_false_and_overrides_trusted_ancestor() {
+        let paths = test_paths("untrust");
+        let child = paths.project_dir().join("child");
+        std::fs::create_dir_all(&child).expect("child");
+        TrustStore::trust_directory(&paths, paths.project_dir()).expect("trust parent");
+        assert!(TrustStore::is_trusted(&paths, &child).expect("inherited trust"));
+
+        let key = TrustStore::untrust_directory(&paths, &child).expect("untrust child");
+        let loaded = TrustStore::load(&paths).expect("load");
+        assert_eq!(loaded.directories.get(&key), Some(&false));
+        assert!(!TrustStore::is_trusted(&paths, &child).expect("explicit untrust"));
+        let mut loaded = loaded;
+        loaded.default_project_trust = DefaultProjectTrust::Always;
+        loaded.save(&paths).expect("save default");
+        assert!(!TrustStore::project_hooks_allowed(&paths, &child).expect("hooks denied"));
+    }
+
+    #[test]
+    fn untrust_directory_rejects_untrusted_project() {
+        let paths = test_paths("untrust-reject");
+        let error = TrustStore::untrust_directory(&paths, paths.project_dir()).expect_err("untrust should fail");
+        assert!(error.to_string().contains("project is not trusted"));
     }
 }
