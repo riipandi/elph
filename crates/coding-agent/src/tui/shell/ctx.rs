@@ -26,7 +26,6 @@ pub(crate) struct ShellCtx {
     pub(crate) chrome_full_redraw_pending: Ref<bool>,
     pub(crate) chrome_refresh_pending: State<bool>,
     pub(crate) chrome_stats: State<ChromeStats>,
-    pub(crate) chrome_tick: Ref<u32>,
     pub(crate) chrome_ui_revision: State<u64>,
     pub(crate) clipboard_toast: State<Option<elph_tui::ClipboardNotice>>,
     pub(crate) image_attachments: Ref<Vec<elph_tui::ImageAttachment>>,

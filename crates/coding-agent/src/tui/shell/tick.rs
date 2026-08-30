@@ -22,7 +22,6 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut chrome_full_redraw_pending,
         mut chrome_refresh_pending,
         mut chrome_stats,
-        mut chrome_tick,
         mut chrome_ui_revision,
         mut confetti_frame,
         mut confetti_runtime,
@@ -112,10 +111,23 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         pending_subagent_output,
         ..
     } = ctx;
+
+    // Idle-CPU guards: track the last messages revision / chrome-refresh / layout-poll
+    // timestamps so the tick loop only performs synchronization work when something actually
+    // changed instead of on every fixed 50 ms wakeup.
+    let mut last_messages_revision = messages_revision.get().wrapping_add(1);
+    let mut last_chrome_refresh = Instant::now();
+    let mut last_layout_poll = Instant::now();
+
     loop {
         tokio::time::sleep(Duration::from_millis(SHELL_TICK_MS)).await;
 
-        poll_layout_screen_size(&mut layout_screen_size_for_loop);
+        // Terminal size is also refreshed on resize via the `use_terminal_size` hook in the
+        // render path, so re-poll here at most every 500 ms (cheap syscall throttle).
+        if last_layout_poll.elapsed() >= Duration::from_millis(500) {
+            poll_layout_screen_size(&mut layout_screen_size_for_loop);
+            last_layout_poll = Instant::now();
+        }
 
         // Time-based debounce: auto-clear shift-held after 10 seconds of no Shift
         // key press. The user holds Shift, selects text for several seconds,
@@ -208,9 +220,16 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             }
         }
 
-        // Sync bootstrap messages from State back to the arc so the arc sync
-        // (which runs on the next agent event) does not overwrite them.
-        *messages_arc_inner.write().unwrap() = messages.read().clone();
+        // Sync bootstrap/transcript messages from State back to the arc so the arc→state
+        // sync (which runs when an agent event is processed) does not overwrite them.
+        // Only re-clone when an *external* writer mutated `messages` State — every such
+        // writer bumps `messages_revision` — which avoids an O(transcript) clone on every
+        // 50 ms tick while idle. The end-of-iteration baseline update below keeps the tick
+        // loop's own revision bumps from forcing a redundant re-clone next iteration.
+        let messages_rev_now = messages_revision.get();
+        if messages_rev_now != last_messages_revision {
+            *messages_arc_inner.write().unwrap() = messages.read().clone();
+        }
 
         // Handle `/new` and `/resume <id>`: reload resources + restart bootstrap without exiting TUI.
         let resume_id_req = resume_session_requested.read().clone();
@@ -322,8 +341,6 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             palette_refresh_pending.set(false);
         }
 
-        chrome_tick.set(chrome_tick.get().wrapping_add(1));
-
         // ── MCP OAuth completed: close dialog ────────────────────
         if pending_mcp_auth_for_tick.read().as_ref().is_some_and(|p| p.done) {
             let notice = pending_mcp_auth_for_tick
@@ -398,8 +415,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             messages_revision_for_tick.set(messages_revision_for_tick.get().wrapping_add(1));
         }
 
-        let chrome_due = chrome_refresh_pending.get() || chrome_tick.get() % CHROME_REFRESH_TICKS == 0;
+        let chrome_due = chrome_refresh_pending.get() || last_chrome_refresh.elapsed() >= Duration::from_secs(1);
         if chrome_due {
+            // Reset the cadence even when there is no live session, so chrome I/O does not
+            // re-run on every tick after bootstrap settles.
+            last_chrome_refresh = Instant::now();
             let paths = paths.read().clone();
             let next_git_footer = read_git_footer_info(paths.project_dir());
             if git_footer.read().clone() != next_git_footer {
@@ -1192,5 +1212,9 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 }
             }
         }
+
+        // Align the messages-revision baseline with this iteration's own mutations so the
+        // next tick only re-clones the arc when an *external* writer changed `messages`.
+        last_messages_revision = messages_revision.get();
     }
 }

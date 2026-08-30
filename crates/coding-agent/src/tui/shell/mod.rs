@@ -307,7 +307,6 @@ impl elph_ai::auth::AuthLoginCallbacks for OAuthLoginCallbacksImpl {
 // ── Constants ────────────────────────────────────────────────────────
 
 const SHELL_TICK_MS: u64 = 50;
-const CHROME_REFRESH_TICKS: u32 = 20;
 /// Base transcript publish interval while streaming (~10 Hz). Status spinner ticks in StatusRow.
 const TRANSCRIPT_PUBLISH_MS: u64 = 100;
 /// Faster transcript refresh while startup status lines are updating.
@@ -595,7 +594,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let git_footer = hooks.use_state(|| props.initial_git_footer.clone());
     // Start at 1 so the first Footer paint depends on chrome_revision (iocraft child identity).
     let chrome_ui_revision = hooks.use_state(|| 1u64);
-    let chrome_tick = hooks.use_ref(|| 0u32);
     // A state update only recomputes the canvas; it cannot repair terminal cells overwritten by
     // startup output when the resulting pixels are unchanged. Request one full terminal rewrite
     // after the first chrome pass and after each bootstrap event.
@@ -682,7 +680,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         chrome_full_redraw_pending,
         chrome_refresh_pending,
         chrome_stats,
-        chrome_tick,
         chrome_ui_revision,
         clipboard_toast,
         image_attachments,
