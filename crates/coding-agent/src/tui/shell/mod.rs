@@ -506,6 +506,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let model_filter = hooks.use_state(String::new);
     let model_input_focus = hooks.use_state(ModelSelectorFocus::default);
     let pending_scoped_models = hooks.use_ref(|| None::<PendingScopedModels>);
+    let pending_settings = hooks.use_ref(|| None::<crate::tui::settings_dialog::PendingSettings>);
+    let settings_revision = hooks.use_state(|| 0u64);
     let scoped_selected_index = hooks.use_state(|| 0usize);
     let scoped_filter = hooks.use_state(String::new);
     let session_scoped_items = hooks.use_ref(|| {
@@ -765,6 +767,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         pending_thinking_selector,
         thinking_selector_selected,
         pending_scoped_models,
+        pending_settings,
+        settings_revision,
         pending_subagent_output,
         pending_system_prompt,
         pending_aside,

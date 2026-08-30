@@ -86,6 +86,8 @@ pub(crate) fn build_shell_view(
         mut pending_thinking_selector,
         mut thinking_selector_selected,
         mut pending_scoped_models,
+        mut pending_settings,
+        settings_revision,
         pending_subagent_output,
         mut pending_system_prompt,
         pending_aside,
@@ -737,6 +739,24 @@ pub(crate) fn build_shell_view(
             }
             .into()
         });
+    let _settings_revision = settings_revision.get();
+    let settings_overlay = pending_settings.read().as_ref().map(|pending| -> AnyElement<'static> {
+        let mut pending_settings = pending_settings;
+        let mut shell_focus = shell_focus;
+        element! {
+            crate::tui::settings_dialog::SettingsDialogOverlay(
+                screen_width: screen_width,
+                screen_height: screen_height,
+                pending: pending.clone(),
+                revision: settings_revision.get(),
+                on_esc: move |_| {
+                    pending_settings.set(None);
+                    shell_focus.set(ShellFocus::Prompt);
+                },
+            )
+        }
+        .into()
+    });
     let user_question_view = pending_user_question.read().as_ref().map(|pending| {
         UserQuestionView::from_pending(
             pending,
@@ -882,6 +902,7 @@ pub(crate) fn build_shell_view(
     // prompt editor is hidden (the footer stays at the bottom). Recomputed here so
     // the closure below always sees the current value.
     let aside_open = pending_aside.read().is_some();
+    let settings_open = pending_settings.read().is_some();
 
     // Hide the prompt editor whenever a bottom-band overlay owns that band — the
     // `/aside` panel or any StatusZone dialog (tool approval, mode change, plan,
@@ -891,6 +912,7 @@ pub(crate) fn build_shell_view(
     // excluded. Computed as a `bool` here because `status_dialog` is moved into
     // `StatusZone` later.
     let editor_hidden = aside_open
+        || settings_open
         || status_dialog
             .as_ref()
             .is_some_and(|d| !matches!(d, StatusDialogKind::PromptQueue { .. }));
@@ -2035,6 +2057,19 @@ pub(crate) fn build_shell_view(
                                 suppress_enter_newline.set(true);
                                 return;
                             }
+                            SlashOutcome::OpenSettings => {
+                                let paths_snapshot = paths.read().clone();
+                                crate::tui::settings_dialog::open_settings_dialog(
+                                    &mut pending_settings,
+                                    &paths_snapshot,
+                                    &mut draft,
+                                    &mut live_draft,
+                                    &mut shell_focus,
+                                );
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
                             SlashOutcome::OpenProviderListDialog { text } => {
                                 let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
                                 open_scroll_text_dialog(OpenScrollTextDialogArgs {
@@ -2345,6 +2380,7 @@ pub(crate) fn build_shell_view(
             )
             #(confetti_overlay)
             #(system_prompt_overlay)
+            #(settings_overlay)
             #(pending_subagent_output.read().as_ref().map(|pending| -> AnyElement<'static> {
                 let (chrome, body_height) = crate::tui::subagent_output_dialog::subagent_output_dialog_chrome(
                     screen_width, screen_height, pending.width_pct

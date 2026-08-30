@@ -2,6 +2,24 @@
 
 User preferences live in JSON. The host (`elph`) maps them into `elph-agent` / `elph-ai` at session create.
 
+## Visual editor
+
+Inside the interactive TUI, run `/settings` to open a keyboard-first editor with a tab for
+each settings group: General, Appearance, Models, Memory, Notifications, Compaction, Sessions,
+Workers, Resources, and Logging. The editor shows the effective home-layer values with a short
+description for the selected field; project overrides are called out in the footer.
+
+- `←` / `→` or `Tab` changes category; `1`–`9` and `0` jump directly to a category.
+- `↑` / `↓` selects a field. `Enter` toggles booleans and cycles choices; press it on a text or
+  number field to edit.
+- While editing, type a value, press `Enter` to apply it, or `Esc` to cancel the edit.
+- `Ctrl+S` saves to the home settings file. `Esc` closes; press it twice to discard unsaved changes.
+
+The editor validates numbers and enumerated choices before saving. Settings that affect process
+startup (for example logging and the shell) take effect after a restart; the selected theme is
+applied immediately. The editor writes only the home layer, so project settings are never baked
+into global settings.
+
 ## Files
 
 | File | Path | Role |

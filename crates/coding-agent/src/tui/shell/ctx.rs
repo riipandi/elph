@@ -113,6 +113,8 @@ pub(crate) struct ShellCtx {
     pub(crate) pending_thinking_selector: Ref<Option<crate::tui::thinking_selector::PendingThinkingSelector>>,
     pub(crate) thinking_selector_selected: State<usize>,
     pub(crate) pending_scoped_models: Ref<Option<PendingScopedModels>>,
+    pub(crate) pending_settings: Ref<Option<crate::tui::settings_dialog::PendingSettings>>,
+    pub(crate) settings_revision: State<u64>,
     pub(crate) pending_subagent_output: Ref<Option<PendingSubagentOutputDialog>>,
     pub(crate) pending_system_prompt: Ref<Option<PendingSystemPromptDialog>>,
     /// Inline `/aside` panel above the status row (Grok `/btw` parity).

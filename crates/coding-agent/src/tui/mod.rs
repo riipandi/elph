@@ -32,6 +32,7 @@ mod scoped_models_bar;
 mod scoped_models_shell;
 mod scroll_text_dialog;
 mod session_prefs;
+mod settings_dialog;
 mod shell;
 mod shell_submit;
 pub(crate) mod slash_handler;

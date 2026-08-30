@@ -68,6 +68,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut pending_thinking_selector,
         mut thinking_selector_selected,
         mut pending_scoped_models,
+        mut pending_settings,
         mut pending_system_prompt,
         mut pending_aside,
         mut pending_worker_chat,
@@ -100,6 +101,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut queue_manager_open,
         mut queue_manager_selected,
         mut queue_ui_revision,
+        mut settings_revision,
         mut rename_value,
         mut scoped_filter,
         mut scoped_selected_index,
@@ -295,7 +297,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     // Persistent until toggled again. Skipped when scoped-models editor needs Ctrl+S to save
     // (that handler runs later while the overlay is open).
     let scoped_models_open_early = pending_scoped_models.read().is_some();
-    if !scoped_models_open_early && is_text_select_toggle_key(modifiers, code) {
+    let settings_open_early = pending_settings.read().is_some();
+    if !scoped_models_open_early && !settings_open_early && is_text_select_toggle_key(modifiers, code) {
         let next = !select_mode.get();
         select_mode.set(next);
         let expire_tx = ephemeral_expire.read().tx.clone();
@@ -793,7 +796,19 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     let mcp_add_open = pending_mcp_add.read().is_some();
     let provider_disconnect_open = pending_provider_disconnect.read().is_some();
     let provider_api_key_open = pending_provider_api_key.read().is_some();
+    let settings_open = pending_settings.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
+    if settings_open && !shell_global_shortcut(modifiers, code) {
+        crate::tui::settings_dialog::handle_settings_key(
+            &mut pending_settings,
+            &mut settings_revision,
+            &paths,
+            &mut shell_focus,
+            code,
+            modifiers,
+        );
+        return;
+    }
     let status_dialog_open = pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
         || pending_plan_confirmation.read().is_some()
@@ -812,6 +827,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         || mcp_add_open
         || provider_disconnect_open
         || provider_api_key_open
+        || settings_open
         || queue_manager_is_open;
 
     if status_dialog_open {
@@ -3690,6 +3706,16 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             body_height: None,
                             show_copy: true,
                         });
+                        force_editor_clear.set(true);
+                    }
+                    SlashOutcome::OpenSettings => {
+                        crate::tui::settings_dialog::open_settings_dialog(
+                            &mut pending_settings,
+                            &paths,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                        );
                         force_editor_clear.set(true);
                     }
                     SlashOutcome::OpenProviderListDialog { text } => {

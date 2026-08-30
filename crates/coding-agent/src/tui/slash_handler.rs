@@ -9,8 +9,8 @@ use crate::agent::RETRY_CONTINUE_PROMPT;
 use crate::agent::{
     HOTKEYS_TEXT, changelog_text, clone_session_message, confetti_mode_from_args, dispatch_slash_command,
     export_session_message, fork_session_message, format_help_message, import_session_from_jsonl, import_slash_message,
-    session_info_slash_message, session_title_for_rename, settings_slash_message, slash_unimplemented_message,
-    system_prompt_slash_message, tools_slash_message, tree_slash_message, trust_slash_message, workers_slash_message,
+    session_info_slash_message, session_title_for_rename, slash_unimplemented_message, system_prompt_slash_message,
+    tools_slash_message, tree_slash_message, trust_slash_message, workers_slash_message,
 };
 use crate::agent::{OverlayCommand, SlashDispatch, TransferError, TransferSession, spawn_aside};
 use crate::platform::Paths;
@@ -113,6 +113,8 @@ pub enum SlashOutcome {
     OpenSessionInfoDialog {
         text: String,
     },
+    /// Open the keyboard-first visual settings editor.
+    OpenSettings,
     /// Provider list viewer (ScrollTextDialog).
     OpenProviderListDialog {
         text: String,
@@ -498,12 +500,10 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         },
         SlashDispatch::Changelog => SlashOutcome::OpenSessionInfoDialog { text: changelog_text() },
         SlashDispatch::Settings => {
-            let Some(paths) = ctx.paths else {
+            if ctx.paths.is_none() {
                 return SlashOutcome::Status("Paths required for /settings.".into());
-            };
-            SlashOutcome::OpenSessionInfoDialog {
-                text: settings_slash_message(paths),
             }
+            SlashOutcome::OpenSettings
         }
         SlashDispatch::Import { args } => {
             if args.trim().is_empty() {
@@ -744,6 +744,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OpenViewPlanDialog { .. }
             | SlashOutcome::OpenToolsDialog { .. }
             | SlashOutcome::OpenSessionInfoDialog { .. }
+            | SlashOutcome::OpenSettings
             | SlashOutcome::OpenRenameDialog { .. }
             | SlashOutcome::PlayConfetti { .. }
             | SlashOutcome::OverlayDeferred(_)
