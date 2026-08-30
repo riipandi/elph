@@ -6,7 +6,7 @@ User preferences live in JSON. The host (`elph`) maps them into `elph-agent` / `
 
 Inside the interactive TUI, press `Ctrl+,` (or run `/settings`) to open a keyboard-first editor
 with five focused tabs: General, Appearance, Models, Memory, and Advanced. Related schema groups
-are combined to keep navigation compact: notifications live under Appearance, prompt encoding
+are combined to keep navigation compact: notifications live under Appearance, update checks live under General, prompt encoding
 and compaction under Models, sessions under Memory, and workers, resources, and logging under
 Advanced. The editor shows the effective home-layer values with a short description for the
 selected field; project overrides are called out in the footer.
@@ -31,7 +31,7 @@ settings file with defaults.
 
 | File | Path | Role |
 | --- | --- | --- |
-| Settings | `CONFIG_DIR/settings.json` + `<cwd>/.elph/settings.json` | UI, models, memory, notifications, compaction, session, workers, resources, logging |
+| Settings | `CONFIG_DIR/settings.json` + `<cwd>/.elph/settings.json` | UI, models, memory, notifications, updates, compaction, session, workers, resources, logging |
 | MCP | `CONFIG_DIR/mcp.json` + `<cwd>/.elph/mcp.json` | Servers, policy, **cache TTL / max entries** |
 | Trust | `CONFIG_DIR/trust.json` | Trusted directories + `defaultProjectTrust` (project hooks only) |
 | Auth | `CONFIG_DIR/auth.json` | Credentials (`schemas/auth-schema.json`) |
@@ -54,6 +54,10 @@ Schema: `schemas/elph-schema.json`, `schemas/mcp-schema.json`, `schemas/auth-sch
   "shellPath": null,
   "shellCommandPrefix": null,
   "httpProxy": null,
+  "updates": {
+    "enabled": true,
+    "channel": "stable"
+  },
   "ui": {
     "theme": "auto",
     "showThinking": true,
@@ -86,6 +90,25 @@ Schema: `schemas/elph-schema.json`, `schemas/mcp-schema.json`, `schemas/auth-sch
 ```
 
 `notifications.onStartupReady` in a **project** `.elph/settings.json` overrides home. Restart or `/reload` after edits.
+
+### Startup update checks (`updates`)
+
+When `updates.enabled` is `true` (the default), the interactive TUI checks GitHub
+Releases in the background during its initial startup. It never blocks the
+startup screen, installs anything automatically, or runs again for in-process
+`/new` and `/resume` reloads. Available updates appear as a temporary in-app
+notification banner; run `elph update` to install one.
+
+Set `updates.channel` to `stable` (the default) or `canary`:
+
+```json
+{
+  "updates": {
+    "enabled": true,
+    "channel": "stable"
+  }
+}
+```
 
 `resources.skills` / `resources.prompts` entries may carry a `!` or `-` prefix to exclude a skill/template by name or path, and `+` to force-include. Leading `~` expands to the home directory, a path entry without a filename component matches the directory and everything below it, and a relative path is resolved from the project directory during workspace discovery. Entries are evaluated in order, so a later positive path can re-include a resource after a broader exclusion:
 

@@ -38,6 +38,9 @@ pub fn mcp_server_startup_key(name: &str) -> String {
 pub struct TuiBootstrapConfig {
     pub paths: Paths,
     pub settings: Settings,
+    /// Run the one-time startup update check for this bootstrap.
+    /// In-process `/new` and `/resume` reloads set this to false.
+    pub check_for_updates: bool,
     pub resume_id: Option<String>,
     /// Full `provider/model` the new session should start on (resolved from last
     /// session or settings default at startup). Ignored when `resume_id` is set —
@@ -764,6 +767,7 @@ pub async fn bootstrap_mcp_for_session(
 pub enum BootstrapUiEvent {
     AgentReady(AgentBootstrap),
     AgentFailed(String),
+    UpdateAvailable(crate::cli::update::UpdateNotice),
     McpHeader { enabled_servers: usize },
     McpServer(McpServerLoadProgress),
     McpTranscriptLine(String),
@@ -774,7 +778,26 @@ pub enum BootstrapUiEvent {
 pub fn spawn_bootstrap_worker(config: TuiBootstrapConfig, paths: Paths) -> UnboundedReceiver<BootstrapUiEvent> {
     let (tx, rx) = unbounded_channel();
     tokio::spawn(async move {
-        run_bootstrap_worker(config, paths, tx).await;
+        let update_paths = paths.clone();
+        let update_channel = config.settings.updates.channel;
+        let should_check = config.check_for_updates && config.settings.updates.enabled;
+        let update_tx = tx.clone();
+        let update_check = async move {
+            if !should_check {
+                return;
+            }
+            match crate::cli::update::check_for_update(&update_paths, update_channel).await {
+                Ok(Some(notice)) => {
+                    let _ = update_tx.send(BootstrapUiEvent::UpdateAvailable(notice));
+                }
+                Ok(None) => {}
+                Err(error) => {
+                    log::debug!("automatic update check failed: {error:#}");
+                }
+            }
+        };
+        let bootstrap = run_bootstrap_worker(config, paths, tx);
+        tokio::join!(bootstrap, update_check);
     });
     rx
 }

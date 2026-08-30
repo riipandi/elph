@@ -16,7 +16,7 @@ mod session;
 mod session_launch;
 mod stats;
 pub mod style;
-mod update;
+pub(crate) mod update;
 pub mod version;
 mod worktree;
 

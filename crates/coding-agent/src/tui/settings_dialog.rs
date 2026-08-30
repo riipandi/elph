@@ -92,6 +92,7 @@ const GPU_CHOICES: &[&str] = &["auto", "on", "off"];
 const ROTATION_CHOICES: &[&str] = &["daily", "hourly", "size"];
 const ENCODING_CHOICES: &[&str] = &["off", "toon", "auto"];
 const DELIMITER_CHOICES: &[&str] = &["comma", "tab", "pipe"];
+const UPDATE_CHANNEL_CHOICES: &[&str] = &["stable", "canary"];
 
 fn section_fields(category: FieldSection) -> &'static [FieldSpec] {
     match category {
@@ -143,6 +144,18 @@ fn section_fields(category: FieldSection) -> &'static [FieldSpec] {
                 label: "Quiet startup",
                 description: "Hide bootstrap spinner and startup chatter.",
                 kind: FieldKind::Toggle,
+            },
+            FieldSpec {
+                key: "updates.enabled",
+                label: "Auto update check",
+                description: "Check GitHub Releases for updates when the TUI starts.",
+                kind: FieldKind::Toggle,
+            },
+            FieldSpec {
+                key: "updates.channel",
+                label: "Update channel",
+                description: "Release channel used by the startup update check.",
+                kind: FieldKind::Choice(UPDATE_CHANNEL_CHOICES),
             },
             FieldSpec {
                 key: "defaultTools",
@@ -1085,6 +1098,8 @@ fn value_for(settings: &Settings, key: &str) -> String {
         "shellCommandPrefix" => settings.shell_command_prefix.clone().unwrap_or_default(),
         "httpProxy" => settings.http_proxy.clone().unwrap_or_default(),
         "quietStartup" => settings.quiet_startup.to_string(),
+        "updates.enabled" => settings.updates.enabled.to_string(),
+        "updates.channel" => format!("{:?}", settings.updates.channel).to_ascii_lowercase(),
         "defaultTools" => join_list(settings.default_tools.as_deref()),
         "promptEncoding.mode" => settings
             .prompt_encoding
@@ -1311,6 +1326,14 @@ fn set_value(settings: &mut Settings, key: &str, value: &str) -> Result<(), Stri
         "shellCommandPrefix" => settings.shell_command_prefix = optional_text(value),
         "httpProxy" => settings.http_proxy = optional_text(value),
         "quietStartup" => settings.quiet_startup = parse_bool(value, key)?,
+        "updates.enabled" => settings.updates.enabled = parse_bool(value, key)?,
+        "updates.channel" => {
+            settings.updates.channel = match value.trim() {
+                "stable" => crate::platform::UpdateChannel::Stable,
+                "canary" => crate::platform::UpdateChannel::Canary,
+                _ => return Err(format!("{key} must be stable or canary")),
+            }
+        }
         "defaultTools" => settings.default_tools = optional_list(value),
         "promptEncoding.mode" => {
             let mode = match value.trim() {

@@ -38,6 +38,8 @@ pub const FILE_PICKER_HIDDEN_NOTICE_KEY: &str = "transient:file_picker_hidden";
 pub const MODEL_SET_NOTICE_KEY: &str = "transient:model_set";
 /// Stable key after `/thinking` (or the picker) changes the thinking level.
 pub const THINKING_LEVEL_NOTICE_KEY: &str = "transient:thinking_level";
+/// Stable key for an available Elph update found during startup.
+pub const UPDATE_AVAILABLE_NOTICE_KEY: &str = "transient:update_available";
 
 /// How long an agent-mode (or blocked-toggle) banner stays visible.
 pub const AGENT_MODE_NOTICE_TTL: Duration = Duration::from_secs(3);
@@ -48,6 +50,9 @@ pub const API_ERROR_NOTICE_TTL: Duration = Duration::from_secs(10);
 /// Stable key for API / provider error toasts.
 pub const API_ERROR_NOTICE_KEY: &str = "transient:api_error";
 
+/// How long an available update banner stays visible.
+pub const UPDATE_AVAILABLE_NOTICE_TTL: Duration = Duration::from_secs(10);
+
 /// Banner for HTTP/provider failures (401, 409, rate limit, …).
 pub fn api_error_banner(text: impl Into<String>) -> EphemeralBanner {
     EphemeralBanner {
@@ -55,6 +60,16 @@ pub fn api_error_banner(text: impl Into<String>) -> EphemeralBanner {
         text: text.into(),
         kind: EphemeralBannerKind::Error,
         expires_at: Some(Instant::now() + API_ERROR_NOTICE_TTL),
+    }
+}
+
+/// Banner for a release found by the startup update check.
+pub fn update_available_banner(text: impl Into<String>) -> EphemeralBanner {
+    EphemeralBanner {
+        key: UPDATE_AVAILABLE_NOTICE_KEY,
+        text: text.into(),
+        kind: EphemeralBannerKind::Notice,
+        expires_at: Some(Instant::now() + UPDATE_AVAILABLE_NOTICE_TTL),
     }
 }
 
@@ -389,6 +404,15 @@ mod tests {
         let banner = agent_mode_busy_banner();
         assert_eq!(banner.key, AGENT_MODE_BUSY_NOTICE_KEY);
         assert!(banner.text.contains("busy"));
+        assert!(banner.remaining_ttl().is_some());
+    }
+
+    #[test]
+    fn update_banner_is_timed_notice() {
+        let banner = update_available_banner("Update available");
+        assert_eq!(banner.key, UPDATE_AVAILABLE_NOTICE_KEY);
+        assert_eq!(banner.kind, EphemeralBannerKind::Notice);
+        assert_eq!(banner.text, "Update available");
         assert!(banner.remaining_ttl().is_some());
     }
 

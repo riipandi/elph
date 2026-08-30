@@ -16,7 +16,7 @@ use tempfile::NamedTempFile;
 
 use super::style::{CliStyle, S_ACCENT, S_MUTED, S_OK, S_WARN};
 use crate::platform::scaffold::VersionFile;
-use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
+use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths, UpdateChannel};
 use crate::utils::path::AppPaths;
 
 const RELEASES_URL: &str = "https://api.github.com/repos/riipandi/elph/releases?per_page=100";
@@ -120,6 +120,13 @@ struct Release {
     checksum_url: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct UpdateNotice {
+    pub(crate) current_version: String,
+    pub(crate) latest_version: String,
+    pub(crate) channel: &'static str,
+}
+
 pub fn handle(args: &UpdateArgs, paths: &Paths) -> ExitCode {
     if args.json && !args.check {
         super::help::cli_error("--json is only valid together with --check");
@@ -149,11 +156,7 @@ async fn run(args: &UpdateArgs, paths: &Paths) -> Result<()> {
         }
     }
 
-    let client = reqwest::Client::builder()
-        .user_agent(USER_AGENT)
-        .connect_timeout(Duration::from_secs(20))
-        .build()
-        .context("create update client")?;
+    let client = create_update_client()?;
     let releases = fetch_releases(&client).await?;
     let release = select_release(&releases, requested_tag.as_deref(), channel)?;
 
@@ -182,6 +185,65 @@ async fn run(args: &UpdateArgs, paths: &Paths) -> Result<()> {
     }
     print_human_updated(&release, &current_tag, args.force_reinstall && !update_available);
     Ok(())
+}
+
+fn create_update_client() -> Result<reqwest::Client> {
+    reqwest::Client::builder()
+        .user_agent(USER_AGENT)
+        .connect_timeout(Duration::from_secs(20))
+        .timeout(Duration::from_secs(30))
+        .build()
+        .context("create update client")
+}
+
+/// Check for a usable release without downloading or installing it.
+///
+/// This is used by the interactive TUI's background startup check. A release
+/// without both required install assets is ignored so the user only sees
+/// actionable update notices.
+pub(crate) async fn check_for_update(paths: &Paths, channel: UpdateChannel) -> Result<Option<UpdateNotice>> {
+    let client = create_update_client()?;
+    let releases = fetch_releases(&client).await?;
+    let release = select_release(
+        &releases,
+        None,
+        match channel {
+            UpdateChannel::Stable => Channel::Stable,
+            UpdateChannel::Canary => Channel::Canary,
+        },
+    )?;
+    if release.archive_url.is_none() || release.checksum_url.is_none() {
+        return Ok(None);
+    }
+
+    let version_file = read_version_file(paths);
+    let current = current_tag(version_file.as_ref());
+    if !is_newer_release(&current, &release) {
+        if let Err(error) = record_check(paths, version_file, &release) {
+            log::debug!("could not record automatic update check: {error:#}");
+        }
+        return Ok(None);
+    }
+
+    if let Err(error) = record_check(paths, version_file, &release) {
+        log::debug!("could not record automatic update check: {error:#}");
+    }
+    Ok(Some(UpdateNotice {
+        current_version: current.trim_start_matches('v').to_owned(),
+        latest_version: release.tag.trim_start_matches('v').to_owned(),
+        channel: release.version.channel().as_str(),
+    }))
+}
+
+fn is_newer_release(current_tag: &str, release: &Release) -> bool {
+    parse_tag(current_tag).is_none_or(|current| release.version > current)
+}
+
+pub(crate) fn format_update_notice(notice: &UpdateNotice) -> String {
+    format!(
+        "Update available — {} {} → {} · Run `elph update`",
+        notice.channel, notice.current_version, notice.latest_version
+    )
 }
 
 fn requested_channel(args: &UpdateArgs) -> Channel {
@@ -661,6 +723,30 @@ mod tests {
         );
         assert_eq!(human_update_summary(&release, "v0.1.4", true), "Reinstalling — stable 0.1.4");
         assert_eq!(human_updated_summary(&release, "v0.1.4", true), "Reinstalled — stable 0.1.4");
+    }
+
+    #[test]
+    fn startup_check_does_not_report_a_downgrade() {
+        let release = Release {
+            tag: "v0.2.2".into(),
+            version: parse_tag("v0.2.2").expect("valid release"),
+            archive_url: Some("archive".into()),
+            checksum_url: Some("checksums".into()),
+        };
+        assert!(!is_newer_release("v0.3.1-canary", &release));
+    }
+
+    #[test]
+    fn formats_startup_update_notice() {
+        let notice = UpdateNotice {
+            current_version: "0.2.2".into(),
+            latest_version: "0.3.0".into(),
+            channel: "stable",
+        };
+        assert_eq!(
+            format_update_notice(&notice),
+            "Update available — stable 0.2.2 → 0.3.0 · Run `elph update`"
+        );
     }
 
     #[test]

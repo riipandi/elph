@@ -34,6 +34,7 @@
 //!   "promptEncoding": null,
 //!   "memory": { ... },
 //!   "notifications": { ... },
+//!   "updates": { "enabled": true, "channel": "stable" },
 //!   "compaction": { "thresholdPct": 80, "keepRecentTokens": 20000, "physicalPrune": true },
 //!   "session": {
 //!     "retention": {
@@ -149,6 +150,9 @@ pub struct Settings {
     /// Desktop notification preferences.
     #[serde(default)]
     pub notifications: NotificationSettings,
+    /// Startup update-check preferences.
+    #[serde(default)]
+    pub updates: UpdateSettings,
     /// Auto-compaction preferences.
     #[serde(default)]
     pub compaction: CompactionConfig,
@@ -779,6 +783,38 @@ impl Default for NotificationSettings {
     }
 }
 
+/// Startup update-check preferences.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateSettings {
+    /// Check GitHub Releases once when the interactive TUI starts.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Release channel to check.
+    #[serde(default)]
+    pub channel: UpdateChannel,
+}
+
+impl Default for UpdateSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            channel: UpdateChannel::default(),
+        }
+    }
+}
+
+/// Release channel used by the startup update check.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum UpdateChannel {
+    /// Published stable releases.
+    #[default]
+    Stable,
+    /// Pre-release canary builds.
+    Canary,
+}
+
 /// Auto-compaction preferences (threshold / keep-recent only).
 ///
 /// Automatic compaction is always on after turns when usage exceeds the threshold.
@@ -845,6 +881,7 @@ impl Settings {
             prompt_encoding: None,
             memory: MemorySettings::default(),
             notifications: NotificationSettings::default(),
+            updates: UpdateSettings::default(),
             compaction: CompactionConfig::default(),
             session: SessionSettings::default(),
             workers: WorkersSettings::default(),

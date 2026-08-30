@@ -30,5 +30,5 @@ pub use project::ensure as ensure_project;
 pub use scaffold::{DefaultProjectTrust, TrustStore};
 pub use settings::{
     EmbedSettings, GpuAcceleration, MemorySettings, ModelsSettings, NotificationSettings, ResourcesSettings,
-    SessionSettings, Settings, SettingsScope, UiSettings,
+    SessionSettings, Settings, SettingsScope, UiSettings, UpdateChannel, UpdateSettings,
 };

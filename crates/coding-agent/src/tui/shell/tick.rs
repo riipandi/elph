@@ -173,6 +173,15 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                             );
                         }
                     }
+                    BootstrapUiEvent::UpdateAvailable(notice) => {
+                        let message = crate::cli::update::format_update_notice(notice);
+                        show_ephemeral_banner(
+                            &mut ephemeral_banner,
+                            &mut ephemeral_banner_generation,
+                            &ephemeral_expire.read().tx,
+                            update_available_banner(message),
+                        );
+                    }
                     _ => {}
                 }
                 apply_bootstrap_ui_event(
@@ -249,6 +258,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 let new_config = TuiBootstrapConfig {
                     paths: paths_for_load,
                     settings,
+                    check_for_updates: false,
                     resume_id: resume_id_req,
                     model_override: boot.ok().map(|(provider, model_id)| format!("{provider}/{model_id}")),
                     thinking_override: boot_thinking.ok().map(|level| level.label().to_string()),

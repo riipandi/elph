@@ -715,6 +715,7 @@ pub(crate) async fn apply_bootstrap_ui_event(
                 append_startup_warning(&mut msgs, "Run `elph doctor` or check logs.");
             }
         }
+        BootstrapUiEvent::UpdateAvailable(_) => {}
         BootstrapUiEvent::McpHeader { enabled_servers } => {
             bootstrap_phase.set(BootstrapPhase::McpLoading);
             activity_label.set(bootstrap_activity_label(BootstrapPhase::McpLoading, None));

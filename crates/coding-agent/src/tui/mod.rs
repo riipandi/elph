@@ -150,6 +150,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
     let bootstrap_config = TuiBootstrapConfig {
         paths: paths.clone(),
         settings: settings.clone(),
+        check_for_updates: true,
         resume_id: options.resume_id.clone(),
         model_override: options
             .resume_id

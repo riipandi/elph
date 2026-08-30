@@ -47,6 +47,9 @@
         "notifications": {
             "$ref": "#/definitions/notifications"
         },
+        "updates": {
+            "$ref": "#/definitions/updates"
+        },
         "compaction": {
             "$ref": "#/definitions/compaction"
         },
@@ -534,6 +537,24 @@
                     "default": "Elph",
                     "minLength": 1,
                     "description": "Application name shown in the notification banner."
+                }
+            }
+        },
+        "updates": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Startup update-check preferences.",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Check GitHub Releases once when the interactive TUI starts."
+                },
+                "channel": {
+                    "type": "string",
+                    "enum": ["stable", "canary"],
+                    "default": "stable",
+                    "description": "Release channel used by the startup update check."
                 }
             }
         },

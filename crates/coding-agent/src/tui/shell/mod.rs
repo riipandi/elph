@@ -152,6 +152,7 @@ use crate::tui::transcript::{
     expire_ephemeral_banner, file_picker_hidden_notice_text, model_set_notice_from_value, model_set_notice_text,
     prompt_copy_banner, prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner, select_mode_off_banner,
     select_mode_on_banner, theme_mode_banner, thinking_level_banner, toggle_latest_collapsible_detail,
+    update_available_banner,
 };
 use crate::tui::user_question::PendingUserQuestion;
 use crate::tui::user_question::{
