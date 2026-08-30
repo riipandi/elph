@@ -71,15 +71,12 @@ pub fn tool_approval_select_options() -> Vec<SelectOption> {
 
 pub fn tool_approval_select_options_for(once_only: bool) -> Vec<SelectOption> {
     let rows: &[(&str, &str)] = if once_only {
-        &[
-            ("Allow once", "This call only — does not implement the plan"),
-            ("Deny", "Ask again next time"),
-        ]
+        &[("Allow once", "This plan step only"), ("Deny", "Ask again next time")]
     } else {
         &[
             ("Allow once", "This call only"),
-            ("Allow session", "This tool for the rest of the session"),
-            ("Allow all tools", "All tools for the rest of the session"),
+            ("Allow session", "Tool for session"),
+            ("Allow all tools", "All tools session"),
             ("Deny", "Ask again next time"),
         ]
     };
