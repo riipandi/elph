@@ -111,7 +111,7 @@ pub struct Agent {
     max_retry_delay_ms: Option<u64>,
     tool_execution: ToolExecutionMode,
     prompt_encoding: PromptEncodingConfig,
-    active_run: Mutex<Option<ActiveRun>>,
+    active_run: Arc<Mutex<Option<ActiveRun>>>,
     skip_initial_steering: Arc<std::sync::atomic::AtomicBool>,
 }
 
@@ -148,7 +148,7 @@ impl Agent {
                     .unwrap_or("ELPH");
                 PromptEncodingConfig::from_env_prefixed(prefix)
             }),
-            active_run: Mutex::new(None),
+            active_run: Arc::new(Mutex::new(None)),
             skip_initial_steering: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }

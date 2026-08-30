@@ -15,6 +15,60 @@ use super::events::{now_ms, process_event};
 use super::state::default_model;
 use super::{ActiveRun, Agent};
 
+struct RunCleanupGuard {
+    active_run: Arc<Mutex<Option<ActiveRun>>>,
+    state: Arc<Mutex<super::state::MutableAgentState>>,
+    current_abort_token: Arc<Mutex<Option<CancellationToken>>>,
+    armed: bool,
+}
+
+impl RunCleanupGuard {
+    fn new(agent: &Agent) -> Self {
+        Self {
+            active_run: Arc::clone(&agent.active_run),
+            state: Arc::clone(&agent.state),
+            current_abort_token: Arc::clone(&agent.current_abort_token),
+            armed: true,
+        }
+    }
+
+    fn disarm(&mut self) {
+        self.armed = false;
+    }
+}
+
+impl Drop for RunCleanupGuard {
+    fn drop(&mut self) {
+        if !self.armed {
+            return;
+        }
+
+        let active_run = Arc::clone(&self.active_run);
+        let state = Arc::clone(&self.state);
+        let current_abort_token = Arc::clone(&self.current_abort_token);
+        let Ok(handle) = tokio::runtime::Handle::try_current() else {
+            return;
+        };
+
+        handle.spawn(async move {
+            // Match `finish_run`'s lock order. Keeping this order prevents a
+            // cancellation racing with normal completion from deadlocking.
+            let mut state = state.lock().await;
+            let mut current_abort_token = current_abort_token.lock().await;
+            let mut active = active_run.lock().await;
+            let Some(run) = active.take() else {
+                return;
+            };
+            run.abort_token.cancel();
+            state.set_streaming(false);
+            state.set_streaming_message(None);
+            state.set_pending_tool_calls(HashSet::new());
+            *current_abort_token = None;
+            let _ = run.idle_tx.send(());
+        });
+    }
+}
+
 impl Agent {
     pub async fn prompt_text(
         &self,
@@ -85,11 +139,13 @@ impl Agent {
         let context = self.create_context_snapshot().await;
         let config = self.create_loop_config();
         let token = self.begin_run().await?;
+        let mut cleanup = RunCleanupGuard::new(self);
         let emit = self.create_emit_callback(token.clone());
 
-        run_agent_loop(messages, context, config, emit, Some(token)).await?;
+        let result = run_agent_loop(messages, context, config, emit, Some(token)).await;
         self.finish_run().await;
-        Ok(())
+        cleanup.disarm();
+        result.map(|_| ())
     }
 
     async fn run_continuation(&self) -> Result<(), crate::types::AgentError> {
@@ -98,11 +154,13 @@ impl Agent {
         let context = self.create_context_snapshot().await;
         let config = self.create_loop_config();
         let token = self.begin_run().await?;
+        let mut cleanup = RunCleanupGuard::new(self);
         let emit = self.create_emit_callback(token.clone());
 
-        run_agent_loop_continue(context, config, emit, Some(token)).await?;
+        let result = run_agent_loop_continue(context, config, emit, Some(token)).await;
         self.finish_run().await;
-        Ok(())
+        cleanup.disarm();
+        result.map(|_| ())
     }
 
     async fn create_context_snapshot(&self) -> AgentContext {

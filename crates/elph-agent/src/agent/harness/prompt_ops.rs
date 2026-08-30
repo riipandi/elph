@@ -31,6 +31,7 @@ where
         crate::trace::add_event("turn_start");
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
+        let mut cleanup = self.run_cleanup_guard();
         let op_id = self
             .journal_operation_started(crate::session::durability::OperationKind::Run)
             .await
@@ -58,6 +59,7 @@ where
             log::debug!("harness turn ok");
         }
         self.finish_run().await;
+        cleanup.disarm();
         result
     }
 
@@ -71,6 +73,7 @@ where
         log::debug!("harness skill start name={name}");
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
+        let mut cleanup = self.run_cleanup_guard();
         let op_id = self
             .journal_operation_started(crate::session::durability::OperationKind::Run)
             .await
@@ -109,6 +112,7 @@ where
             *self.shared.phase.lock().await = AgentHarnessPhase::Idle;
         }
         self.finish_run().await;
+        cleanup.disarm();
         result
     }
 
@@ -122,6 +126,7 @@ where
         log::debug!("harness template start name={name}");
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
+        let mut cleanup = self.run_cleanup_guard();
         let op_id = self
             .journal_operation_started(crate::session::durability::OperationKind::Run)
             .await
@@ -164,6 +169,7 @@ where
             *self.shared.phase.lock().await = AgentHarnessPhase::Idle;
         }
         self.finish_run().await;
+        cleanup.disarm();
         result
     }
 
