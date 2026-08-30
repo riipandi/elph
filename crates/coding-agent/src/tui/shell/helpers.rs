@@ -217,7 +217,7 @@ pub(crate) struct PromptQueueActionCtx<'a> {
     pub(crate) queue_ui_revision: &'a mut State<u64>,
     pub(crate) agent_session: &'a Option<Arc<CodingAgentSession>>,
     pub(crate) agent_turn_active: bool,
-    pub(crate) messages: &'a mut State<Vec<TranscriptMessage>>,
+    pub(crate) messages: &'a mut State<Arc<RwLock<Vec<TranscriptMessage>>>>,
     pub(crate) messages_revision: &'a mut State<u64>,
     pub(crate) prompt_history: &'a mut Ref<Vec<String>>,
     pub(crate) pre_echoed_user_prompts: &'a mut State<u32>,
@@ -509,7 +509,7 @@ pub(crate) fn begin_turn_token_tracking(tracker: &mut Ref<Option<TurnTokenTracke
 }
 
 pub(crate) fn push_transcript_message(
-    messages: &mut State<Vec<TranscriptMessage>>,
+    messages: &mut State<Arc<RwLock<Vec<TranscriptMessage>>>>,
     messages_revision: &mut State<u64>,
     prompt_history: &mut Ref<Vec<String>>,
     message: TranscriptMessage,
@@ -523,11 +523,7 @@ pub(crate) fn push_transcript_message(
             message.style,
         );
     }
-    messages.set({
-        let mut list = messages.read().clone();
-        list.push(message);
-        list
-    });
+    messages.write().write().unwrap().push(message);
     messages_revision.set(messages_revision.get().wrapping_add(1));
 }
 
@@ -538,57 +534,56 @@ pub(crate) fn push_transcript_message(
 /// State (slash output, notices) would be lost on the next sync, so they must
 /// also be written to the shared arc.
 pub(crate) fn push_transcript_message_synced(
-    messages: &mut State<Vec<TranscriptMessage>>,
-    messages_arc: Ref<Arc<RwLock<Vec<TranscriptMessage>>>>,
+    messages: &mut State<Arc<RwLock<Vec<TranscriptMessage>>>>,
+    _messages_arc: Ref<Arc<RwLock<Vec<TranscriptMessage>>>>,
     messages_revision: &mut State<u64>,
     prompt_history: &mut Ref<Vec<String>>,
     message: TranscriptMessage,
 ) {
-    let mut arc = messages_arc;
-    arc.write().write().unwrap().push(message.clone());
     push_transcript_message(messages, messages_revision, prompt_history, message);
 }
 
 /// Upsert a `transient:*` notice in the scrollable transcript (subtle grey ephemeral styling).
 pub(crate) fn upsert_ephemeral_transcript_notice(
-    messages: &mut State<Vec<TranscriptMessage>>,
+    messages: &mut State<Arc<RwLock<Vec<TranscriptMessage>>>>,
     messages_revision: &mut State<u64>,
     key: &str,
     text: impl Into<String>,
 ) {
     let text = text.into();
-    messages.set({
-        let mut list = messages.read().clone();
-        if let Some(row) = list.iter_mut().find(|m| m.startup_key.as_deref() == Some(key)) {
+    {
+        let arc_ref = messages.write();
+        let mut msgs = arc_ref.write().unwrap();
+        if let Some(row) = msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key)) {
             row.content = text;
         } else {
-            list.push(TranscriptMessage::startup_status(key, text, TranscriptStyle::Meta));
+            msgs.push(TranscriptMessage::startup_status(key, text, TranscriptStyle::Meta));
         }
-        list
-    });
+    }
     messages_revision.set(messages_revision.get().wrapping_add(1));
 }
 
 /// Remove a `transient:*` notice from the transcript when its TTL elapses (or it is replaced).
 pub(crate) fn clear_ephemeral_transcript_notice(
-    messages: &mut State<Vec<TranscriptMessage>>,
+    messages: &mut State<Arc<RwLock<Vec<TranscriptMessage>>>>,
     messages_revision: &mut State<u64>,
     key: &str,
 ) {
-    let before = messages.read().len();
-    messages.set({
-        let mut list = messages.read().clone();
-        list.retain(|m| m.startup_key.as_deref() != Some(key));
-        list
-    });
-    if messages.read().len() != before {
+    let changed = {
+        let arc_ref = messages.write();
+        let mut msgs = arc_ref.write().unwrap();
+        let before = msgs.len();
+        msgs.retain(|m| m.startup_key.as_deref() != Some(key));
+        msgs.len() != before
+    };
+    if changed {
         messages_revision.set(messages_revision.get().wrapping_add(1));
     }
 }
 
 /// Show a timed transcript notice and schedule its auto-clear.
 pub(crate) fn publish_ephemeral_transcript_notice(
-    messages: &mut State<Vec<TranscriptMessage>>,
+    messages: &mut State<Arc<RwLock<Vec<TranscriptMessage>>>>,
     messages_revision: &mut State<u64>,
     expires: &mut Ref<HashMap<&'static str, Instant>>,
     key: &'static str,
@@ -600,7 +595,7 @@ pub(crate) fn publish_ephemeral_transcript_notice(
 
 /// Drop any transcript notices whose wall-clock TTL has elapsed.
 pub(crate) fn poll_ephemeral_transcript_notices(
-    messages: &mut State<Vec<TranscriptMessage>>,
+    messages: &mut State<Arc<RwLock<Vec<TranscriptMessage>>>>,
     messages_revision: &mut State<u64>,
     expires: &mut Ref<HashMap<&'static str, Instant>>,
 ) {
@@ -659,7 +654,7 @@ pub(crate) async fn apply_bootstrap_ui_event(
     palette_refresh_pending: &mut State<bool>,
     agent_session_slot: &mut Ref<Option<Arc<CodingAgentSession>>>,
     ui_events_slot: &mut Ref<Option<Arc<tokio::sync::Mutex<UnboundedReceiver<AgentUiEvent>>>>>,
-    messages: &mut State<Vec<TranscriptMessage>>,
+    messages: &mut State<Arc<RwLock<Vec<TranscriptMessage>>>>,
     prompt_history: &mut Ref<Vec<String>>,
     thinking_level: &mut State<ThinkingLevel>,
 ) {
@@ -681,7 +676,8 @@ pub(crate) async fn apply_bootstrap_ui_event(
             ui_events_slot.set(Some(Arc::clone(&bootstrap.ui_rx)));
             thinking_level.set(restored_thinking_level_for_session(&bootstrap.session).await);
             {
-                let mut msgs = messages.write();
+                let arc_ref = messages.write();
+                let mut msgs = arc_ref.write().unwrap();
                 // Prepend persisted chat history so the transcript shows previous turns on resume.
                 if !bootstrap.history_messages.is_empty() {
                     // Keep only the startup status lines, insert history before them.
@@ -710,7 +706,8 @@ pub(crate) async fn apply_bootstrap_ui_event(
             busy.set(false);
             activity_label.set(bootstrap_activity_label(BootstrapPhase::Failed, None));
             {
-                let mut msgs = messages.write();
+                let arc_ref = messages.write();
+                let mut msgs = arc_ref.write().unwrap();
                 mark_agent_startup_failed(&mut msgs, &err);
                 append_startup_warning(&mut msgs, "Run `elph doctor` or check logs.");
             }
@@ -720,7 +717,8 @@ pub(crate) async fn apply_bootstrap_ui_event(
             bootstrap_phase.set(BootstrapPhase::McpLoading);
             activity_label.set(bootstrap_activity_label(BootstrapPhase::McpLoading, None));
             {
-                let mut msgs = messages.write();
+                let arc_ref = messages.write();
+                let mut msgs = arc_ref.write().unwrap();
                 begin_mcp_startup(&mut msgs, enabled_servers);
             }
         }
@@ -728,12 +726,14 @@ pub(crate) async fn apply_bootstrap_ui_event(
             activity_label.set(mcp_server_status_label(&progress));
             activity_started_at.set(Some(Instant::now()));
             {
-                let mut msgs = messages.write();
+                let arc_ref = messages.write();
+                let mut msgs = arc_ref.write().unwrap();
                 apply_mcp_server_progress(&mut msgs, &progress);
             }
         }
         BootstrapUiEvent::McpTranscriptLine(line) => {
-            let mut msgs = messages.write();
+            let arc_ref = messages.write();
+            let mut msgs = arc_ref.write().unwrap();
             match classify_mcp_footer_line(&line) {
                 McpFooterLineKind::Summary(summary) => apply_mcp_startup_summary_line(&mut msgs, &summary),
                 McpFooterLineKind::Warning(warning) => append_startup_warning(&mut msgs, &warning),

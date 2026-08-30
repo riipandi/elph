@@ -249,7 +249,7 @@ pub(crate) fn build_shell_view(
         let session_title = crate::agent::session_title_for_rename(agent_session.as_ref())
             .ok()
             .filter(|title| !title.trim().is_empty());
-        let submitted = count_submitted_user_prompts(&messages.read());
+        let submitted = count_submitted_user_prompts(&messages.read().read().unwrap());
         let persisted_turns = chrome.turn_count;
         record_if_active(
             ExitSnapshot {
@@ -1490,7 +1490,8 @@ pub(crate) fn build_shell_view(
                             if let Some(pending) = pending_plan_confirmation.write().take() {
                                 let key = plan_confirmation_transcript_key();
                                 {
-                                    let mut msgs = messages.write();
+                                    let arc_ref = messages.write();
+                                    let mut msgs = arc_ref.write().unwrap();
                                     if let Some(row) =
                                         msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
                                     {
@@ -1590,7 +1591,8 @@ pub(crate) fn build_shell_view(
 
                             let tool_id = next_user_shell_tool_id();
                             {
-                                let mut msgs = messages.write();
+                                let arc_ref = messages.write();
+                                let mut msgs = arc_ref.write().unwrap();
                                 if event_applier.write().apply(
                                     &mut msgs,
                                     AgentUiEvent::ToolStart {
@@ -1600,9 +1602,6 @@ pub(crate) fn build_shell_view(
                                         user_shell: true,
                                     },
                                 ) {
-                                    // Sync to shared arc so background ToolUpdate/ToolEnd
-                                    // (which read from messages_arc_inner) find the message.
-                                    *messages_arc.write().write().unwrap() = msgs.clone();
                                     messages_revision.set(messages_revision.get().wrapping_add(1));
                                 }
                             }
@@ -1758,16 +1757,13 @@ pub(crate) fn build_shell_view(
                                 ));
 
                                 // Reset transcript to a clean "Starting new session…" line
-                                messages.set(vec![TranscriptMessage::startup_status(
+                                messages.write().write().unwrap().push(TranscriptMessage::startup_status(
                                     crate::tui::startup::STARTUP_KEY_PHASE,
                                     "Starting new session…".to_string(),
                                     TranscriptStyle::StatusRunning,
-                                )]);
+                                ));
                                 messages_revision.set(messages_revision.get().wrapping_add(1));
 
-                                // Flush the shared arc so the arc-to-state sync does not
-                                // restore the old transcript on the next tick.
-                                *messages_arc.write().write().unwrap() = messages.read().clone();
 
                                 // Clear prompt history (Arrow Up) so old entries don't
                                 // reappear in the new session.

@@ -115,7 +115,6 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
     // Idle-CPU guards: track the last messages revision / chrome-refresh / layout-poll
     // timestamps so the tick loop only performs synchronization work when something actually
     // changed instead of on every fixed 50 ms wakeup.
-    let mut last_messages_revision = messages_revision.get().wrapping_add(1);
     let mut last_chrome_refresh = Instant::now();
     let mut last_layout_poll = Instant::now();
     // Throttle the git worktree scan that feeds the chrome footer (branch / dirty counts).
@@ -165,7 +164,8 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                 activity_started_at.set(Some(Instant::now()));
                 activity_label.set(bootstrap_activity_label(BootstrapPhase::Running, Some("Preparing agent")));
                 {
-                    let mut msgs = messages.write();
+                    let arc_ref = messages.write();
+                    let mut msgs = arc_ref.write().unwrap();
                     begin_agent_startup(&mut msgs);
                 }
                 publish_transcript_now(&mut messages_revision, &mut transcript_pending, &mut last_transcript_publish);
@@ -237,10 +237,6 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         // writer bumps `messages_revision` — which avoids an O(transcript) clone on every
         // 50 ms tick while idle. The end-of-iteration baseline update below keeps the tick
         // loop's own revision bumps from forcing a redundant re-clone next iteration.
-        let messages_rev_now = messages_revision.get();
-        if messages_rev_now != last_messages_revision {
-            *messages_arc_inner.write().unwrap() = messages.read().clone();
-        }
 
         // Handle `/new` and `/resume <id>`: reload resources + restart bootstrap without exiting TUI.
         let resume_id_req = resume_session_requested.read().clone();
@@ -304,7 +300,6 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             chrome_refresh_pending.set(true);
             // Clear the old live session slot so UI does not keep talking to a dead worker.
             agent_session_slot.set(None);
-            messages.set(Vec::new());
             *messages_arc_inner.write().unwrap() = Vec::new();
 
             if let Some(id) = outgoing_id
@@ -359,9 +354,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             pending_mcp_auth_for_tick.set(None);
             shell_focus_for_tick.set(ShellFocus::Prompt);
             if let Some(notice) = notice {
-                let mut msgs = messages_for_tick.write().clone();
-                msgs.push(TranscriptMessage::text(notice, TranscriptStyle::Meta));
-                messages_for_tick.set(msgs);
+                messages_for_tick
+                    .write()
+                    .write()
+                    .unwrap()
+                    .push(TranscriptMessage::text(notice, TranscriptStyle::Meta));
                 messages_revision_for_tick.set(messages_revision_for_tick.get().wrapping_add(1));
             }
         }
@@ -399,9 +396,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             provider_connect_input_focus_for_tick.set(ProviderConnectFocus::default());
             shell_focus_for_tick.set(ShellFocus::Prompt);
             if let Some(notice) = notice {
-                let mut msgs = messages_for_tick.write().clone();
-                msgs.push(TranscriptMessage::text(notice, TranscriptStyle::Meta));
-                messages_for_tick.set(msgs);
+                messages_for_tick
+                    .write()
+                    .write()
+                    .unwrap()
+                    .push(TranscriptMessage::text(notice, TranscriptStyle::Meta));
                 messages_revision_for_tick.set(messages_revision_for_tick.get().wrapping_add(1));
             }
         }
@@ -415,12 +414,10 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             pending_provider_disconnect_for_tick.set(None);
             shell_focus_for_tick.set(ShellFocus::Prompt);
             // Push transcript notification
-            let mut msgs = messages_for_tick.write().clone();
-            msgs.push(TranscriptMessage::text(
+            messages_for_tick.write().write().unwrap().push(TranscriptMessage::text(
                 "Signed out from all providers".to_string(),
                 TranscriptStyle::Meta,
             ));
-            messages_for_tick.set(msgs);
             messages_revision_for_tick.set(messages_revision_for_tick.get().wrapping_add(1));
         }
 
@@ -1125,7 +1122,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         if transcript_changed {
             // Sync the arc to State at controlled interval (one dirty per tick
             // instead of per-token). Panel reads from the arc directly.
-            *messages.write() = messages_arc_inner.read().unwrap().clone();
+            *messages.write() = messages_arc_inner.clone();
             transcript_pending.set(true);
         }
 
@@ -1150,7 +1147,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             };
             if retention_changed {
                 // Re-sync the State copy so it also releases the freed caches.
-                *messages.write() = messages_arc_inner.read().unwrap().clone();
+                *messages.write() = messages_arc_inner.clone();
                 messages_revision.set(messages_revision.get().wrapping_add(1));
             }
 
@@ -1227,15 +1224,11 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                         msgs.push(msg);
                     }
                     // Repaint immediately: the transcript sync already ran this tick.
-                    *messages.write() = messages_arc_inner.read().unwrap().clone();
+                    *messages.write() = messages_arc_inner.clone();
                     messages_revision.set(messages_revision.get().wrapping_add(1));
                 }
             }
         }
-
-        // Align the messages-revision baseline with this iteration's own mutations so the
-        // next tick only re-clones the arc when an *external* writer changed `messages`.
-        last_messages_revision = messages_revision.get();
     }
 }
 

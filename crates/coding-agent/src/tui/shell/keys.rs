@@ -1880,7 +1880,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     ToolApprovalChoice::Reject => (TranscriptStyle::StatusFailed, format!("{verb} · denied")),
                 };
                 {
-                    let mut msgs = messages.write();
+                    let arc_ref = messages.write();
+                    let mut msgs = arc_ref.write().unwrap();
                     if let Some(row) = msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str())) {
                         row.content = "Tool approval".to_string();
                         row.status_detail = Some(detail);
@@ -1931,7 +1932,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 agent_mode.set(mode);
                 // Update the transcript status row.
                 {
-                    let mut msgs = messages.write();
+                    let arc_ref = messages.write();
+                    let mut msgs = arc_ref.write().unwrap();
                     let key = "mode-change:pending";
                     let (style, detail) = if approved {
                         (TranscriptStyle::StatusSuccess, format!("Switched to {mode_label}"))
@@ -2058,7 +2060,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                                 PlanChoice::RevisePlan => unreachable!(),
                             };
                             {
-                                let mut msgs = messages.write();
+                                let arc_ref = messages.write();
+                                let mut msgs = arc_ref.write().unwrap();
                                 if let Some(row) =
                                     msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
                                 {
@@ -4461,7 +4464,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         // Ctrl+O: expand/collapse the most recent finished thinking / tool / response block.
         // Click a process header to toggle that specific older result (iocraft Button hit-test).
         (m, KeyCode::Char(c)) if m.contains(KeyModifiers::CONTROL) && matches!(c, 'o' | 'O') => {
-            let mut msgs = messages.write();
+            let arc_ref = messages.write();
+            let mut msgs = arc_ref.write().unwrap();
             if toggle_latest_collapsible_detail(&mut msgs) {
                 drop(msgs);
                 messages_revision.set(messages_revision.get().wrapping_add(1));

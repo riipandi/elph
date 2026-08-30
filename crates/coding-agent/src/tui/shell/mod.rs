@@ -426,10 +426,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let draft = hooks.use_state(String::new);
     let live_draft = hooks.use_ref(String::new);
     let input_prefix_kind = hooks.use_ref(InputPrefixKind::default);
-    let startup_messages = props.startup_messages.clone();
-    let messages = hooks.use_state(move || startup_messages);
     let startup_messages_arc = props.startup_messages.clone();
     let messages_arc = hooks.use_ref(move || Arc::new(RwLock::new(startup_messages_arc)));
+    // Share the same RwLock as `messages_arc` so the transcript is stored exactly once
+    // (the State is just another handle to the buffer the tick loop and panel read/write).
+    let shared_messages = messages_arc.read().clone();
+    let messages = hooks.use_state(move || shared_messages.clone());
 
     let messages_revision = hooks.use_state(|| 0u64);
     let suppress_enter_newline = hooks.use_ref(|| false);
