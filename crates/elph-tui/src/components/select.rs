@@ -355,18 +355,15 @@ pub fn SelectList(props: &mut SelectListProps, mut hooks: Hooks) -> impl Into<An
             let show_desc = show_description && !opt.description.is_empty();
 
             let inner_content: AnyElement<'static> = if props.inline_description && show_desc {
-                // Inline: name and hint on the same row, hint aligned just after
-                // the widest option name (like the Thinking Level picker) instead
-                // of pushed to the far edge.
                 let desc_w = (content_width / 3).clamp(12, 20);
                 let name_w = max_name_len
-                    .min(content_width.saturating_sub(desc_w).saturating_sub(1))
+                    .min(content_width.saturating_sub(desc_w).saturating_sub(2))
                     .max(1);
                 element! {
                     View(
                         width: content_width,
                         flex_direction: FlexDirection::Row,
-                        gap: 1,
+                        gap: 2,
                         flex_shrink: 0f32,
                         align_items: AlignItems::Center,
                     ) {
