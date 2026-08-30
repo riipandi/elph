@@ -230,9 +230,6 @@ pub(crate) struct PromptQueueActionCtx<'a> {
     pub(crate) queue_manager_open: &'a mut State<bool>,
     pub(crate) queue_manager_selected: &'a mut State<usize>,
     pub(crate) queue_manager_action: &'a mut State<PromptQueueAction>,
-    /// Shared arc for transcript messages — pre-echoed prompts are written here too
-    /// so the arc-to-state sync never loses them.
-    pub(crate) messages_arc: &'a mut Ref<Arc<RwLock<Vec<TranscriptMessage>>>>,
 }
 
 /// Close the queue manager and return focus to the prompt.
@@ -267,8 +264,6 @@ pub(crate) fn apply_prompt_queue_action(
             ctx.queue_ui_revision.set(ctx.queue_ui_revision.get().wrapping_add(1));
             let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
             submitted.submitted_at = Some(chrono::Utc::now());
-            // Sync to shared arc so the arc-to-state sync doesn't lose this pre-echoed prompt.
-            ctx.messages_arc.write().write().unwrap().push(submitted.clone());
             push_transcript_message(ctx.messages, ctx.messages_revision, ctx.prompt_history, submitted);
             ctx.pre_echoed_user_prompts
                 .set(ctx.pre_echoed_user_prompts.get().saturating_add(1));

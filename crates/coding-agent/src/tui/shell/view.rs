@@ -56,7 +56,7 @@ pub(crate) fn build_shell_view(
         mention_index,
         mut mention_index_requested,
         mut messages,
-        mut messages_arc,
+        messages_arc,
         mut messages_revision,
         mut model_filter,
         mut model_input_focus,
@@ -212,7 +212,6 @@ pub(crate) fn build_shell_view(
                 queue_manager_open: &mut queue_manager_open,
                 queue_manager_selected: &mut queue_manager_selected,
                 queue_manager_action: &mut queue_manager_action,
-                messages_arc: &mut messages_arc,
             },
         );
         if mark_busy_for_idle.is_some() {
@@ -1695,8 +1694,6 @@ pub(crate) fn build_shell_view(
                             );
                             if submitted.style.is_user_input_card() {
                                 submitted.submitted_at = Some(chrono::Utc::now());
-                                // Sync to shared arc so the arc-to-state sync never loses this pre-echoed prompt.
-                                messages_arc.write().write().unwrap().push(submitted.clone());
                                 pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                             }
                             push_transcript_message(
