@@ -118,6 +118,8 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
     let mut last_messages_revision = messages_revision.get().wrapping_add(1);
     let mut last_chrome_refresh = Instant::now();
     let mut last_layout_poll = Instant::now();
+    // Throttle the git worktree scan that feeds the chrome footer (branch / dirty counts).
+    let mut last_git_footer_refresh = Instant::now();
 
     loop {
         // Event-driven wake: park the task until an agent UI event arrives (immediate,
@@ -428,10 +430,20 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
             // re-run on every tick after bootstrap settles.
             last_chrome_refresh = Instant::now();
             let paths = paths.read().clone();
-            let next_git_footer = read_git_footer_info(paths.project_dir());
-            if git_footer.read().clone() != next_git_footer {
-                git_footer.set(next_git_footer);
-                bump_chrome_ui_revision(&mut chrome_ui_revision);
+            // The git worktree scan (`read_git_footer_info` → `git2` status list) is the most
+            // expensive periodic task while idle, so refresh it at most every
+            // `GIT_FOOTER_REFRESH_SECS` instead of on every 1 s chrome pass. Explicit
+            // `chrome_refresh_pending` events (e.g. a git checkout) still force an immediate
+            // rescan so the footer stays correct after a state change.
+            let git_footer_due =
+                chrome_refresh_pending.get() || last_git_footer_refresh.elapsed() >= Duration::from_secs(GIT_FOOTER_REFRESH_SECS);
+            if git_footer_due {
+                last_git_footer_refresh = Instant::now();
+                let next_git_footer = read_git_footer_info(paths.project_dir());
+                if git_footer.read().clone() != next_git_footer {
+                    git_footer.set(next_git_footer);
+                    bump_chrome_ui_revision(&mut chrome_ui_revision);
+                }
             }
 
             if let Some(session) = agent_session_for_chrome.as_ref() {

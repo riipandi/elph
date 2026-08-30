@@ -311,6 +311,13 @@ impl elph_ai::auth::AuthLoginCallbacks for OAuthLoginCallbacksImpl {
 /// refresh / ephemeral-expiry / layout polling alive). 200 ms keeps animations smooth while
 /// cutting idle wakeups ~5x versus the old fixed 50 ms poll.
 const SHELL_IDLE_HOUSEKEEPING_MS: u64 = 200;
+/// How often the shell loop re-scans the git worktree for the chrome footer (branch + dirty
+/// counts). The scan goes through `git2` (`git_status_list_new`) and is the single most
+/// expensive periodic task while idle, so it is throttled far below the 1 s chrome cadence.
+/// Branch / dirty state changes rarely between scans, and explicit `chrome_refresh_pending`
+/// events still force an immediate rescan, so 10 s keeps the footer accurate without burning
+/// CPU re-reading the worktree every second.
+const GIT_FOOTER_REFRESH_SECS: u64 = 10;
 /// Base transcript publish interval while streaming (~10 Hz). Status spinner ticks in StatusRow.
 const TRANSCRIPT_PUBLISH_MS: u64 = 100;
 /// Faster transcript refresh while startup status lines are updating.
