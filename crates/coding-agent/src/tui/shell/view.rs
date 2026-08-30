@@ -552,7 +552,6 @@ pub(crate) fn build_shell_view(
                                 let notice = format!("Session renamed to “{}”.", title.trim());
                                 push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(notice, TranscriptStyle::Meta),
@@ -561,7 +560,6 @@ pub(crate) fn build_shell_view(
                             Err(message) => {
                                 push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -1145,7 +1143,6 @@ pub(crate) fn build_shell_view(
                                 {
                                     push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -1175,7 +1172,6 @@ pub(crate) fn build_shell_view(
                                 {
                                     push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -1223,7 +1219,6 @@ pub(crate) fn build_shell_view(
                             {
                                 push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -1276,7 +1271,6 @@ pub(crate) fn build_shell_view(
                             {
                                 push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -1560,7 +1554,6 @@ pub(crate) fn build_shell_view(
                             image_attachments.set(Vec::new());
                             push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text("Empty command.", TranscriptStyle::Meta),
@@ -1583,7 +1576,6 @@ pub(crate) fn build_shell_view(
                             submitted.submitted_at = Some(chrono::Utc::now());
                             push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 submitted);
@@ -1806,7 +1798,6 @@ pub(crate) fn build_shell_view(
                                 suppress_enter_newline.set(true);
                                 push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(
@@ -1819,7 +1810,6 @@ pub(crate) fn build_shell_view(
                             SlashOutcome::Status(message) => {
                                 push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -1828,7 +1818,6 @@ pub(crate) fn build_shell_view(
                             SlashOutcome::TrustChanged { message, trusted } => {
                                 push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -1846,7 +1835,6 @@ pub(crate) fn build_shell_view(
                             SlashOutcome::Unimplemented(message) => {
                                 push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -2244,7 +2232,6 @@ pub(crate) fn build_shell_view(
                             SlashOutcome::OverlayDeferred(overlay) => {
                                 push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
@@ -2285,7 +2272,6 @@ pub(crate) fn build_shell_view(
                                     let notice = format!("Command {slash_input}queued — runs after the current task.");
                                     push_transcript_message_synced(
                                         &mut messages,
-                                        messages_arc,
                                         &mut messages_revision,
                                         &mut prompt_history,
                                         TranscriptMessage::text(notice, TranscriptStyle::Meta),
@@ -2352,7 +2338,6 @@ pub(crate) fn build_shell_view(
                                     crate::tui::prompt::images::remove_files(&prompt_attachments);
                                     push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(

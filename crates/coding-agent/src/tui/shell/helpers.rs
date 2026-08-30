@@ -522,15 +522,12 @@ pub(crate) fn push_transcript_message(
     messages_revision.set(messages_revision.get().wrapping_add(1));
 }
 
-/// Push a transcript message to both the shared arc and the messages State.
+/// Push a transcript message to the shared transcript buffer.
 ///
-/// The arc-to-state sync (`*messages.write() = messages_arc_inner.read()...`)
-/// overwrites the State with the arc content. Messages written only to the
-/// State (slash output, notices) would be lost on the next sync, so they must
-/// also be written to the shared arc.
+/// Thin wrapper over `push_transcript_message`, retained as a distinct entry
+/// point for synced UI output (slash results, notices, status lines).
 pub(crate) fn push_transcript_message_synced(
     messages: &mut State<Arc<RwLock<Vec<TranscriptMessage>>>>,
-    _messages_arc: Ref<Arc<RwLock<Vec<TranscriptMessage>>>>,
     messages_revision: &mut State<u64>,
     prompt_history: &mut Ref<Vec<String>>,
     message: TranscriptMessage,

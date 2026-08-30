@@ -42,7 +42,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut live_draft,
         mention_index,
         messages,
-        messages_arc,
         messages_revision,
         model_filter,
         model_input_focus,
@@ -646,7 +645,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         }
                         push_transcript_message_synced(
                             &mut messages,
-                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(format!("→ {worker_id}: {body}"), TranscriptStyle::Meta),
@@ -750,7 +748,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 if let Some(notice) = notice {
                     push_transcript_message_synced(
                         &mut messages,
-                        messages_arc,
                         &mut messages_revision,
                         &mut prompt_history,
                         crate::tui::transcript::TranscriptMessage::text(
@@ -1075,7 +1072,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     save_scoped_models(pending, &paths_snapshot, &mut session_scoped_items.write());
                     push_transcript_message_synced(
                         &mut messages,
-                        messages_arc,
                         &mut messages_revision,
                         &mut prompt_history,
                         TranscriptMessage::text(
@@ -1242,7 +1238,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         }
                         push_transcript_message_synced(
                             &mut messages,
-                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(format!("Resuming session {value}…"), TranscriptStyle::Meta),
@@ -1253,7 +1248,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         let Some(session) = agent_session.as_ref().map(Arc::clone) else {
                             push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(
@@ -1273,7 +1267,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             Ok(Ok(())) => {
                                 push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(
@@ -1290,7 +1283,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             Ok(Err(e)) => {
                                 push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(
@@ -1302,7 +1294,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             Err(e) => {
                                 push_transcript_message_synced(
                                     &mut messages,
-                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(
@@ -1626,7 +1617,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         Err(err) => {
                             push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
@@ -1829,7 +1819,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             {
                 push_transcript_message_synced(
                     &mut messages,
-                    messages_arc,
                     &mut messages_revision,
                     &mut prompt_history,
                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -3032,7 +3021,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     let provider_name = format_provider_name(&pid);
                     push_transcript_message_synced(
                         &mut messages,
-                        messages_arc,
                         &mut messages_revision,
                         &mut prompt_history,
                         TranscriptMessage::text(format!("Signed out from {provider_name}"), TranscriptStyle::Meta),
@@ -3362,7 +3350,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             {
                 push_transcript_message_synced(
                     &mut messages,
-                    messages_arc,
                     &mut messages_revision,
                     &mut prompt_history,
                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -3426,7 +3413,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             ) {
                 push_transcript_message_synced(
                     &mut messages,
-                    messages_arc,
                     &mut messages_revision,
                     &mut prompt_history,
                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -3472,7 +3458,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             {
                 push_transcript_message_synced(
                     &mut messages,
-                    messages_arc,
                     &mut messages_revision,
                     &mut prompt_history,
                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -3931,7 +3916,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     SlashOutcome::OverlayDeferred(overlay) => {
                         push_transcript_message_synced(
                             &mut messages,
-                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
@@ -3950,7 +3934,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         suppress_enter_newline.set(true);
                         push_transcript_message_synced(
                             &mut messages,
-                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(format!("Resuming session {session_id}…"), TranscriptStyle::Meta),
@@ -3960,7 +3943,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     SlashOutcome::Status(message) => {
                         push_transcript_message_synced(
                             &mut messages,
-                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -3969,7 +3951,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     SlashOutcome::TrustChanged { message, trusted } => {
                         push_transcript_message_synced(
                             &mut messages,
-                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -3987,7 +3968,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     SlashOutcome::Unimplemented(message) => {
                         push_transcript_message_synced(
                             &mut messages,
-                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -4004,7 +3984,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             let notice = format!("Command {slash_input}queued — runs after the current task.");
                             push_transcript_message_synced(
                                 &mut messages,
-                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(notice, TranscriptStyle::Meta),
@@ -4348,7 +4327,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 Err(err) => {
                     push_transcript_message_synced(
                         &mut messages,
-                        messages_arc,
                         &mut messages_revision,
                         &mut prompt_history,
                         TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
