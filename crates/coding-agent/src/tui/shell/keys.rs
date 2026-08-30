@@ -828,7 +828,24 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         || provider_disconnect_open
         || provider_api_key_open
         || settings_open
+        || pending_quit_confirm.get()
         || queue_manager_is_open;
+
+    if modifiers.contains(KeyModifiers::CONTROL)
+        && !modifiers.intersects(KeyModifiers::SHIFT | KeyModifiers::ALT | KeyModifiers::META)
+        && code == KeyCode::Char(',')
+        && !status_dialog_open
+    {
+        crate::tui::settings_dialog::open_settings_dialog(
+            &mut pending_settings,
+            &paths,
+            &mut draft,
+            &mut live_draft,
+            &mut shell_focus,
+        );
+        force_editor_clear.set(true);
+        return;
+    }
 
     if status_dialog_open {
         if confetti_open {

@@ -4,15 +4,18 @@ User preferences live in JSON. The host (`elph`) maps them into `elph-agent` / `
 
 ## Visual editor
 
-Inside the interactive TUI, run `/settings` to open a keyboard-first editor with a tab for
-each settings group: General, Appearance, Models, Memory, Notifications, Compaction, Sessions,
-Workers, Resources, and Logging. The editor shows the effective home-layer values with a short
-description for the selected field; project overrides are called out in the footer.
+Inside the interactive TUI, press `Ctrl+,` (or run `/settings`) to open a keyboard-first editor
+with five focused tabs: General, Appearance, Models, Memory, and Advanced. Related schema groups
+are combined to keep navigation compact: notifications live under Appearance, prompt encoding
+and compaction under Models, sessions under Memory, and workers, resources, and logging under
+Advanced. The editor shows the effective home-layer values with a short description for the
+selected field; project overrides are called out in the footer.
 
-- `←` / `→` or `Tab` changes category; `1`–`9` and `0` jump directly to a category.
+- `[` / `]` or `Tab` changes category; `1`–`5` jump directly to a category.
 - `↑` / `↓` selects a field. `Enter` toggles booleans and cycles choices; press it on a text or
   number field to edit.
 - While editing, type a value, press `Enter` to apply it, or `Esc` to cancel the edit.
+- While idle on a selected field, `R` resets that field to its schema default.
 - `Ctrl+S` saves to the home settings file. `Esc` closes; press it twice to discard unsaved changes.
 
 The editor validates numbers and enumerated choices before saving. Settings that affect process

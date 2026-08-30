@@ -22,26 +22,16 @@ pub enum SettingsCategory {
     Appearance,
     Models,
     Memory,
-    Notifications,
-    Compaction,
-    Sessions,
-    Workers,
-    Resources,
-    Logging,
+    Advanced,
 }
 
 impl SettingsCategory {
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 5] = [
         Self::General,
         Self::Appearance,
         Self::Models,
         Self::Memory,
-        Self::Notifications,
-        Self::Compaction,
-        Self::Sessions,
-        Self::Workers,
-        Self::Resources,
-        Self::Logging,
+        Self::Advanced,
     ];
 
     pub fn label(self) -> &'static str {
@@ -50,12 +40,7 @@ impl SettingsCategory {
             Self::Appearance => "Appearance",
             Self::Models => "Models",
             Self::Memory => "Memory",
-            Self::Notifications => "Notifications",
-            Self::Compaction => "Compaction",
-            Self::Sessions => "Sessions",
-            Self::Workers => "Workers",
-            Self::Resources => "Resources",
-            Self::Logging => "Logging",
+            Self::Advanced => "Advanced",
         }
     }
 
@@ -66,6 +51,21 @@ impl SettingsCategory {
     fn from_index(index: usize) -> Self {
         Self::ALL[index % Self::ALL.len()]
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FieldSection {
+    General,
+    Appearance,
+    Models,
+    PromptEncoding,
+    Memory,
+    Notifications,
+    Compaction,
+    Sessions,
+    Workers,
+    Resources,
+    Logging,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -93,9 +93,9 @@ const ROTATION_CHOICES: &[&str] = &["daily", "hourly", "size"];
 const ENCODING_CHOICES: &[&str] = &["off", "toon", "auto"];
 const DELIMITER_CHOICES: &[&str] = &["comma", "tab", "pipe"];
 
-fn fields(category: SettingsCategory) -> &'static [FieldSpec] {
+fn section_fields(category: FieldSection) -> &'static [FieldSpec] {
     match category {
-        SettingsCategory::General => &[
+        FieldSection::General => &[
             FieldSpec {
                 key: "preferredChatLanguage",
                 label: "Chat language",
@@ -150,56 +150,8 @@ fn fields(category: SettingsCategory) -> &'static [FieldSpec] {
                 description: "Comma-separated builtin tool names. Empty means all tools.",
                 kind: FieldKind::Text,
             },
-            FieldSpec {
-                key: "promptEncoding.mode",
-                label: "Prompt encoding",
-                description: "Encode structured tool results as TOON, automatically or always.",
-                kind: FieldKind::Choice(ENCODING_CHOICES),
-            },
-            FieldSpec {
-                key: "promptEncoding.minBytes",
-                label: "Encoding minimum bytes",
-                description: "Only encode payloads at or above this size.",
-                kind: FieldKind::Number,
-            },
-            FieldSpec {
-                key: "promptEncoding.minSavingsRatio",
-                label: "Encoding savings ratio",
-                description: "Minimum compression ratio required before encoding.",
-                kind: FieldKind::Text,
-            },
-            FieldSpec {
-                key: "promptEncoding.delimiter",
-                label: "Encoding delimiter",
-                description: "Delimiter used for TOON tabular arrays.",
-                kind: FieldKind::Choice(DELIMITER_CHOICES),
-            },
-            FieldSpec {
-                key: "promptEncoding.tabularDelimiter",
-                label: "Tabular delimiter",
-                description: "Optional delimiter override for tabular arrays.",
-                kind: FieldKind::Choice(DELIMITER_CHOICES),
-            },
-            FieldSpec {
-                key: "promptEncoding.targets.toolResultText",
-                label: "Encode tool-result text",
-                description: "Allow TOON to rewrite eligible tool-result text blocks.",
-                kind: FieldKind::Toggle,
-            },
-            FieldSpec {
-                key: "promptEncoding.targets.structuredDetails",
-                label: "Encode structured details",
-                description: "Allow TOON to rewrite MCP structured_content details.",
-                kind: FieldKind::Toggle,
-            },
-            FieldSpec {
-                key: "promptEncoding.preamble",
-                label: "Encoding preamble",
-                description: "Optional hint placed above TOON fenced blocks.",
-                kind: FieldKind::Text,
-            },
         ],
-        SettingsCategory::Appearance => &[
+        FieldSection::Appearance => &[
             FieldSpec {
                 key: "ui.theme",
                 label: "Theme",
@@ -267,7 +219,7 @@ fn fields(category: SettingsCategory) -> &'static [FieldSpec] {
                 kind: FieldKind::Toggle,
             },
         ],
-        SettingsCategory::Models => &[
+        FieldSection::Models => &[
             FieldSpec {
                 key: "models.defaultModel",
                 label: "New-session model",
@@ -359,7 +311,57 @@ fn fields(category: SettingsCategory) -> &'static [FieldSpec] {
                 kind: FieldKind::Number,
             },
         ],
-        SettingsCategory::Memory => &[
+        FieldSection::PromptEncoding => &[
+            FieldSpec {
+                key: "promptEncoding.mode",
+                label: "Prompt encoding",
+                description: "Encode structured tool results as TOON, automatically or always.",
+                kind: FieldKind::Choice(ENCODING_CHOICES),
+            },
+            FieldSpec {
+                key: "promptEncoding.minBytes",
+                label: "Encoding minimum bytes",
+                description: "Only encode payloads at or above this size.",
+                kind: FieldKind::Number,
+            },
+            FieldSpec {
+                key: "promptEncoding.minSavingsRatio",
+                label: "Encoding savings ratio",
+                description: "Minimum compression ratio required before encoding.",
+                kind: FieldKind::Text,
+            },
+            FieldSpec {
+                key: "promptEncoding.delimiter",
+                label: "Encoding delimiter",
+                description: "Delimiter used for TOON tabular arrays.",
+                kind: FieldKind::Choice(DELIMITER_CHOICES),
+            },
+            FieldSpec {
+                key: "promptEncoding.tabularDelimiter",
+                label: "Tabular delimiter",
+                description: "Optional delimiter override for tabular arrays.",
+                kind: FieldKind::Choice(DELIMITER_CHOICES),
+            },
+            FieldSpec {
+                key: "promptEncoding.targets.toolResultText",
+                label: "Encode tool-result text",
+                description: "Allow TOON to rewrite eligible tool-result text blocks.",
+                kind: FieldKind::Toggle,
+            },
+            FieldSpec {
+                key: "promptEncoding.targets.structuredDetails",
+                label: "Encode structured details",
+                description: "Allow TOON to rewrite MCP structured_content details.",
+                kind: FieldKind::Toggle,
+            },
+            FieldSpec {
+                key: "promptEncoding.preamble",
+                label: "Encoding preamble",
+                description: "Optional hint placed above TOON fenced blocks.",
+                kind: FieldKind::Text,
+            },
+        ],
+        FieldSection::Memory => &[
             FieldSpec {
                 key: "memory.enabled",
                 label: "Memory hooks",
@@ -403,7 +405,7 @@ fn fields(category: SettingsCategory) -> &'static [FieldSpec] {
                 kind: FieldKind::Number,
             },
         ],
-        SettingsCategory::Notifications => &[
+        FieldSection::Notifications => &[
             FieldSpec {
                 key: "notifications.enabled",
                 label: "Notifications",
@@ -459,7 +461,7 @@ fn fields(category: SettingsCategory) -> &'static [FieldSpec] {
                 kind: FieldKind::Text,
             },
         ],
-        SettingsCategory::Compaction => &[
+        FieldSection::Compaction => &[
             FieldSpec {
                 key: "compaction.thresholdPct",
                 label: "Trigger threshold",
@@ -485,7 +487,7 @@ fn fields(category: SettingsCategory) -> &'static [FieldSpec] {
                 kind: FieldKind::Toggle,
             },
         ],
-        SettingsCategory::Sessions => &[
+        FieldSection::Sessions => &[
             FieldSpec {
                 key: "session.enabled",
                 label: "Session storage",
@@ -547,7 +549,7 @@ fn fields(category: SettingsCategory) -> &'static [FieldSpec] {
                 kind: FieldKind::Number,
             },
         ],
-        SettingsCategory::Workers => &[
+        FieldSection::Workers => &[
             FieldSpec {
                 key: "workers.enabled",
                 label: "Workers",
@@ -609,7 +611,7 @@ fn fields(category: SettingsCategory) -> &'static [FieldSpec] {
                 kind: FieldKind::Toggle,
             },
         ],
-        SettingsCategory::Resources => &[
+        FieldSection::Resources => &[
             FieldSpec {
                 key: "resources.skills",
                 label: "Extra skills",
@@ -641,7 +643,7 @@ fn fields(category: SettingsCategory) -> &'static [FieldSpec] {
                 kind: FieldKind::Toggle,
             },
         ],
-        SettingsCategory::Logging => &[
+        FieldSection::Logging => &[
             FieldSpec {
                 key: "logging.level",
                 label: "Log level",
@@ -680,6 +682,24 @@ fn fields(category: SettingsCategory) -> &'static [FieldSpec] {
             },
         ],
     }
+}
+
+fn fields(category: SettingsCategory) -> Vec<FieldSpec> {
+    let sections: &[FieldSection] = match category {
+        SettingsCategory::General => &[FieldSection::General],
+        SettingsCategory::Appearance => &[FieldSection::Appearance, FieldSection::Notifications],
+        SettingsCategory::Models => &[
+            FieldSection::Models,
+            FieldSection::PromptEncoding,
+            FieldSection::Compaction,
+        ],
+        SettingsCategory::Memory => &[FieldSection::Memory, FieldSection::Sessions],
+        SettingsCategory::Advanced => &[FieldSection::Workers, FieldSection::Resources, FieldSection::Logging],
+    };
+    sections
+        .iter()
+        .flat_map(|section| section_fields(*section).iter().copied())
+        .collect()
 }
 
 #[derive(Debug, Clone)]
@@ -814,8 +834,8 @@ pub fn handle_settings_key(
 
     if modifiers.is_empty() {
         match code {
-            KeyCode::Left => state.change_category(-1),
-            KeyCode::Right | KeyCode::Tab => state.change_category(1),
+            KeyCode::Left | KeyCode::Char('[') => state.change_category(-1),
+            KeyCode::Right | KeyCode::Tab | KeyCode::Char(']') => state.change_category(1),
             KeyCode::Up => {
                 state.selected = state.selected.saturating_sub(1);
                 state.error = None;
@@ -849,10 +869,24 @@ pub fn handle_settings_key(
                 }
                 state.error = None;
             }
-            KeyCode::Char(ch) if ('1'..='9').contains(&ch) => {
+            KeyCode::Char('r') | KeyCode::Char('R') => {
+                let field = state.current_field();
+                let default_value = value_for(&Settings::defaults(), field.key);
+                let before = state.settings.clone();
+                match set_value(&mut state.settings, field.key, &default_value) {
+                    Ok(()) if state.settings != before => {
+                        state.dirty = true;
+                        state.error = Some(format!("{} reset to default.", field.label));
+                    }
+                    Ok(()) => {
+                        state.error = Some(format!("{} is already at its default.", field.label));
+                    }
+                    Err(message) => state.error = Some(message),
+                }
+            }
+            KeyCode::Char(ch) if ('1'..='5').contains(&ch) => {
                 state.select_category(SettingsCategory::from_index((ch as usize) - '1' as usize))
             }
-            KeyCode::Char('0') => state.select_category(SettingsCategory::Logging),
             _ => return true,
         }
         revision.set(revision.get().wrapping_add(1));
@@ -912,9 +946,9 @@ pub fn SettingsDialogOverlay(props: &mut SettingsDialogOverlayProps, hooks: Hook
         .enumerate()
         .map(|(index, category)| {
             if *category == props.pending.category {
-                format!("[{} {}]", if index == 9 { 0 } else { index + 1 }, category.label())
+                format!("[{} {}]", index + 1, category.label())
             } else {
-                format!(" {} {} ", if index == 9 { 0 } else { index + 1 }, category.label())
+                format!(" {} {} ", index + 1, category.label())
             }
         })
         .collect::<Vec<_>>()
@@ -943,11 +977,24 @@ pub fn SettingsDialogOverlay(props: &mut SettingsDialogOverlayProps, hooks: Hook
         } else {
             display_value
         };
-        let value_color = if selected { theme.accent } else { theme.text_primary };
+        let value_color = if selected && props.pending.editing {
+            theme.accent
+        } else if selected {
+            theme.text_primary
+        } else {
+            theme.text_secondary
+        };
+        let label_color = if selected && props.pending.editing {
+            theme.accent
+        } else if selected {
+            theme.text_primary
+        } else {
+            theme.text_secondary
+        };
         rows.push(
             element! {
-                View(width: body_width, height: 1u16, flex_direction: FlexDirection::Row, flex_shrink: 0f32) {
-                    Text(content: format!("{marker} {:<26}", field.label), color: if selected { theme.text_primary } else { theme.text_secondary }, weight: if selected { Weight::Bold } else { Weight::Normal }, wrap: TextWrap::NoWrap)
+                View(width: body_width, height: 1u16, padding_left: 1, padding_right: 1, flex_direction: FlexDirection::Row, flex_shrink: 0f32) {
+                    Text(content: format!("{marker}  {:<28}", field.label), color: label_color, weight: if selected { Weight::Bold } else { Weight::Normal }, wrap: TextWrap::NoWrap)
                     Text(content: display_value, color: value_color, wrap: TextWrap::NoWrap)
                 }
             }
@@ -986,7 +1033,7 @@ pub fn SettingsDialogOverlay(props: &mut SettingsDialogOverlayProps, hooks: Hook
         ) {
             View(width: body_width, height: body_height, flex_direction: FlexDirection::Column, overflow: Overflow::Hidden, flex_shrink: 0f32) {
                 Text(content: tabs, color: theme.accent, wrap: TextWrap::Wrap)
-                Text(content: "←/→ or Tab category · ↑/↓ field · Enter edit/toggle · 1–9/0 jump", color: theme.text_muted, wrap: TextWrap::NoWrap)
+                Text(content: "[/]/Tab category · ↑/↓ field · Enter edit/toggle · R reset · 1–5 jump", color: theme.text_muted, wrap: TextWrap::NoWrap)
                 View(width: body_width, height: 1u16, padding_top: 1, flex_shrink: 0f32) {
                     Text(content: format!("{}  {}", current.label, current.description), color: theme.text_secondary, wrap: TextWrap::Wrap)
                 }
@@ -996,7 +1043,7 @@ pub fn SettingsDialogOverlay(props: &mut SettingsDialogOverlayProps, hooks: Hook
                 View(width: body_width, padding_top: 1, flex_shrink: 0f32) {
                     Text(content: status, color: if props.pending.error.is_some() { theme.warning } else { theme.text_muted }, wrap: TextWrap::Wrap)
                 }
-                Text(content: "Ctrl+S save · Esc close (Esc twice discards unsaved changes)", color: theme.text_hint, wrap: TextWrap::NoWrap)
+                Text(content: "Ctrl+S save · R reset selected · Esc close (Esc twice discards unsaved changes)", color: theme.text_hint, wrap: TextWrap::NoWrap)
             }
         }
     }
