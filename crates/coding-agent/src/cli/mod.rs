@@ -153,7 +153,7 @@ pub enum Commands {
     Run(RunArgs),
     /// Run the Elph server (REST + WebSocket + web UI)
     Server(ServerArgs),
-    /// List, search, or restore sessions
+    /// List, search, delete, pin, unpin, or prune sessions
     Session(SessionArgs),
     /// Show token usage and cost statistics
     Stats(StatsArgs),

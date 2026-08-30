@@ -218,7 +218,7 @@ All knobs are under **`session`** and **`compaction.physicalPrune`**. Layers: ho
 ```bash
 elph session pin <SESSION_ID>
 elph session unpin <SESSION_ID>
-elph session prune [--dry-run]
+elph session prune [--dry-run] [--all]
 ```
 
 GC runs automatically when `session.gcOnOpen` is true (on coding session open). CLI `session prune` uses the same policy.
