@@ -712,11 +712,35 @@ pub struct PendingSettings {
     pub dirty: bool,
     pub error: Option<String>,
     pub project_layer_present: bool,
+    load_failed: bool,
+}
+
+impl Default for PendingSettings {
+    fn default() -> Self {
+        Self {
+            settings: Settings::defaults(),
+            category: SettingsCategory::General,
+            selected: 0,
+            editing: false,
+            edit_buffer: String::new(),
+            dirty: false,
+            error: None,
+            project_layer_present: false,
+            load_failed: false,
+        }
+    }
 }
 
 impl PendingSettings {
     pub fn open(paths: &Paths) -> Self {
-        let settings = Settings::load_home(paths).unwrap_or_else(|_| Settings::defaults());
+        let (settings, load_failed, error) = match Settings::load_home(paths) {
+            Ok(settings) => (settings, false, None),
+            Err(err) => (
+                Settings::defaults(),
+                true,
+                Some(format!("Could not load home settings: {err:#}. Fix the file before saving.")),
+            ),
+        };
         Self {
             settings,
             category: SettingsCategory::General,
@@ -724,8 +748,9 @@ impl PendingSettings {
             editing: false,
             edit_buffer: String::new(),
             dirty: false,
-            error: None,
+            error,
             project_layer_present: paths.project_settings_path().is_file(),
+            load_failed,
         }
     }
 
@@ -820,13 +845,14 @@ pub fn handle_settings_key(
         && !modifiers.intersects(KeyModifiers::ALT | KeyModifiers::META)
         && matches!(code, KeyCode::Char('s') | KeyCode::Char('S'))
     {
-        match Settings::save(paths, &state.settings) {
-            Ok(()) => {
-                install_theme_config(&state.settings.ui.theme_config());
-                state.dirty = false;
-                state.error = Some("Saved to home settings. Restart to apply process-level changes.".into());
-            }
-            Err(err) => state.error = Some(format!("Could not save settings: {err:#}")),
+        if state.load_failed {
+            state.error = Some("Cannot save while the home settings file has load errors.".into());
+        } else if let Err(err) = Settings::save(paths, &state.settings) {
+            state.error = Some(format!("Could not save settings: {err:#}"));
+        } else {
+            install_theme_config(&state.settings.ui.theme_config());
+            state.dirty = false;
+            state.error = Some("Saved to home settings. Restart to apply process-level changes.".into());
         }
         revision.set(revision.get().wrapping_add(1));
         return true;
@@ -908,7 +934,7 @@ impl Default for SettingsDialogOverlayProps {
         Self {
             screen_width: 80,
             screen_height: 24,
-            pending: PendingSettings::open(&Paths::resolve().expect("resolve paths")),
+            pending: PendingSettings::default(),
             revision: 0,
             on_esc: HandlerMut::default(),
         }

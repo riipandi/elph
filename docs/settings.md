@@ -23,6 +23,10 @@ startup (for example logging and the shell) take effect after a restart; the sel
 applied immediately. The editor writes only the home layer, so project settings are never baked
 into global settings.
 
+If the home settings file cannot be loaded, the editor shows the parse error and disables saving
+until the file is fixed. This prevents opening the editor and accidentally overwriting a malformed
+settings file with defaults.
+
 ## Files
 
 | File | Path | Role |
