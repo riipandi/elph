@@ -45,6 +45,11 @@ Default prefix is `ELPH`. Logging uses [`AgentBuilder::env_prefix`] / [`AgentBui
 
 `prompt` / `continue_run` / `reset` / `run_agent_loop` return [`AgentError`]. Tool execute functions return [`ToolError`] (`simple_tool` still accepts `anyhow` closures and maps them). Harness and session keep `AgentHarnessError` and `SessionError`. Stream token failures stay in-band on `elph_ai::StopReason`.
 
+Prompt runs finalize their active-run state on normal completion, error, and
+cancellation. If a prompt future is dropped while running, cleanup is
+scheduled to cancel the run, release idle waiters, clear pending prompt
+metadata, and return the harness to `Idle`.
+
 Harness, MCP, session, compaction, and collaboration are **not** flattened at the crate root. Import from the module:
 
 ```rust

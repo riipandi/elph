@@ -1,12 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/coding-agent", "crates/elph-agent", "crates/elph-ai", "crates/floppy", "crates/rendown"]
-exclude = [
-  "crates/control-plane",
-  "crates/elph-cron",
-  "crates/elph-sandbox",
-  "vendor/iocraft",
-]
+exclude = ["crates/control-plane", "crates/elph-cron", "crates/elph-sandbox", "vendor/iocraft"]
 
 [workspace.package]
 homepage = "https://elph.space"
@@ -79,7 +74,7 @@ httpmock = "0.8.3"
 ignore = "0.4.33"
 image = "0.25.10"
 inquire = "0.9.4"
-iocraft = { version = "=0.8.4" }
+iocraft = { version = "=0.8.5" }
 jsonschema = "0.52.0"
 kalid = "0.1.0"
 libc = "0.2.189"
@@ -178,5 +173,5 @@ incremental = true
 debug = "line-tables-only"
 
 [patch.crates-io]
-# Bracketed multiline paste (`TerminalEvent::Paste`) — not in iocraft 0.8.4 on crates.io.
+# Bracketed multiline paste (`TerminalEvent::Paste`) — not in iocraft 0.8.5 on crates.io.
 iocraft = { path = "vendor/iocraft" }

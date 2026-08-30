@@ -5,24 +5,23 @@ pub const ANSI_REGEX_PATTERN: &str = concat!(
     // OSC branch
     "(?:\\x1B\\][^\\x07\\x1B\\x9C]*?(?:\\x07|\\x1B\\\\|\\x9C))",
     "|",
-    // CSI ESC[ ...
-    "(?:\\x1B\\[[\\[\\]()#;?]*(?:[0-9]{1,4}(?:[;:][0-9]{0,4})*)?[0-9A-PR-TZcf-nq-uy=><~])",
+    // DCS, APC, PM, and SOS sequences
+    "(?:\\x1B[P_^X][^\\x1B\\x9C]*?(?:\\x1B\\\\|\\x9C))",
+    "|",
+    // CSI ESC[ ... (ECMA-48 parameter and intermediate byte classes)
+    "(?:\\x1B\\[[\\x30-\\x3F]*[\\x20-\\x2F]*[\\x40-\\x7E])",
     "|",
     // CSI single-byte 0x9B ...
-    "(?:\\x9B[\\[\\]()#;?]*(?:[0-9]{1,4}(?:[;:][0-9]{0,4})*)?[0-9A-PR-TZcf-nq-uy=><~])",
+    "(?:\\x9B[\\x30-\\x3F]*[\\x20-\\x2F]*[\\x40-\\x7E])",
     "|",
     // VT52 / short escapes (single final)
-    // Added E (NEL), M (RI), c (reset), m (SGR reset), plus existing cursor & mode keys.
-    "(?:\\x1B[ABCDHIKJSTZ=><sum78EMcNO])",
+    "(?:\\x1B[ABCDHIKJSTZ=><su78EMcNO])",
     "|",
     // Charset selection ESC (X or )X where X in A B 0 1 2
     "(?:\\x1B[()][AB012])",
     "|",
     // Hash sequences ESC # 3 4 5 6 8
     "(?:\\x1B#[34568])",
-    "|",
-    // Device status reports / queries: ESC [ 5 n etc (already covered by CSI) but bare 'ESC 5 n' appears in fixtures => add generic ESC [0-9]+[n] pattern fallback
-    "(?:\\x1B[0-9]+n)"
 );
 
 static ANSI_REGEX: LazyLock<Regex> =
@@ -62,12 +61,15 @@ pub(crate) const MAX_OSC8_URI_BYTES: usize = 2048;
 
 /// Return a URI safe to embed in `OSC 8 ; ; URI ST`, or `None` to skip hyperlinking.
 pub(crate) fn sanitize_osc8_uri(uri: &str) -> Option<&str> {
-    let uri = uri.trim();
-    if uri.is_empty() || uri.len() > MAX_OSC8_URI_BYTES {
+    // Validate before trimming so trailing controls cannot be silently removed and accepted.
+    if uri
+        .bytes()
+        .any(|b| b < 0x20 || b == 0x7f || b == 0x1b || b == 0x9c || b == 0x07)
+    {
         return None;
     }
-    // OSC 8 is terminated by BEL / ST; any C0/C1 or ESC inside the URI can desync the terminal.
-    if uri.bytes().any(|b| b < 0x20 || b == 0x7f || b == 0x1b || b == 0x9c || b == 0x07) {
+    let uri = uri.trim();
+    if uri.is_empty() || uri.len() > MAX_OSC8_URI_BYTES {
         return None;
     }
     Some(uri)
@@ -102,5 +104,21 @@ mod tests {
         assert!(sanitize_osc8_uri("https://bad.example/\x1b").is_none());
         assert!(sanitize_osc8_uri("https://bad.example/\r\n").is_none());
         assert!(sanitize_osc8_uri("").is_none());
+    }
+
+    #[test]
+    fn strip_ansi_handles_ecma48_and_string_sequences() {
+        assert_eq!(
+            strip_ansi("a\x1b[38;2;1;2;3mred\x1b[0mb").as_ref(),
+            "aredb"
+        );
+        assert_eq!(strip_ansi("a\x1bPignored\x1b\\b").as_ref(), "ab");
+        assert_eq!(strip_ansi("a\x1b^ignored\x1b\\b").as_ref(), "ab");
+    }
+
+    #[test]
+    fn strip_ansi_handles_long_csi_parameters() {
+        let input = format!("a\x1b[{}mb", "1;".repeat(100));
+        assert_eq!(strip_ansi(&input).as_ref(), "ab");
     }
 }

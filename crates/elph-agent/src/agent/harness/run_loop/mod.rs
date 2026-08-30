@@ -7,6 +7,7 @@ mod session_writes;
 mod turn_execution;
 mod turn_state;
 
+use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
@@ -19,7 +20,59 @@ use crate::agent::harness::types::AgentHarnessPhase;
 use crate::agent::harness::types::QueueUpdateEvent;
 use crate::types::AgentMessage;
 
-use super::{ActiveRun, AgentHarness, HarnessOpResult};
+use super::{ActiveRun, AgentHarness, HarnessOpResult, HarnessShared};
+
+pub(in crate::agent::harness) struct RunCleanupGuard<S>
+where
+    S: crate::session::types::SessionStorage + Clone + Send + Sync + 'static,
+    S::Metadata: crate::session::types::HasSessionId + Send + Sync,
+{
+    shared: Arc<HarnessShared<S>>,
+    armed: bool,
+}
+
+impl<S> RunCleanupGuard<S>
+where
+    S: crate::session::types::SessionStorage + Clone + Send + Sync + 'static,
+    S::Metadata: crate::session::types::HasSessionId + Send + Sync,
+{
+    fn new(shared: Arc<HarnessShared<S>>) -> Self {
+        Self { shared, armed: true }
+    }
+
+    pub(in crate::agent::harness) fn disarm(&mut self) {
+        self.armed = false;
+    }
+}
+
+impl<S> Drop for RunCleanupGuard<S>
+where
+    S: crate::session::types::SessionStorage + Clone + Send + Sync + 'static,
+    S::Metadata: crate::session::types::HasSessionId + Send + Sync,
+{
+    fn drop(&mut self) {
+        if !self.armed {
+            return;
+        }
+        let shared = Arc::clone(&self.shared);
+        let Ok(handle) = tokio::runtime::Handle::try_current() else {
+            return;
+        };
+
+        handle.spawn(async move {
+            // Keep the active-run lock while resetting related state so a new
+            // run cannot replace the run being cleaned up.
+            let mut active = shared.active_run.lock().await;
+            let Some(run) = active.take() else {
+                return;
+            };
+            run.abort_token.cancel();
+            *shared.phase.lock().await = AgentHarnessPhase::Idle;
+            *shared.pending_prompt_meta.lock().await = None;
+            let _ = run.idle_tx.send(());
+        });
+    }
+}
 
 impl<S> AgentHarness<S>
 where
@@ -106,6 +159,10 @@ where
             idle_rx: Mutex::new(Some(idle_rx)),
             abort_token,
         });
+    }
+
+    pub(in crate::agent::harness) fn run_cleanup_guard(&self) -> RunCleanupGuard<S> {
+        RunCleanupGuard::new(Arc::clone(&self.shared))
     }
 
     pub(in crate::agent::harness) async fn finish_run(&self) {

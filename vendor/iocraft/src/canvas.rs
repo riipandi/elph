@@ -15,8 +15,6 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 struct Character {
     value: String,
     style: CanvasTextStyle,
-    /// OSC 8 hyperlink target for this character (terminal-native clickable link).
-    hyperlink: Option<Arc<str>>,
 }
 
 static mut HANDLES_VS16_INCORRECTLY: bool = false;
@@ -100,16 +98,12 @@ impl CanvasCell {
 
     /// Returns the OSC 8 hyperlink for this cell, if any.
     pub fn hyperlink(&self) -> Option<&str> {
-        self.character
-            .as_ref()
-            .and_then(|ch| ch.hyperlink.as_deref())
+        self.hyperlink.as_deref()
     }
 
     /// Cloned [`Arc`] handle for the cell hyperlink (cheap share for hit-testing maps).
     pub fn hyperlink_arc(&self) -> Option<Arc<str>> {
-        self.character
-            .as_ref()
-            .and_then(|ch| ch.hyperlink.clone())
+        self.hyperlink.clone()
     }
 
     /// Returns `true` if the cell has no content and no background color.
@@ -275,19 +269,16 @@ impl Canvas {
                 row[x].character = Some(Character {
                     value: buf.clone(),
                     style,
-                    hyperlink: hyperlink.clone(),
                 });
+                row[x].hyperlink = hyperlink.clone();
                 x += buf.width().max(1);
                 buf.clear();
             }
             buf.push(c);
         }
         if !buf.is_empty() && x < row.len() {
-            row[x].character = Some(Character {
-                value: buf,
-                style,
-                hyperlink,
-            });
+            row[x].character = Some(Character { value: buf, style });
+            row[x].hyperlink = hyperlink;
         }
     }
 
@@ -312,12 +303,10 @@ impl Canvas {
         }
     }
 
-    fn row(&self, y: usize) -> &[CanvasCell] {
-        let Some(row) = self.cells.get(y) else {
-            return &[];
-        };
+    fn row(&self, y: usize) -> Option<&[CanvasCell]> {
+        let row = self.cells.get(y)?;
         let last_non_empty = row.iter().rposition(|cell| !cell.is_empty());
-        &row[..last_non_empty.map_or(0, |i| i + 1)]
+        Some(&row[..last_non_empty.map_or(0, |i| i + 1)])
     }
 
     pub(crate) fn row_eq(&self, other: &Self, y: usize) -> bool {
@@ -332,7 +321,7 @@ impl Canvas {
     /// so consecutive calls (or any subsequent writer use) start from a clean
     /// state.
     fn write_row_impl<W: Write>(&self, y: usize, mut w: W, ansi: bool) -> io::Result<()> {
-        let row = self.row(y);
+        let row = self.row(y).unwrap_or(&[]);
 
         let mut background_color = None;
         let mut text_style = CanvasTextStyle::default();
@@ -394,7 +383,7 @@ impl Canvas {
                 }
 
                 if let Some(c) = &cell.character {
-                    match &c.hyperlink {
+                    match &cell.hyperlink {
                         Some(url) => open_hyperlink_to(&mut w, &mut open_hyperlink, url)?,
                         None => close_hyperlink(&mut w, &mut open_hyperlink)?,
                     }
@@ -1262,8 +1251,8 @@ line two
         let a = Canvas::new(10, 1);
         let b = Canvas::new(10, 2);
 
-        // row 1 is out of bounds for a, but exists (empty) in b
-        assert!(a.row_eq(&b, 1));
+        // A missing row must not compare equal to an existing empty row.
+        assert!(!a.row_eq(&b, 1));
     }
 
     #[test]

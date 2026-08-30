@@ -21,6 +21,7 @@ use rmcp::transport::Transport;
 use serde_json::Value;
 use tokio::sync::Mutex;
 use tokio::sync::{mpsc, oneshot};
+use tokio_util::sync::CancellationToken;
 
 use super::compat::resolve_http_headers;
 use super::config::McpHttpConfig;
@@ -53,6 +54,7 @@ pub struct SseClientTransport {
     outbound: mpsc::UnboundedSender<ClientJsonRpcMessage>,
     inbound: mpsc::UnboundedReceiver<ServerJsonRpcMessage>,
     shutdown: Option<oneshot::Sender<()>>,
+    cancel: CancellationToken,
 }
 
 impl SseClientTransport {
@@ -113,17 +115,26 @@ impl SseClientTransport {
         let (inbound_tx, inbound_rx) = mpsc::unbounded_channel();
         let (outbound_tx, mut outbound_rx) = mpsc::unbounded_channel::<ClientJsonRpcMessage>();
         let (shutdown_tx, mut shutdown_rx) = oneshot::channel::<()>();
+        let cancel = CancellationToken::new();
 
         // SSE reader task
         let endpoint_for_reader = Arc::clone(&endpoint_tx);
         let inbound_for_reader = inbound_tx.clone();
+        let reader_cancel = cancel.clone();
         tokio::spawn(async move {
             let mut stream = response.bytes_stream();
             let mut buffer = String::new();
             let mut event_name = String::new();
             let mut data_lines: Vec<String> = Vec::new();
 
-            while let Some(chunk) = stream.next().await {
+            loop {
+                let chunk = tokio::select! {
+                    _ = reader_cancel.cancelled() => break,
+                    chunk = stream.next() => chunk,
+                };
+                let Some(chunk) = chunk else {
+                    break;
+                };
                 let Ok(bytes) = chunk else {
                     break;
                 };
@@ -186,19 +197,28 @@ impl SseClientTransport {
         });
 
         // Wait for endpoint
-        let endpoint_path = tokio::time::timeout(ENDPOINT_WAIT, endpoint_rx)
-            .await
-            .map_err(|_| SseTransportError::EndpointTimeout)?
-            .map_err(|_| SseTransportError::NoEndpoint)?;
+        let endpoint_path = match tokio::time::timeout(ENDPOINT_WAIT, endpoint_rx).await {
+            Ok(Ok(path)) => path,
+            Ok(Err(_)) => {
+                cancel.cancel();
+                return Err(SseTransportError::NoEndpoint);
+            }
+            Err(_) => {
+                cancel.cancel();
+                return Err(SseTransportError::EndpointTimeout);
+            }
+        };
 
         let message_url = resolve_endpoint_url(&base_url, &endpoint_path).map_err(SseTransportError::Http)?;
         log::debug!("SSE message endpoint ready: {message_url}");
 
         // POST sender task
         let post_client = client;
+        let post_cancel = cancel.clone();
         tokio::spawn(async move {
             loop {
                 tokio::select! {
+                    _ = post_cancel.cancelled() => break,
                     _ = &mut shutdown_rx => break,
                     msg = outbound_rx.recv() => {
                         let Some(msg) = msg else { break; };
@@ -239,7 +259,17 @@ impl SseClientTransport {
             outbound: outbound_tx,
             inbound: inbound_rx,
             shutdown: Some(shutdown_tx),
+            cancel,
         })
+    }
+}
+
+impl Drop for SseClientTransport {
+    fn drop(&mut self) {
+        self.cancel.cancel();
+        if let Some(tx) = self.shutdown.take() {
+            let _ = tx.send(());
+        }
     }
 }
 
@@ -267,6 +297,7 @@ impl Transport<RoleClient> for SseClientTransport {
     }
 
     async fn close(&mut self) -> Result<(), Self::Error> {
+        self.cancel.cancel();
         if let Some(tx) = self.shutdown.take() {
             let _ = tx.send(());
         }

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
@@ -362,9 +362,16 @@ impl McpToolRegistry {
         let Some(mut rx) = self.take_event_receiver() else {
             return false;
         };
-        let registry = Arc::clone(self);
+        // Do not let the background task keep the registry alive forever. The
+        // registry owns the pool that owns the event sender, so retaining a
+        // strong `Arc` here would keep both sides of the event channel alive
+        // and prevent this loop from observing channel closure.
+        let registry: Weak<McpToolRegistry> = Arc::downgrade(self);
         tokio::spawn(async move {
             while let Some(event) = rx.recv().await {
+                let Some(registry) = registry.upgrade() else {
+                    break;
+                };
                 match &event {
                     McpServerEvent::Progress {
                         server,

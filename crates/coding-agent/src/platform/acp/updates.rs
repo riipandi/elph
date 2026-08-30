@@ -240,7 +240,6 @@ where
         agent_msg: String::new(),
         thought_msg: String::new(),
         saw_text: false,
-        agent_text: String::new(),
     };
     ctx.rotate_messages();
 
@@ -414,7 +413,6 @@ struct StreamCtx {
     agent_msg: String,
     thought_msg: String,
     saw_text: bool,
-    agent_text: String,
 }
 
 impl StreamCtx {
@@ -422,7 +420,6 @@ impl StreamCtx {
         self.agent_msg = self.ids.next("msg_agent");
         self.thought_msg = self.ids.next("msg_thought");
         self.saw_text = false;
-        self.agent_text.clear();
     }
 }
 
@@ -440,7 +437,6 @@ async fn apply_ui_event(
                 let _ = send_running(state, connection, session_id);
                 ctx.saw_text = true;
             }
-            ctx.agent_text.push_str(&text);
             if let Err(error) = send_agent_chunk(connection, session_id, &ctx.agent_msg, truncate_text(&text)) {
                 log::warn!("ACP agent chunk: {error:#}");
             }
@@ -564,7 +560,6 @@ async fn apply_ui_event(
         AgentUiEvent::RunCompleted { usage, .. } => {
             // Do not upsert a full `agent_message` after streaming chunks — clients that
             // append instead of replace would duplicate or scramble the reply.
-            ctx.agent_text.clear();
             if let Some(usage) = usage {
                 let used = usage
                     .total_tokens

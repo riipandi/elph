@@ -14,12 +14,13 @@ use core::{
     task::{self, Poll},
 };
 use futures::{
-    future::{select, FutureExt, LocalBoxFuture},
+    future::{select, Either, FutureExt, LocalBoxFuture},
     stream::{Stream, StreamExt},
 };
 use std::io;
 use taffy::{
-    AvailableSpace, Display, Layout, NodeId, Overflow, Point, Rect, Size, Style, TaffyTree,
+    AvailableSpace, Dimension, Display, Layout, NodeId, Overflow, Point, Rect, Size, Style,
+    TaffyTree,
 };
 
 pub(crate) struct UpdateContext<'a, 'w> {
@@ -402,6 +403,23 @@ impl<'a> Tree<'a> {
             .set_children(self.wrapper_node_id, &wrapper_child_node_ids)
             .expect("we should be able to set the children");
 
+        // Set wrapper max width for `width: 100pct` to work because available_space in
+        // compute_layout_with_measure is not enough:
+        if let Some(w) = max_width {
+            self.layout_engine
+                .set_style(
+                    self.wrapper_node_id,
+                    Style {
+                        size: Size {
+                            width: Dimension::Length(w as _),
+                            height: Dimension::Auto,
+                        },
+                        ..Default::default()
+                    },
+                )
+                .expect("we should be able to set the style");
+        }
+
         self.layout_engine
             .compute_layout_with_measure(
                 self.wrapper_node_id,
@@ -498,8 +516,12 @@ impl<'a> Tree<'a> {
             if self.system_context.should_exit() || term.received_ctrl_c() {
                 break;
             }
-            select(self.root_component.wait().boxed(), term.wait().boxed()).await;
-            if term.received_ctrl_c() {
+            if let Either::Right((result, _)) =
+                select(self.root_component.wait().boxed(), term.wait().boxed()).await
+            {
+                result?;
+            }
+            if self.system_context.should_exit() || term.received_ctrl_c() {
                 break;
             }
         }
@@ -649,6 +671,18 @@ mod tests {
         assert!(canvases[0] == canvases[1]);
     }
 
+    #[apply(test!)]
+    async fn test_terminal_render_loop_propagates_input_errors() {
+        let term = Terminal::mock_with_event_error(io::Error::other("input failed"));
+
+        let error = terminal_render_loop(&mut element!(View), term)
+            .await
+            .expect_err("terminal input errors should stop the render loop");
+
+        assert_eq!(error.kind(), io::ErrorKind::Other);
+        assert_eq!(error.to_string(), "input failed");
+    }
+
     async fn await_send_future<F: Future<Output = io::Result<()>> + Send>(f: F) {
         f.await.unwrap();
     }
@@ -678,6 +712,29 @@ mod tests {
         }
         .to_string();
         assert_eq!(actual, "+--------+\n+--------+\n",);
+    }
+
+    #[test]
+    fn test_root_full_width_clamps_to_terminal_width() {
+        let canvas = element! {
+            View(width: 100pct) {
+                Text(content: "12345678901234567890", wrap: TextWrap::Wrap)
+            }
+        }
+        .render(Some(10));
+        assert_eq!(canvas.width(), 10);
+        assert!(canvas.height() > 1, "text should wrap");
+    }
+
+    #[test]
+    fn test_full_width_expands_to_terminal_width() {
+        let canvas = element! {
+            View(width: 100pct, border_style: BorderStyle::Single) {
+                Text(content: "short", wrap: TextWrap::Wrap)
+            }
+        }
+        .render(Some(10));
+        assert_eq!(canvas.get_text(0, 1, 10, 1), "│short   │");
     }
 
     #[derive(Default, Props)]

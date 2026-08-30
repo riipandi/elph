@@ -109,6 +109,7 @@ impl CodingAgentSession {
                     .as_deref()
                     .and_then(|path| std::path::Path::new(path).parent().map(std::path::Path::to_path_buf));
 
+                let agent_ended = matches!(&event, AgentEvent::AgentEnd { .. });
                 match event {
                     AgentEvent::AgentStart => {
                         // Transition from Pending to Running when the agent actually starts
@@ -221,6 +222,11 @@ impl CodingAgentSession {
                         }
                     }
                     _ => {}
+                }
+                if agent_ended {
+                    // Completed subagents no longer need a retained accumulator. This
+                    // also releases the String capacity used by a large final batch.
+                    buf.remove(&info.id);
                 }
             }
         });
