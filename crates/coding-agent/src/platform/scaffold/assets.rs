@@ -41,6 +41,9 @@ fn embedded_bundled_files() -> &'static [(&'static str, &'static str)] {
         asset!("user-guide/12-subagents.md"),
         asset!("user-guide/13-permissions-and-safety.md"),
         asset!("skills/create-skill/SKILL.md"),
+        asset!("skills/agent-instruction/SKILL.md"),
+        asset!("skills/agent-instruction/references/agent-file-formats.md"),
+        asset!("skills/agent-instruction/references/agents-md-template.md"),
     ]
 }
 
