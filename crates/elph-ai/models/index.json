@@ -7,7 +7,7 @@
     {
         "providerId": "amazon-bedrock",
         "rustMod": "amazon_bedrock",
-        "count": 120
+        "count": 123
     },
     {
         "providerId": "ant-ling",
@@ -17,7 +17,7 @@
     {
         "providerId": "anthropic",
         "rustMod": "anthropic",
-        "count": 13
+        "count": 14
     },
     {
         "providerId": "azure-openai-responses",
@@ -27,7 +27,7 @@
     {
         "providerId": "baseten",
         "rustMod": "baseten",
-        "count": 15
+        "count": 16
     },
     {
         "providerId": "cerebras",
@@ -67,7 +67,7 @@
     {
         "providerId": "fireworks",
         "rustMod": "fireworks",
-        "count": 18
+        "count": 19
     },
     {
         "providerId": "github-copilot",
@@ -82,12 +82,12 @@
     {
         "providerId": "google-vertex",
         "rustMod": "google_vertex",
-        "count": 43
+        "count": 45
     },
     {
         "providerId": "groq",
         "rustMod": "groq",
-        "count": 15
+        "count": 16
     },
     {
         "providerId": "hetzner",
@@ -97,22 +97,22 @@
     {
         "providerId": "huggingface",
         "rustMod": "huggingface",
-        "count": 135
+        "count": 132
     },
     {
         "providerId": "hyper",
         "rustMod": "hyper",
-        "count": 29
+        "count": 32
     },
     {
         "providerId": "infron",
         "rustMod": "infron",
-        "count": 289
+        "count": 290
     },
     {
         "providerId": "kilo",
         "rustMod": "kilo",
-        "count": 366
+        "count": 367
     },
     {
         "providerId": "kimi-coding",
@@ -147,7 +147,7 @@
     {
         "providerId": "nara-router",
         "rustMod": "nara_router",
-        "count": 56
+        "count": 59
     },
     {
         "providerId": "neuralwatt",
@@ -177,12 +177,12 @@
     {
         "providerId": "opencode",
         "rustMod": "opencode",
-        "count": 63
+        "count": 66
     },
     {
         "providerId": "opencode-go",
         "rustMod": "opencode_go",
-        "count": 33
+        "count": 34
     },
     {
         "providerId": "opengateway",
@@ -192,12 +192,12 @@
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 396
+        "count": 424
     },
     {
         "providerId": "orca-router",
         "rustMod": "orca_router",
-        "count": 191
+        "count": 194
     },
     {
         "providerId": "qwen-token-plan",
@@ -227,7 +227,7 @@
     {
         "providerId": "tokenrouter",
         "rustMod": "tokenrouter",
-        "count": 131
+        "count": 134
     },
     {
         "providerId": "vercel-ai-gateway",
@@ -237,7 +237,7 @@
     {
         "providerId": "wafer",
         "rustMod": "wafer",
-        "count": 6
+        "count": 7
     },
     {
         "providerId": "xai",

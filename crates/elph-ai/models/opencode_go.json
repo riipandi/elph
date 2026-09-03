@@ -342,7 +342,7 @@
         "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "hy3",
         "input": ["text"],
-        "maxTokens": 64000,
+        "maxTokens": 128000,
         "name": "Hy3",
         "provider": "opencode-go",
         "reasoning": true,
@@ -782,6 +782,33 @@
         "input": ["text", "image", "video", "pdf", "audio"],
         "maxTokens": 131072,
         "name": "Muse Spark 1.2 Contributor",
+        "provider": "opencode-go",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "muse-spark-1.3-contributor": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.002,
+            "cacheWrite": 0.0,
+            "input": 0.1,
+            "output": 0.2
+        },
+        "description": "Muse Spark 1.3 is a multimodal reasoning model from Meta for coding and agentic workflows.",
+        "id": "muse-spark-1.3-contributor",
+        "input": ["text", "image", "video", "pdf", "audio"],
+        "maxTokens": 131072,
+        "name": "Muse Spark 1.3 Contributor",
         "provider": "opencode-go",
         "reasoning": true,
         "thinkingLevelMap": {

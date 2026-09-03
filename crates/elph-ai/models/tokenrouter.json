@@ -82,6 +82,33 @@
             "xhigh": "xhigh"
         }
     },
+    "anthropic/claude-fable-5.1": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 12.5,
+            "input": 10.0,
+            "output": 50.0
+        },
+        "description": "Claude Fable 5.1 improves on Claude Fable 5 across the board, with the biggest gains in agentic coding, long-running agentic workflows, and knowledge work: long code refactors, front-end and visual...",
+        "id": "anthropic/claude-fable-5.1",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Fable 5.1",
+        "provider": "tokenrouter",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "anthropic/claude-haiku-4.5": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
@@ -208,12 +235,12 @@
         "provider": "tokenrouter",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": "max",
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -254,20 +281,20 @@
             "input": 10.0,
             "output": 50.0
         },
-        "description": "Fast-mode variant of [Opus 4.8](/anthropic/claude-opus-4.8) - identical capabilities with higher output speed at 2x pricing relative to regular Opus 4.8. Learn more in Anthropic's docs: https://platform.claude.com/docs/en/build-with-claude/fast-mode",
+        "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-4.8-fast",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
-        "name": "Claude Opus 4.8",
+        "name": "Claude Opus 4.8 (Fast)",
         "provider": "tokenrouter",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -310,11 +337,11 @@
             "input": 10.0,
             "output": 50.0
         },
-        "description": "Fast-mode variant of [Opus 5](/anthropic/claude-opus-5) - identical capabilities with higher output speed at 2x pricing relative to regular Opus 5. Learn more in Anthropic's docs: https://platform.claude.com/docs/en/build-with-claude/fast-mode",
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "id": "anthropic/claude-opus-5-fast",
         "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
-        "name": "Claude Opus 5",
+        "name": "Claude Opus 5 (Fast)",
         "provider": "tokenrouter",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -323,7 +350,7 @@
             "max": "max",
             "medium": "medium",
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -1059,10 +1086,10 @@
         "baseUrl": "https://api.tokenrouter.com/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.15,
-            "cacheWrite": 0.083333,
-            "input": 1.5,
-            "output": 7.5
+            "cacheRead": 0.075,
+            "cacheWrite": 0.041667,
+            "input": 0.75,
+            "output": 3.75
         },
         "description": "High-efficiency Gemini model for agentic workflows, coding, and multimodal reasoning",
         "id": "google/gemini-3.7-flash",
@@ -1073,6 +1100,34 @@
         "provider": "tokenrouter",
         "reasoning": true,
         "releaseDate": "2026-08-13",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "google/gemini-3.8-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.075,
+            "cacheWrite": 0.041667,
+            "input": 0.75,
+            "output": 3.75
+        },
+        "description": "Gemini 3.8 Flash is Google's most intelligent Flash model, engineered for long-horizon software engineering, autonomous agents, and complex enterprise workflows.",
+        "id": "google/gemini-3.8-flash",
+        "input": ["text", "image", "video", "audio", "pdf"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.8 Flash",
+        "provider": "tokenrouter",
+        "reasoning": true,
+        "releaseDate": "2026-09-02",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2452,7 +2507,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-397b-a17b",
         "input": ["text", "image", "video"],
-        "maxTokens": 65536,
+        "maxTokens": 235929,
         "name": "Qwen3.5 397B-A17B",
         "provider": "tokenrouter",
         "reasoning": true,
@@ -2579,10 +2634,10 @@
         "baseUrl": "https://api.tokenrouter.com/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.3,
-            "cacheWrite": 1.88,
-            "input": 1.504,
-            "output": 4.504
+            "cacheRead": 0.375,
+            "cacheWrite": 2.35,
+            "input": 1.88,
+            "output": 5.63
         },
         "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "qwen/qwen3.7-max",
@@ -2606,10 +2661,10 @@
         "baseUrl": "https://api.tokenrouter.com/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0288,
-            "cacheWrite": 0.36,
-            "input": 0.288,
-            "output": 1.125
+            "cacheRead": 0.032,
+            "cacheWrite": 0.4,
+            "input": 0.32,
+            "output": 1.25
         },
         "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
         "id": "qwen/qwen3.7-plus",
@@ -2981,6 +3036,34 @@
             "xhigh": null
         }
     },
+    "tencent/hy4-preview": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.048,
+            "cacheWrite": 0.96,
+            "input": 0.96,
+            "output": 2.88
+        },
+        "description": "A next-generation productivity model with significantly enhanced Agent and complex task execution capabilities.",
+        "id": "tencent/hy4-preview",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Hy4 preview",
+        "provider": "tokenrouter",
+        "reasoning": true,
+        "releaseDate": "2026-08-28",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
     "wan3.0-video": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
@@ -3343,17 +3426,17 @@
     "z-ai/glm-4.6": {
         "api": "openai-completions",
         "baseUrl": "https://api.tokenrouter.com/v1",
-        "contextWindow": 198000,
+        "contextWindow": 204800,
         "cost": {
-            "cacheRead": 0.08,
+            "cacheRead": 0.11,
             "cacheWrite": 0.0,
-            "input": 0.43,
-            "output": 1.75
+            "input": 0.55,
+            "output": 2.2
         },
         "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "z-ai/glm-4.6",
         "input": ["text"],
-        "maxTokens": 16384,
+        "maxTokens": 131072,
         "name": "GLM-4.6",
         "provider": "tokenrouter",
         "reasoning": true,

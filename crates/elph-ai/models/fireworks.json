@@ -5,10 +5,10 @@
         "baseUrl": "https://api.fireworks.ai/inference/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.028,
+            "cacheRead": 0.007,
             "cacheWrite": 0.0,
-            "input": 0.14,
-            "output": 0.28
+            "input": 0.22,
+            "output": 0.66
         },
         "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "accounts/fireworks/models/deepseek-v4-flash-0731",
@@ -16,6 +16,35 @@
         "knowledgeCutoff": "",
         "maxTokens": 384000,
         "name": "DeepSeek V4 Flash 0731",
+        "provider": "fireworks",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "accounts/fireworks/models/deepseek-v4-flash-vision-exp": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.fireworks.ai/inference/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.007,
+            "cacheWrite": 0.0,
+            "input": 0.22,
+            "output": 0.66
+        },
+        "description": "Experimental multimodal DeepSeek V4 Flash model for image understanding, coding, and agentic work",
+        "id": "accounts/fireworks/models/deepseek-v4-flash-vision-exp",
+        "input": ["text", "image"],
+        "knowledgeCutoff": "",
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Flash Vision Exp",
         "provider": "fireworks",
         "reasoning": true,
         "releaseDate": "",
@@ -125,7 +154,7 @@
         "baseUrl": "https://api.fireworks.ai/inference/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.029,
+            "cacheRead": 0.03,
             "cacheWrite": 0.0,
             "input": 0.15,
             "output": 0.5

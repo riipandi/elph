@@ -137,9 +137,9 @@
         "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.055,
-            "input": 0.11,
-            "output": 0.408
+            "cacheWrite": 0.058,
+            "input": 0.116,
+            "output": 0.38
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "gemma-4-26b-a4b-it",
@@ -164,9 +164,9 @@
         "contextWindow": 202752,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.45,
-            "input": 0.9,
-            "output": 2.804
+            "cacheWrite": 0.425,
+            "input": 0.85,
+            "output": 2.774
         },
         "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
         "id": "glm-5",
@@ -197,9 +197,9 @@
         "contextWindow": 202750,
         "cost": {
             "cacheRead": 0.283088,
-            "cacheWrite": 0.657,
-            "input": 1.314,
-            "output": 4.268
+            "cacheWrite": 0.645,
+            "input": 1.29,
+            "output": 4.22
         },
         "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
         "id": "glm-5.1",
@@ -251,6 +251,60 @@
             "xhigh": "xhigh"
         }
     },
+    "glm-5.3": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.283088,
+            "cacheWrite": 0.0,
+            "input": 1.52432,
+            "output": 4.79072
+        },
+        "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
+        "id": "glm-5.3",
+        "input": ["text"],
+        "maxTokens": 262144,
+        "name": "GLM-5.3",
+        "provider": "hyper",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "glm-5.3-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.031575200000000005,
+            "cacheWrite": 0.0,
+            "input": 0.16332,
+            "output": 0.5444
+        },
+        "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+        "id": "glm-5.3-flash",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "GLM-5.3-Flash",
+        "provider": "hyper",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "gpt-oss-120b": {
         "api": "openai-completions",
         "baseUrl": "https://hyper.charm.land/v1",
@@ -263,9 +317,9 @@
         "contextWindow": 128072,
         "cost": {
             "cacheRead": 0.0152432,
-            "cacheWrite": 0.089,
-            "input": 0.178,
-            "output": 0.68
+            "cacheWrite": 0.094,
+            "input": 0.188,
+            "output": 0.7
         },
         "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "gpt-oss-120b",
@@ -284,6 +338,33 @@
             "xhigh": "xhigh"
         }
     },
+    "kimi-k2-thinking": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.3,
+            "input": 0.6,
+            "output": 2.5
+        },
+        "description": "Thinking Kimi model for slower research passes, planning, and hard technical questions",
+        "id": "kimi-k2-thinking",
+        "input": ["text"],
+        "maxTokens": 26214,
+        "name": "Kimi K2 Thinking",
+        "provider": "hyper",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
     "kimi-k2.5": {
         "api": "openai-completions",
         "baseUrl": "https://hyper.charm.land/v1",
@@ -295,9 +376,9 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.2722,
-            "input": 0.5444,
-            "output": 2.855
+            "cacheWrite": 0.2642,
+            "input": 0.5284,
+            "output": 2.785
         },
         "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
         "id": "kimi-k2.5",
@@ -457,9 +538,9 @@
         "contextWindow": 430000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.142,
-            "input": 0.284,
-            "output": 0.934
+            "cacheWrite": 0.137,
+            "input": 0.274,
+            "output": 0.8992
         },
         "description": "Open multimodal Llama for strong reasoning with efficient everyday serving",
         "id": "llama-4-maverick-17b-128e-instruct-fp8",
@@ -489,9 +570,9 @@
         "contextWindow": 262100,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.202,
-            "input": 0.404,
-            "output": 1.496
+            "cacheWrite": 0.213,
+            "input": 0.426,
+            "output": 1.62
         },
         "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax-m2.7",

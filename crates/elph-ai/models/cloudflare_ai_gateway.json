@@ -472,7 +472,7 @@
         "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
         "id": "claude-sonnet-4",
         "input": ["text", "image", "pdf"],
-        "maxTokens": 200000,
+        "maxTokens": 65000,
         "name": "Claude Sonnet 4 (latest)",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,

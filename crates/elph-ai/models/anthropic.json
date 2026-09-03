@@ -33,6 +33,35 @@
             "xhigh": "xhigh"
         }
     },
+    "claude-fable-5-1": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 12.5,
+            "input": 10.0,
+            "output": 50.0
+        },
+        "description": "Claude model for demanding reasoning and long-horizon agentic work",
+        "id": "claude-fable-5-1",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-06",
+        "maxTokens": 128000,
+        "name": "Claude Fable 5.1",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2026-09-01",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "claude-haiku-4-5": {
         "api": "anthropic-messages",
         "baseUrl": "https://api.anthropic.com",

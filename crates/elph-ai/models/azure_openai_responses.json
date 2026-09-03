@@ -850,8 +850,8 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5.0,
-            "output": 30.0
+            "input": 4.0,
+            "output": 20.0
         },
         "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "id": "gpt-5.6-sol",

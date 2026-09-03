@@ -1,5 +1,34 @@
 {
     "$schema": "https://elph.space/provider-schema.json",
+    "claude-fable-5-1@default": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 12.5,
+            "input": 10.0,
+            "output": 50.0
+        },
+        "description": "Claude model for demanding reasoning and long-horizon agentic work",
+        "id": "claude-fable-5-1@default",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "",
+        "maxTokens": 128000,
+        "name": "Claude Fable 5.1",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "claude-fable-5@default": {
         "api": "google-vertex",
         "baseUrl": "https://aiplatform.googleapis.com",
@@ -915,6 +944,35 @@
         "knowledgeCutoff": "",
         "maxTokens": 65536,
         "name": "Gemini 3.7 Flash",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-3.8-flash": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.075,
+            "cacheWrite": 0.0,
+            "input": 0.75,
+            "output": 3.75
+        },
+        "description": "Google's most intelligent Flash model, engineered for long-horizon software engineering, autonomous agents, and complex enterprise workflows",
+        "id": "gemini-3.8-flash",
+        "input": ["text", "image", "video", "audio", "pdf"],
+        "knowledgeCutoff": "",
+        "maxTokens": 65536,
+        "name": "Gemini 3.8 Flash",
         "provider": "google-vertex",
         "reasoning": true,
         "releaseDate": "",

@@ -381,6 +381,32 @@
             "xhigh": null
         }
     },
+    "zai-org/GLM-5.3-Fast": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.21,
+            "cacheWrite": 0.0,
+            "input": 2.0999999999999996,
+            "output": 6.6000000000000005
+        },
+        "id": "zai-org/GLM-5.3-Fast",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "zai-org/GLM-5.3-Fast",
+        "provider": "baseten",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
     "zai-org/GLM-5.3-Flash": {
         "api": "openai-completions",
         "baseUrl": "https://inference.baseten.co/v1",

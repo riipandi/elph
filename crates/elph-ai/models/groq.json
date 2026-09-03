@@ -377,6 +377,35 @@
             "xhigh": null
         }
     },
+    "qwen/qwen3.8-27b": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.groq.com/openai/v1",
+        "contextWindow": 131042,
+        "cost": {
+            "cacheRead": 0.39999999999999997,
+            "cacheWrite": 0.0,
+            "input": 0.7999999999999999,
+            "output": 4.0
+        },
+        "description": "Dense 27B vision-language model for coding, agent tasks, and image and video understanding",
+        "id": "qwen/qwen3.8-27b",
+        "input": ["text", "image"],
+        "knowledgeCutoff": "",
+        "maxTokens": 16384,
+        "name": "Qwen3.8 27B",
+        "provider": "groq",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
     "whisper-large-v3": {
         "api": "openai-completions",
         "baseUrl": "https://api.groq.com/openai/v1",

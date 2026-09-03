@@ -59,10 +59,10 @@
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.015848,
+            "cacheRead": 0.017721200000000003,
             "cacheWrite": 0.0,
-            "input": 0.07924,
-            "output": 0.15848
+            "input": 0.088606,
+            "output": 0.177212
         },
         "description": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and...",
         "id": "deepseek/deepseek-v4-flash",

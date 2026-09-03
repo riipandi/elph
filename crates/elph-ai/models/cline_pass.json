@@ -5,10 +5,10 @@
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.015848,
+            "cacheRead": 0.017721200000000003,
             "cacheWrite": 0.0,
-            "input": 0.07924,
-            "output": 0.15848
+            "input": 0.088606,
+            "output": 0.177212
         },
         "description": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and...",
         "id": "cline-pass/deepseek-v4-flash",
@@ -32,10 +32,10 @@
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.034771,
+            "cacheRead": 0.086855,
             "cacheWrite": 0.0,
-            "input": 0.417252,
-            "output": 0.834504
+            "input": 1.04226,
+            "output": 2.08452
         },
         "description": "DeepSeek V4 Pro is a large-scale Mixture-of-Experts model from DeepSeek with 1.6T total parameters and 49B activated parameters, supporting a 1M-token context window. It is designed for advanced reasoning, coding,...",
         "id": "cline-pass/deepseek-v4-pro",
@@ -59,10 +59,10 @@
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.221,
+            "cacheRead": 0.1932,
             "cacheWrite": 0.0,
-            "input": 1.19,
-            "output": 3.74
+            "input": 0.966,
+            "output": 3.036
         },
         "description": "GLM 5.2 is a large-scale reasoning model from Z.ai. It supports text input and output with a 1M-token context window, and is suited for long-horizon agent workflows, project-level software engineering,...",
         "id": "cline-pass/glm-5.2",
@@ -86,7 +86,7 @@
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1310720,
         "cost": {
-            "cacheRead": 0.26,
+            "cacheRead": 0.14,
             "cacheWrite": 0.0,
             "input": 1.4,
             "output": 4.4
@@ -127,7 +127,7 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
+            "low": null,
             "max": "max",
             "medium": null,
             "minimal": null,

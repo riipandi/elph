@@ -139,10 +139,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.438,
+            "cacheRead": 0.2817,
             "cacheWrite": 0.0,
-            "input": 1.75,
-            "output": 4.499
+            "input": 1.1268,
+            "output": 3.9438
         },
         "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
         "id": "glm-5.3",
@@ -166,10 +166,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.05,
+            "cacheRead": 0.0319,
             "cacheWrite": 0.0,
-            "input": 0.201,
-            "output": 0.5
+            "input": 0.165,
+            "output": 0.55
         },
         "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
         "id": "glm-5.3-flash",

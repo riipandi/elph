@@ -978,7 +978,7 @@
         "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "hy3",
         "input": ["text"],
-        "maxTokens": 64000,
+        "maxTokens": 128000,
         "name": "Hy3",
         "provider": "sumopod",
         "reasoning": true,
@@ -1034,8 +1034,8 @@
         "cost": {
             "cacheRead": 0.19,
             "cacheWrite": 0,
-            "input": 0.85,
-            "output": 3.7
+            "input": 0.9,
+            "output": 3.72
         },
         "id": "kimi-k2.7",
         "input": ["text", "image"],

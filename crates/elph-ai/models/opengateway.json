@@ -89,8 +89,8 @@
         "cost": {
             "cacheRead": 0,
             "cacheWrite": 0,
-            "input": 0.45,
-            "output": 2.6
+            "input": 0.2475,
+            "output": 1.43
         },
         "id": "mindai/macaron-v1-tall",
         "input": ["text"],
@@ -195,10 +195,10 @@
         "baseUrl": "https://opengateway.gitlawb.com/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.3,
-            "cacheWrite": 1.88,
-            "input": 1.504,
-            "output": 4.504
+            "cacheRead": 0.375,
+            "cacheWrite": 2.35,
+            "input": 1.88,
+            "output": 5.63
         },
         "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "qwen/qwen3.7-max",
@@ -230,7 +230,7 @@
         "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
         "id": "tencent/hy3",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 131072,
         "name": "Hy3",
         "provider": "opengateway",
         "reasoning": true,

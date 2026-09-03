@@ -1420,14 +1420,14 @@
         "cost": {
             "cacheRead": 0.135,
             "cacheWrite": 0.0,
-            "input": 0.27,
-            "output": 1.12
+            "input": 0.58,
+            "output": 1.68
         },
-        "description": "DeepSeek chat model for instruction following, coding, and analysis",
+        "description": "Open DeepSeek MoE chat model for coding, math, and general reasoning",
         "id": "deepseek/deepseek-v3",
         "input": ["text"],
-        "maxTokens": 163840,
-        "name": "DeepSeek V3 0324",
+        "maxTokens": 81920,
+        "name": "DeepSeek V3",
         "provider": "vercel-ai-gateway",
         "reasoning": false,
         "releaseDate": "2024-12-26",
@@ -2202,8 +2202,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 1042383.24,
-            "output": 1042383.24
+            "input": 1042108.209,
+            "output": 1042108.209
         },
         "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/llama-3.3-70b",
@@ -4308,28 +4308,28 @@
         "baseUrl": "https://ai-gateway.vercel.sh",
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 5.5,
+            "cacheRead": 2.2,
             "cacheWrite": 0.0,
-            "input": 11.0,
-            "output": 44.0
+            "input": 9.0,
+            "output": 36.0
         },
         "description": "Research model for long-horizon investigation, synthesis, and analytical reports",
         "id": "openai/o3-deep-research",
         "input": ["text"],
         "knowledgeCutoff": "2024-05",
         "maxTokens": 100000,
-        "name": "OpenAI o3 Deep Research",
+        "name": "o3-deep-research",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
         "releaseDate": "2024-06-26",
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
             "medium": "medium",
             "minimal": null,
-            "off": null,
-            "xhigh": null
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "openai/o3-mini": {

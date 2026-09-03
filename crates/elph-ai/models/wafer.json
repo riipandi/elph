@@ -5,10 +5,10 @@
         "baseUrl": "https://pass.wafer.ai/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.07,
+            "cacheRead": 0.05,
             "cacheWrite": 0.0,
-            "input": 0.28,
-            "output": 0.56
+            "input": 0.1,
+            "output": 0.25
         },
         "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
         "id": "DeepSeek-V4-Flash-0731-Fast",
@@ -54,26 +54,53 @@
             "xhigh": "xhigh"
         }
     },
-    "GLM-5.3-Flash": {
+    "GLM-5.3": {
         "api": "openai-completions",
         "baseUrl": "https://pass.wafer.ai/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.03,
+            "cacheRead": 0.26,
             "cacheWrite": 0.0,
-            "input": 0.15,
-            "output": 0.5
+            "input": 1.19,
+            "output": 4.4
         },
-        "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
-        "id": "GLM-5.3-Flash",
-        "input": ["text", "image"],
-        "maxTokens": 64000,
-        "name": "GLM-5.3-Flash",
+        "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
+        "id": "GLM-5.3",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "GLM-5.3",
         "provider": "wafer",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "GLM-5.3-Flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://pass.wafer.ai/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.02,
+            "cacheWrite": 0.0,
+            "input": 0.1,
+            "output": 0.35
+        },
+        "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+        "id": "GLM-5.3-Flash",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "GLM 5.3 Flash",
+        "provider": "wafer",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
             "max": "max",
             "medium": null,
             "minimal": null,
@@ -116,7 +143,7 @@
             "cacheRead": 0.3,
             "cacheWrite": 0.0,
             "input": 3.0,
-            "output": 15.0
+            "output": 12.75
         },
         "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "Kimi-K3",
