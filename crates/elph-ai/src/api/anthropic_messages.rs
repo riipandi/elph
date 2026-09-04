@@ -18,6 +18,7 @@ use crate::types::{
     CacheRetention, Model, ProviderStreams, SimpleStreamOptions, StopReason, StreamOptions, ThinkingLevel,
 };
 use crate::utils::event_stream::AssistantMessageEventStream;
+use crate::utils::headers::has_header;
 use crate::utils::json_parse::{parse_json_with_repair, parse_streaming_json};
 use crate::utils::sanitize_unicode::sanitize_surrogates;
 
@@ -151,10 +152,14 @@ async fn run_anthropic_stream(
     if let Some(key) = api_key {
         if model.provider != "github-copilot" && !key.contains("sk-ant-oat") {
             req = req.header("x-api-key", key);
-            req = req.header("anthropic-version", "2023-06-01");
         } else {
             req = req.header("Authorization", format!("Bearer {key}"));
         }
+    }
+    // The Messages API rejects requests without anthropic-version, even when
+    // auth comes from OAuth tokens, model headers, or ANTHROPIC_AUTH_TOKEN.
+    if model.provider != "github-copilot" && !has_header(&headers, "anthropic-version") {
+        req = req.header("anthropic-version", "2023-06-01");
     }
     // ANTHROPIC_AUTH_TOKEN bearer for Anthropic-compatible gateways (pi #5871).
     if let Some(auth_token) = options

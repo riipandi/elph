@@ -382,9 +382,9 @@
         "baseUrl": "https://api.groq.com/openai/v1",
         "contextWindow": 131042,
         "cost": {
-            "cacheRead": 0.39999999999999997,
+            "cacheRead": 0.4,
             "cacheWrite": 0.0,
-            "input": 0.7999999999999999,
+            "input": 0.8,
             "output": 4.0
         },
         "description": "Dense 27B vision-language model for coding, agent tasks, and image and video understanding",

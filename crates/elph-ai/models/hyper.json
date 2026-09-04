@@ -137,9 +137,9 @@
         "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.058,
-            "input": 0.116,
-            "output": 0.38
+            "cacheWrite": 0.053,
+            "input": 0.106,
+            "output": 0.368
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "gemma-4-26b-a4b-it",
@@ -164,9 +164,9 @@
         "contextWindow": 202752,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.425,
-            "input": 0.85,
-            "output": 2.774
+            "cacheWrite": 0.465,
+            "input": 0.93,
+            "output": 2.878
         },
         "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
         "id": "glm-5",
@@ -570,9 +570,9 @@
         "contextWindow": 262100,
         "cost": {
             "cacheRead": 0.0,
-            "cacheWrite": 0.213,
-            "input": 0.426,
-            "output": 1.62
+            "cacheWrite": 0.209,
+            "input": 0.418,
+            "output": 1.588
         },
         "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax-m2.7",

@@ -2202,8 +2202,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 1042108.209,
-            "output": 1042108.209
+            "input": 1043785.269,
+            "output": 1043785.269
         },
         "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "id": "meta/llama-3.3-70b",

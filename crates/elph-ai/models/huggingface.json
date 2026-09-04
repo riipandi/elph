@@ -130,6 +130,32 @@
             "xhigh": null
         }
     },
+    "CohereLabs/c4ai-command-r7b-arabic-02-2025": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "CohereLabs/c4ai-command-r7b-arabic-02-2025",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "CohereLabs/c4ai-command-r7b-arabic-02-2025",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "CohereLabs/command-a-reasoning-08-2025": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -147,6 +173,33 @@
         "name": "Command A Reasoning",
         "provider": "huggingface",
         "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "CohereLabs/command-a-translate-08-2025": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 8000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 2.5,
+            "output": 10.0
+        },
+        "description": "Translation model for multilingual conversion, localization, and cross-language workflows",
+        "id": "CohereLabs/command-a-translate-08-2025",
+        "input": ["text"],
+        "maxTokens": 8000,
+        "name": "Command A Translate",
+        "provider": "huggingface",
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -492,6 +545,33 @@
             "xhigh": "xhigh"
         }
     },
+    "Qwen/Qwen2.5-7B-Instruct": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 33000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.05,
+            "output": 0.05
+        },
+        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
+        "id": "Qwen/Qwen2.5-7B-Instruct",
+        "input": ["text"],
+        "maxTokens": 4000,
+        "name": "Qwen/Qwen2.5-7B-Instruct",
+        "provider": "huggingface",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
     "Qwen/Qwen2.5-Coder-32B-Instruct": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -574,17 +654,17 @@
     "Qwen/Qwen2.5-VL-72B-Instruct": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 32000,
+        "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.025,
+            "cacheRead": 0.4,
             "cacheWrite": 0.31,
-            "input": 0.25,
-            "output": 0.75
+            "input": 0.8,
+            "output": 1.0
         },
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "Qwen/Qwen2.5-VL-72B-Instruct",
         "input": ["text", "image"],
-        "maxTokens": 28800,
+        "maxTokens": 115200,
         "name": "Qwen: Qwen2.5 VL 72B Instruct",
         "provider": "huggingface",
         "reasoning": false,
@@ -1098,6 +1178,33 @@
         "input": ["text", "image"],
         "maxTokens": 65536,
         "name": "Qwen3.5 27B",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "Qwen/Qwen3.5-35B-A3B": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.25,
+            "output": 2.0
+        },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+        "id": "Qwen/Qwen3.5-35B-A3B",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Qwen3.5 35B-A3B",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1888,6 +1995,33 @@
             "xhigh": null
         }
     },
+    "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.44,
+            "output": 1.32
+        },
+        "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
+        "id": "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp",
+        "input": ["text", "image"],
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Flash Vision Exp",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "deepseek-ai/DeepSeek-V4-Pro": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -2559,6 +2693,33 @@
             "low": "low",
             "max": "max",
             "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.15,
+            "cacheWrite": 0.5,
+            "input": 0.5,
+            "output": 2.5
+        },
+        "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
+        "id": "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16",
+        "input": ["text"],
+        "maxTokens": 65000,
+        "name": "Nemotron 3 Ultra 550B A55B",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": null

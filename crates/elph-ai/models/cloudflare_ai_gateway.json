@@ -40,8 +40,8 @@
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.3,
-            "input": 0.3,
-            "output": 1.48
+            "input": 0.21,
+            "output": 1.08
         },
         "id": "claude-3-haiku",
         "input": ["text", "image"],

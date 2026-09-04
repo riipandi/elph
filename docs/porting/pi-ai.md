@@ -129,7 +129,7 @@ Initial gap audit.
 - **constrainedSampling** — `types/mod.rs`: `ConstrainedSamplingConfig`, `StrictMode`, `GrammarVariants`, `Tool.constrained_sampling`, `Tool::new()` constructor
 - **Compat flags** — `supports_openai_grammar_tools` (OpenAI Completions/Responses), `supports_strict_tools` (Anthropic), `supports_strict_mode` (Responses), `SessionAffinityFormat`
 - **Retry patterns** — `utils/retry.rs`: +40 patterns (DNS `getaddrinfo`/`ENOTFOUND`/`EAI_AGAIN`, gRPC `ResourceExhausted`, Bun socket-drop, HTTP/2 `goaway`, `previous_response_not_found`), `is_transient_error()` helper
-- **Auth correctness** — `api/anthropic_messages.rs`: `ANTHROPIC_AUTH_TOKEN` bearer header from env; `auth/resolve.rs`: `ModelsError` display includes cause chain
+- **Auth correctness** — `api/anthropic_messages.rs`: `ANTHROPIC_AUTH_TOKEN` bearer header from env; `anthropic-version` always sent (unless caller overrides) so header-only/OAuth auth no longer 400s; `auth/resolve.rs`: `ModelsError` display includes cause chain
 - **`contentText`** — `utils/text.rs`: `content_text()`, `assistant_content_text()`
 - **`CredentialStore.list()`** — `auth/types.rs` + `credential_store.rs`: `CredentialInfo` + async `list()` method
 

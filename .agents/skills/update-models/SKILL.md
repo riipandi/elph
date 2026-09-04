@@ -83,6 +83,25 @@ Additional data sources and provider-specific configurations:
 
 ---
 
+## Model Lifecycle: Additions vs Removals
+
+The generator rebuilds each provider file from scratch, but whether stale models survive depends on the id source (`bin/generate_models/chat.rs`):
+
+| Provider source state                             | Stale id behavior                                                     |
+| :------------------------------------------------ | :-------------------------------------------------------------------- |
+| On models.dev (`models_dev_keys` match)           | Dropped — catalog is exactly the models.dev id set.                   |
+| Gateway-preserve + live probe **succeeded**       | Dropped — catalog is exactly the live id set.                         |
+| Gateway-preserve + live probe **failed / skipped**| **Kept silently** — previous catalog ids are reused as the id source. |
+
+Implications:
+
+- A removal can be **legitimate** (provider dropped the model) or an **artifact** (probe failure, missing auth key, transient outage).
+- Without a live probe, deprecated models linger forever in gateway-preserve catalogs.
+- The generator prints no per-provider added/removed report — the lifecycle audit (Step 6) is mandatory to make removals visible and triaged.
+- The catalog schema has no `deprecated` flag; **absence from every fresh source is the deprecation signal**.
+
+---
+
 ## Step-by-Step Execution Flow
 
 When updating model catalogs, follow this systematic procedure:
@@ -120,6 +139,8 @@ make generate-models ARGS="chat" && make fmt
 | `--force`           | Bypass the 24h freshness check and force re-fetching models.dev snapshots. |
 | `--no-live-pricing` | Skip outbound `/models` live pricing/capability probes.                    |
 | `--offline`         | Use only locally cached data under `models/.cache/`.                       |
+
+> `--no-live-pricing` also disables removal detection: gateway-preserve providers fall back to their previous id sets, so deprecated models are never observed missing. Do not use it when the goal is a lifecycle audit.
 
 ### Step 4: Full Image Fixture Pass (Optional)
 
@@ -169,8 +190,44 @@ make check && make lint
    ```
 
 5. `Verified N catalog providers are registered in builtin_providers()` — Every generated provider file must have a registered factory in `src/providers/builtin.rs`.
+6. **Lifecycle audit** (Step 6) — every removal is triaged; no provider loses models silently.
 
-### Step 6: Rebuild the Binary
+### Step 6: Deprecation & Removal Audit
+
+Run immediately after generation, **before committing** — the audit diffs the regenerated working tree against the last committed snapshot (`HEAD`):
+
+```sh
+python3 - <<'EOF'
+import glob, json, os, subprocess
+
+for path in sorted(glob.glob('crates/elph-ai/models/*.json')):
+    if path.endswith('index.json'):
+        continue
+    new = {k for k in json.load(open(path)) if k != '$schema'}
+    old_raw = subprocess.run(
+        ['git', 'show', f'HEAD:{path}'], capture_output=True, text=True)
+    old = set() if old_raw.returncode != 0 else {
+        k for k in json.loads(old_raw.stdout) if k != '$schema'}
+    added, removed = new - old, old - new
+    if added or removed:
+        print(f'{os.path.basename(path)}: +{len(added)} / -{len(removed)}')
+        for mid in sorted(removed):
+            print(f'  REMOVED {mid}')
+        for mid in sorted(added):
+            print(f'  added   {mid}')
+EOF
+```
+
+**Triage rules (in order):**
+
+1. **Removed + provider is on models.dev, or the live probe succeeded** → genuine upstream removal. Accept it; do not resurrect the id via overlays.
+2. **Removed + gateway-preserve provider whose live probe failed or was skipped** (authwalled endpoint, missing env key) → probe artifact, not a real removal. Re-run the generator with the provider's env key set (or `generate-models enrich` to re-probe in place), then re-audit before accepting.
+3. **Removals > 20% of a provider's models** → suspect a probe failure or partial live response even when the probe "succeeded". Re-run with `--force` and the provider key present; compare before accepting.
+4. **Added id absent from models.dev and previously unseen** → verify it appears verbatim in a fresh live `/models` response (guards against truncated ids or drift between probe and detail endpoints).
+
+Accept only after every `REMOVED` line has a rule. When in doubt, keep the model and flag it in the summary instead of dropping it silently.
+
+### Step 7: Rebuild the Binary
 
 `build.rs` embeds `models/*.json` at compilation time. The binary must be rebuilt to ship the new definitions:
 
@@ -178,12 +235,13 @@ make check && make lint
 cargo build --release -p elph
 ```
 
-### Step 7: Summarize Results for User
+### Step 8: Summarize Results for User
 
 Report in the user's language:
 
 - Total provider count and model count.
 - Cost sourcing breakdown (`live-api`, `models.dev`, `ai-model-directory`, `previous`).
+- Per-provider additions and removals with triage outcome (dropped as genuine / restored after re-probe / kept pending verification).
 - Any unconfirmed thinking levels or skipped providers.
 - Status of verification tests and quality gates.
 
@@ -258,4 +316,5 @@ Pricing precedence:
 - **Never guess thinking levels**: Every thinking level must be backed by live API metadata, models.dev, or an explicit provider override.
 - **Never hand-edit generated JSON catalogs**: Use generator overlays or update provider sources in code, then regenerate.
 - **Preserve fresh source precedence**: Fresh live API / models.dev data always takes precedence over stale catalog entries.
+- **Triage every removal**: Absence from every fresh source is the only deprecation signal. Removals that coincide with a failed or skipped live probe are artifacts until re-proven with the provider's env key. Never silently accept mass removals; never keep deprecated models on life support in gateway-preserve catalogs.
 - **Do not commit without user confirmation**.

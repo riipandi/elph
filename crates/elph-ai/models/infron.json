@@ -1932,12 +1932,12 @@
         "baseUrl": "https://llm.onerouter.pro/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.075,
-            "cacheWrite": 0.041667,
+            "cacheRead": 0.15,
+            "cacheWrite": 0.083333,
             "input": 0.28125,
             "output": 1.40625
         },
-        "description": "Gemini 3.8 Flash is Google's most intelligent Flash model, engineered for long-horizon software engineering, autonomous agents, and complex enterprise workflows.",
+        "description": "Google's most intelligent Flash model, engineered for long-horizon software engineering, autonomous agents, and complex enterprise workflows",
         "id": "google/gemini-3.8-flash",
         "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 64000,
@@ -6176,6 +6176,33 @@
             "minimal": null,
             "off": "off",
             "xhigh": null
+        }
+    },
+    "qwen/qwen3.5-4b": {
+        "api": "openai-completions",
+        "baseUrl": "https://llm.onerouter.pro/v1",
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.04,
+            "output": 0.07
+        },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+        "id": "qwen/qwen3.5-4b",
+        "input": ["text", "image", "video"],
+        "maxTokens": 32768,
+        "name": "Qwen/Qwen3.5-4B",
+        "provider": "infron",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
         }
     },
     "qwen/qwen3.5-9b": {
