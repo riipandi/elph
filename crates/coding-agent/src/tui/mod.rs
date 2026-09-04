@@ -164,6 +164,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
             .then(|| boot_thinking_level.label().to_string()),
         preloaded_resources: bootstrap_resources,
         hook_host: hook_host.clone(),
+        shared_mcp: None,
     };
 
     let model_label = model_footer_label(Some(&boot_provider), Some(&boot_model_id));

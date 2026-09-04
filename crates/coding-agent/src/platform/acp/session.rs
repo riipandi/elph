@@ -299,6 +299,7 @@ pub(super) async fn open_or_create(
             agent_mode: None,
             system_prompt_override: None,
             preloaded_resources: None,
+            mcp_registry: None,
             defer_mcp_load: true,
             defer_session_gc: false,
             defer_memory_warm: false,

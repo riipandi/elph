@@ -644,6 +644,7 @@ pub(crate) async fn apply_bootstrap_ui_event(
     chrome_ui_revision: &mut State<u64>,
     fallback_context_limit: u64,
     palette_refresh_pending: &mut State<bool>,
+    bootstrap_config: &mut Ref<Option<TuiBootstrapConfig>>,
     agent_session_slot: &mut Ref<Option<Arc<CodingAgentSession>>>,
     ui_events_slot: &mut Ref<Option<Arc<tokio::sync::Mutex<UnboundedReceiver<AgentUiEvent>>>>>,
     messages: &mut State<Arc<RwLock<Vec<TranscriptMessage>>>>,
@@ -666,6 +667,13 @@ pub(crate) async fn apply_bootstrap_ui_event(
             }
             agent_session_slot.set(Some(Arc::clone(&bootstrap.session)));
             ui_events_slot.set(Some(Arc::clone(&bootstrap.ui_rx)));
+            // Cache the bootstrap's shared MCP registry so the next `/new` reuses
+            // the pool instead of reconnecting every server.
+            if let Some(config) = bootstrap_config.write().as_mut()
+                && config.shared_mcp.is_none()
+            {
+                config.shared_mcp = Some(Arc::clone(&bootstrap.shared_mcp));
+            }
             thinking_level.set(restored_thinking_level_for_session(&bootstrap.session).await);
             {
                 let arc_ref = messages.write();

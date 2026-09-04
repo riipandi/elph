@@ -353,13 +353,20 @@ impl CodingAgentSession {
         let session_id = self.session_id.clone();
         let poll_ms = rt.inbox_poll_ms();
         let stop = rt.stop_flag();
-        let session = Arc::clone(self);
+        // Hold the session weakly: the poller is stopped by the runtime's stop
+        // flag / handle abort, and the runtime lives inside the session. A
+        // strong capture here forms poller → session → runtime, so the runtime
+        // `Drop` never runs and `/new` would leak the whole old session.
+        let session = Arc::downgrade(self);
         let handle = tokio::spawn(async move {
             let interval = std::time::Duration::from_millis(poll_ms);
             loop {
                 if stop.load(Ordering::Relaxed) {
                     break;
                 }
+                let Some(session) = session.upgrade() else {
+                    break;
+                };
                 match mailbox.claim_next_inbound(&session_id).await {
                     Ok(Some(msg)) => {
                         if let Err(err) = session.deliver_worker_inbound(msg).await {

@@ -319,10 +319,6 @@ impl McpToolRegistry {
         self.load_options.read().clone()
     }
 
-    pub fn config(&self) -> &McpConfig {
-        &self.config
-    }
-
     pub fn policy(&self) -> &McpPolicyConfig {
         &self.policy
     }
@@ -373,6 +369,11 @@ impl McpToolRegistry {
 
     pub fn auth_store_path(&self) -> Option<&PathBuf> {
         self.auth_store_path.as_ref()
+    }
+
+    /// Root MCP config this registry was built from (for host-side caching/fingerprinting).
+    pub fn config(&self) -> &McpConfig {
+        &self.config
     }
 
     /// Take the list_changed event receiver (at most once).

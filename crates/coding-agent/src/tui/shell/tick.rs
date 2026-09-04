@@ -219,6 +219,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     &mut chrome_ui_revision,
                     fallback_context_limit,
                     &mut palette_refresh_pending,
+                    &mut bootstrap_config,
                     &mut agent_session_slot,
                     &mut ui_events_slot,
                     &mut messages,
@@ -253,8 +254,23 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
 
             let paths_for_load = paths.read().clone();
             let cwd_for_load = cwd_for_loop.clone();
-            let settings = Settings::load(&paths_for_load).ok();
+            let settings = match Settings::load(&paths_for_load) {
+                Ok(settings) => Some(settings),
+                Err(error) => {
+                    log::warn!("settings reload failed on /new and /resume: {error:#}");
+                    None
+                }
+            };
             if let Some(settings) = settings {
+                // Reuse the shared MCP registry (pool + catalog) when the MCP
+                // config is unchanged; a changed config rebuilds it.
+                let previous_shared = bootstrap_config
+                    .read()
+                    .as_ref()
+                    .and_then(|config| config.shared_mcp.clone());
+                let shared_mcp =
+                    crate::agent::mcp_bootstrap::load_shared_mcp(&paths_for_load, previous_shared.as_deref()).await;
+
                 let env = Arc::new(LocalExecutionEnv::new(&cwd_for_load));
                 let loaded = load_resources(&paths_for_load, &cwd_for_load, &env, &settings).await;
 
@@ -290,8 +306,18 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     thinking_override: boot_thinking.ok().map(|level| level.label().to_string()),
                     preloaded_resources: loaded,
                     hook_host: hook_host_for_loop.clone(),
+                    shared_mcp: Some(Arc::new(shared_mcp)),
                 };
                 bootstrap_config.set(Some(new_config));
+            } else {
+                // Settings reload failed: fall back to the previous bootstrap
+                // config, but never inherit its stale resume target — `/new`
+                // must start a fresh session and `/resume <id>` must resume the
+                // requested id, not the session the app was launched with.
+                if let Some(config) = bootstrap_config.write().as_mut() {
+                    config.resume_id = resume_id_req.clone();
+                    config.check_for_updates = false;
+                }
             }
 
             bootstrap_phase.set(BootstrapPhase::Pending);
