@@ -1,10 +1,17 @@
 //! MCP discovery and late binding into an already-running agent session.
 
-use std::sync::Arc;
+use std::hash::Hash;
+use std::hash::Hasher;
+use std::sync::{Arc, Weak};
 
+use crate::types::AgentMode;
 use crate::utils::path::AppPaths;
 use anyhow::Result;
-use elph_agent::mcp::{McpCacheStore, McpLoadOptions, McpServerLoadProgress, McpToolRegistry};
+use elph_agent::harness::AgentHarness;
+use elph_agent::mcp::{McpCacheStore, McpConfig, McpLoadOptions, McpServerLoadProgress, McpToolRegistry};
+use elph_agent::session::TursoSessionStorage;
+use parking_lot::RwLock;
+use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 
 use super::events::AgentUiEvent;
@@ -66,13 +73,120 @@ pub async fn discover_mcp_registry_with_progress(
     (registry, mcp_config_warnings)
 }
 
+/// Dynamic hot-reload target for a shared MCP registry.
+///
+/// The MCP event loop can outlive individual sessions when the registry is
+/// shared across in-process session reloads (`/new`, `/resume`); it reads this
+/// target per event so hot reloads always apply to the currently live session.
+#[derive(Clone)]
+pub struct McpReloadTarget {
+    harness: Weak<AgentHarness<TursoSessionStorage>>,
+    mode_state: Weak<Mutex<AgentMode>>,
+    ui_tx: mpsc::UnboundedSender<AgentUiEvent>,
+}
+
+/// Registry shared across in-process session reloads, plus the fingerprint of
+/// the MCP config it was built from and the current hot-reload target.
+///
+/// Sharing keeps the session pool (stdio processes / HTTP sessions) and the
+/// discovered catalog alive across `/new` instead of reconnecting every server
+/// per conversation. A changed config fingerprint rebuilds the registry.
+pub struct SharedMcp {
+    registry: Arc<McpToolRegistry>,
+    fingerprint: u64,
+    target: RwLock<Option<McpReloadTarget>>,
+}
+
+impl Clone for SharedMcp {
+    fn clone(&self) -> Self {
+        Self {
+            registry: Arc::clone(&self.registry),
+            fingerprint: self.fingerprint,
+            target: RwLock::new(self.target.read().clone()),
+        }
+    }
+}
+
+impl std::fmt::Debug for SharedMcp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SharedMcp")
+            .field("fingerprint", &self.fingerprint)
+            .field("target_bound", &self.target.read().is_some())
+            .finish_non_exhaustive()
+    }
+}
+
+impl SharedMcp {
+    pub fn from_registry(registry: Arc<McpToolRegistry>) -> Self {
+        let fingerprint = fingerprint_mcp_config(registry.config());
+        Self {
+            registry,
+            fingerprint,
+            target: RwLock::new(None),
+        }
+    }
+
+    pub fn registry(&self) -> &Arc<McpToolRegistry> {
+        &self.registry
+    }
+
+    pub fn fingerprint(&self) -> u64 {
+        self.fingerprint
+    }
+
+    /// Point hot reloads at this session's harness / mode / UI channel.
+    fn bind(&self, session: &CodingAgentSession) {
+        *self.target.write() = Some(McpReloadTarget {
+            harness: Arc::downgrade(&session.harness()),
+            mode_state: Arc::downgrade(&session.mode_state()),
+            ui_tx: session.ui_event_sender(),
+        });
+    }
+}
+
+/// Stable fingerprint of an MCP config (servers + policy). Two configs with the
+/// same fingerprint can safely share one registry / pool.
+pub fn fingerprint_mcp_config(config: &McpConfig) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    match serde_json::to_vec(config) {
+        Ok(bytes) => bytes.hash(&mut hasher),
+        Err(error) => {
+            log::debug!("MCP config fingerprint serialization failed: {error:#}");
+            config.enabled_servers().count().hash(&mut hasher);
+        }
+    }
+    hasher.finish()
+}
+
+/// Reuse the previous shared registry when the MCP config is unchanged; build a
+/// fresh one otherwise (deferred discovery, matching the TUI bootstrap path).
+pub async fn load_shared_mcp(paths: &Paths, previous: Option<&SharedMcp>) -> SharedMcp {
+    let (mcp_config, _warnings) = crate::platform::mcp::load_config_best_effort(paths);
+    let fingerprint = fingerprint_mcp_config(&mcp_config);
+    if let Some(previous) = previous
+        && previous.fingerprint == fingerprint
+    {
+        return previous.clone();
+    }
+    let load_options = McpLoadOptions {
+        auth_store_path: Some(paths.auth_store_path()),
+        skip_startup_discovery: true,
+        ..McpLoadOptions::default()
+    };
+    let registry = match McpToolRegistry::load_with_options(mcp_config, load_options).await {
+        Ok(registry) => Arc::new(registry),
+        Err(error) => {
+            log::warn!("shared MCP registry load failed: {error:#}");
+            Arc::new(McpToolRegistry::empty())
+        }
+    };
+    SharedMcp::from_registry(registry)
+}
+
 /// Start MCP hot-reload/progress notifications when tools are already on the harness.
-pub fn start_mcp_notifications(
-    session: &CodingAgentSession,
-    mcp_registry: Arc<McpToolRegistry>,
-    config_warnings: Vec<String>,
-) {
-    spawn_mcp_event_loop(session, mcp_registry);
+pub fn start_mcp_notifications(session: &CodingAgentSession, shared: &Arc<SharedMcp>, config_warnings: Vec<String>) {
+    shared.bind(session);
+    spawn_mcp_event_loop(shared);
     if !config_warnings.is_empty() {
         let notice = format!(
             "MCP configuration issues (agent started with valid servers only):\n{}",
@@ -82,30 +196,33 @@ pub fn start_mcp_notifications(
     }
 }
 
-fn spawn_mcp_event_loop(session: &CodingAgentSession, mcp_registry: Arc<McpToolRegistry>) {
-    // Hold the harness and mode state weakly: this task lives as long as the
-    // registry's event channel (the registry pool owns the sender), and the
-    // harness's MCP tools own strong `Arc<McpToolRegistry>` clones. A strong
-    // capture here forms task → harness → tools → registry → sender, which
-    // keeps `rx.recv()` pending forever and leaks the whole previous session
-    // (harness + MCP pool) every time `/new` replaces the session.
-    let harness_for_reload = Arc::downgrade(&session.harness());
-    let mode_state = Arc::downgrade(&session.mode_state());
-    let ui_tx = session.ui_event_sender();
-    let started = mcp_registry.spawn_event_loop(
+fn spawn_mcp_event_loop(shared: &Arc<SharedMcp>) {
+    // Hold the shared state weakly: this task lives as long as the registry's
+    // event channel (the registry pool owns the sender), and the harness's MCP
+    // tools own strong `Arc<McpToolRegistry>` clones. A strong capture here
+    // forms loop → shared → registry → sender, which keeps `rx.recv()` pending
+    // forever and prevents the loop from ever observing channel closure.
+    let shared_for_refresh = Arc::downgrade(shared);
+    let shared_for_progress = Arc::downgrade(shared);
+    let started = shared.registry().spawn_event_loop(
         move |registry| {
-            // Session dropped — the stale catalog no longer has anywhere to go.
-            let Some(harness) = harness_for_reload.upgrade() else {
+            // Shared state dropped — no live session left to reload into.
+            let Some(shared) = shared_for_refresh.upgrade() else {
                 return;
             };
-            let mode_state = mode_state.clone();
+            let Some(target) = shared.target.read().clone() else {
+                return;
+            };
+            let Some(harness) = target.harness.upgrade() else {
+                return;
+            };
             let registry = Arc::clone(&registry);
             tokio::spawn(async move {
                 if let Err(error) = apply_mcp_tools_to_harness(&harness, &registry).await {
                     log::warn!("failed to apply MCP hot-reload tools: {error}");
                     return;
                 }
-                let Some(mode_state) = mode_state.upgrade() else {
+                let Some(mode_state) = target.mode_state.upgrade() else {
                     return;
                 };
                 let mode = *mode_state.lock().await;
@@ -117,7 +234,11 @@ fn spawn_mcp_event_loop(session: &CodingAgentSession, mcp_registry: Arc<McpToolR
             });
         },
         move |status| {
-            let _ = ui_tx.send(AgentUiEvent::Status(status));
+            if let Some(shared) = shared_for_progress.upgrade()
+                && let Some(target) = shared.target.read().clone()
+            {
+                let _ = target.ui_tx.send(AgentUiEvent::Status(status));
+            }
         },
     );
     if started {
@@ -143,4 +264,30 @@ async fn apply_mcp_tools_to_harness(
         .await
         .map_err(|e| anyhow::anyhow!("{e}"))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use elph_agent::mcp::McpServerConfig;
+
+    #[test]
+    fn fingerprint_is_stable_and_config_sensitive() {
+        let mut config = McpConfig::default();
+        config
+            .servers
+            .insert("alpha".into(), McpServerConfig::stdio("uvx", vec!["mcp-alpha".into()]));
+
+        let cloned = config.clone();
+        assert_eq!(fingerprint_mcp_config(&config), fingerprint_mcp_config(&cloned));
+
+        let mut changed = config.clone();
+        changed
+            .servers
+            .insert("beta".into(), McpServerConfig::stdio("uvx", vec!["mcp-beta".into()]));
+        assert_ne!(fingerprint_mcp_config(&config), fingerprint_mcp_config(&changed));
+
+        let empty = McpConfig::default();
+        assert_ne!(fingerprint_mcp_config(&config), fingerprint_mcp_config(&empty));
+    }
 }

@@ -18,7 +18,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::Mutex;
 
-use super::mcp_bootstrap::{discover_mcp_registry, start_mcp_notifications};
+use super::mcp_bootstrap::{SharedMcp, discover_mcp_registry, start_mcp_notifications};
 use super::model_registry::{resolve_model, selection_from_model};
 use super::prompt::{CodingPromptOptions, agents_md_for_cwd, build_coding_system_prompt};
 use super::resource_loader::{LoadResourcesResult, load_resources};
@@ -53,6 +53,11 @@ pub struct CreateSessionOptions<'a> {
     pub preloaded_resources: Option<LoadResourcesResult>,
     /// When true, MCP discovery is skipped; use [`super::mcp_bootstrap`] to load later.
     pub defer_mcp_load: bool,
+    /// Prebuilt MCP registry to reuse instead of building one. Shared across
+    /// in-process session reloads (`/new`, `/resume`) so the pool (stdio
+    /// processes / HTTP sessions) and the discovered catalog survive the old
+    /// session. Callers must guarantee the config behind it is unchanged.
+    pub mcp_registry: Option<Arc<elph_agent::mcp::McpToolRegistry>>,
     /// When true, session retention GC runs in the background instead of blocking
     /// session creation (TUI fast path — `AgentReady` must not wait for GC).
     pub defer_session_gc: bool,
@@ -174,34 +179,39 @@ pub async fn create_coding_session_with_events(
         Some(&auth_store),
     )
     .await?;
-    let mcp_cache_path = session_manager.mcp_cache_path(&session_id);
-    let mcp_cfg = crate::platform::mcp::load_config(options.paths).unwrap_or_default();
-    let mcp_cache = elph_agent::mcp::McpCacheStore::open(&mcp_cache_path, mcp_cfg.cache_max_entries_or_default())
-        .ok()
-        .map(Arc::new);
-    let default_cache_ttl_ms = mcp_cfg.cache_ttl_secs_or_default().saturating_mul(1000);
-    let (mcp_registry, mcp_config_warnings) = if options.defer_mcp_load {
-        let (mcp_config, warnings) = crate::platform::mcp::load_config_best_effort(options.paths);
-        for warning in &warnings {
-            log::warn!("{warning}");
-        }
-        let load_options = elph_agent::mcp::McpLoadOptions {
-            auth_store_path: Some(options.paths.auth_store_path()),
-            cache_store: mcp_cache.clone(),
-            default_cache_ttl_ms,
-            skip_startup_discovery: true,
-            ..elph_agent::mcp::McpLoadOptions::default()
-        };
-        let registry = match elph_agent::mcp::McpToolRegistry::load_with_options(mcp_config, load_options).await {
-            Ok(registry) => Arc::new(registry),
-            Err(error) => {
-                log::warn!("MCP deferred registry load failed: {error}");
-                Arc::new(elph_agent::mcp::McpToolRegistry::empty())
-            }
-        };
-        (registry, warnings)
+    let (mcp_registry, mcp_config_warnings) = if let Some(shared_registry) = &options.mcp_registry {
+        // Reused shared registry: pool, catalog and cache store already exist.
+        (Arc::clone(shared_registry), Vec::new())
     } else {
-        discover_mcp_registry(options.paths, mcp_cache, default_cache_ttl_ms).await
+        let mcp_cache_path = session_manager.mcp_cache_path(&session_id);
+        let mcp_cfg = crate::platform::mcp::load_config(options.paths).unwrap_or_default();
+        let mcp_cache = elph_agent::mcp::McpCacheStore::open(&mcp_cache_path, mcp_cfg.cache_max_entries_or_default())
+            .ok()
+            .map(Arc::new);
+        let default_cache_ttl_ms = mcp_cfg.cache_ttl_secs_or_default().saturating_mul(1000);
+        if options.defer_mcp_load {
+            let (mcp_config, warnings) = crate::platform::mcp::load_config_best_effort(options.paths);
+            for warning in &warnings {
+                log::warn!("{warning}");
+            }
+            let load_options = elph_agent::mcp::McpLoadOptions {
+                auth_store_path: Some(options.paths.auth_store_path()),
+                cache_store: mcp_cache.clone(),
+                default_cache_ttl_ms,
+                skip_startup_discovery: true,
+                ..elph_agent::mcp::McpLoadOptions::default()
+            };
+            let registry = match elph_agent::mcp::McpToolRegistry::load_with_options(mcp_config, load_options).await {
+                Ok(registry) => Arc::new(registry),
+                Err(error) => {
+                    log::warn!("MCP deferred registry load failed: {error}");
+                    Arc::new(elph_agent::mcp::McpToolRegistry::empty())
+                }
+            };
+            (registry, warnings)
+        } else {
+            discover_mcp_registry(options.paths, mcp_cache, default_cache_ttl_ms).await
+        }
     };
 
     let resources = match options.preloaded_resources {
@@ -673,7 +683,8 @@ pub async fn create_coding_session_with_events(
     .await?;
 
     if !options.defer_mcp_load {
-        start_mcp_notifications(&session, Arc::clone(&mcp_registry), mcp_config_warnings);
+        let shared = Arc::new(SharedMcp::from_registry(Arc::clone(&mcp_registry)));
+        start_mcp_notifications(&session, &shared, mcp_config_warnings);
     }
 
     Ok((session, ui_rx))

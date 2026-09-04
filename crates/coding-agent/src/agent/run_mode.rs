@@ -122,6 +122,7 @@ pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<RunModeR
         agent_mode: Some(options.mode),
         system_prompt_override: options.system_prompt_override,
         preloaded_resources: None,
+        mcp_registry: None,
         defer_mcp_load: false,
         defer_session_gc: false,
         defer_memory_warm: false,

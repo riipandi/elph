@@ -52,6 +52,9 @@ pub struct TuiBootstrapConfig {
     pub thinking_override: Option<String>,
     pub preloaded_resources: LoadResourcesResult,
     pub hook_host: crate::platform::hooks::HookHost,
+    /// Shared MCP registry reused across in-process session reloads. `None` on
+    /// first startup — the bootstrap result carries one back for later reloads.
+    pub shared_mcp: Option<Arc<crate::agent::mcp_bootstrap::SharedMcp>>,
 }
 
 /// Bootstrap phases surfaced in the status row and transcript.
@@ -334,6 +337,8 @@ pub struct AgentBootstrap {
     /// Pre-populated transcript messages from the persisted session branch (for --resume).
     /// Empty for a brand-new session.
     pub history_messages: Vec<TranscriptMessage>,
+    /// Shared MCP registry for reuse by the next in-process reload.
+    pub shared_mcp: Arc<crate::agent::mcp_bootstrap::SharedMcp>,
 }
 
 /// Create the agent session without blocking on MCP discovery.
@@ -354,6 +359,7 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
         agent_mode: None,
         system_prompt_override: None,
         preloaded_resources: Some(config.preloaded_resources.clone()),
+        mcp_registry: config.shared_mcp.as_ref().map(|shared| Arc::clone(shared.registry())),
         defer_mcp_load: true,
         // TUI fast path: `AgentReady` must not wait for retention GC or the memory
         // store warm-up. GC runs detached (shares the open DB handle, resume id is
@@ -369,6 +375,15 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
     session.start_worker_inbox_poller();
     let session_id = session.session_id().to_string();
     let is_resume = config.resume_id.is_some();
+    let shared_mcp = match config.shared_mcp.as_ref() {
+        Some(shared) => Arc::clone(shared),
+        None => {
+            let registry = session
+                .mcp_registry()
+                .expect("bootstrap always attaches an MCP registry");
+            Arc::new(crate::agent::mcp_bootstrap::SharedMcp::from_registry(registry))
+        }
+    };
 
     // Human-friendly title only for brand-new sessions. On resume/continue, keep the
     // stored name so we don't rewrite metadata (or scramble "latest" ordering).
@@ -394,6 +409,7 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
         ui_rx: Arc::new(tokio::sync::Mutex::new(ui_rx)),
         session_id,
         history_messages,
+        shared_mcp,
     })
 }
 
@@ -729,6 +745,7 @@ pub enum McpBootstrapUpdate {
 pub async fn bootstrap_mcp_for_session(
     session: &CodingAgentSession,
     _paths: &Paths,
+    shared: &Arc<crate::agent::mcp_bootstrap::SharedMcp>,
     mut on_update: impl FnMut(McpBootstrapUpdate),
 ) -> Result<()> {
     let registry = session
@@ -759,7 +776,7 @@ pub async fn bootstrap_mcp_for_session(
     }
     // Attach whatever tools we have (even if discovery partially failed).
     session.attach_mcp_registry(Arc::clone(&registry)).await?;
-    crate::agent::mcp_bootstrap::start_mcp_notifications(session, registry, Vec::new());
+    crate::agent::mcp_bootstrap::start_mcp_notifications(session, shared, Vec::new());
     Ok(())
 }
 
@@ -812,6 +829,7 @@ async fn run_bootstrap_worker(config: TuiBootstrapConfig, paths: Paths, tx: Unbo
     };
 
     let session = Arc::clone(&bootstrap.session);
+    let shared_mcp = Arc::clone(&bootstrap.shared_mcp);
     if tx.send(BootstrapUiEvent::AgentReady(bootstrap)).is_err() {
         return;
     }
@@ -825,7 +843,7 @@ async fn run_bootstrap_worker(config: TuiBootstrapConfig, paths: Paths, tx: Unbo
     }
 
     let tx_progress = tx.clone();
-    let mcp_result = bootstrap_mcp_for_session(session.as_ref(), &paths, move |update| {
+    let mcp_result = bootstrap_mcp_for_session(session.as_ref(), &paths, &shared_mcp, move |update| {
         let event = match update {
             McpBootstrapUpdate::Server(progress) => BootstrapUiEvent::McpServer(progress),
             McpBootstrapUpdate::TranscriptLine(line) => BootstrapUiEvent::McpTranscriptLine(line),

@@ -90,7 +90,8 @@ pub async fn attach_client_servers(
     let (mut config, warnings) = crate::platform::mcp::load_config_best_effort(paths);
     if client_servers.is_empty() && config.is_empty() {
         if let Some(registry) = session.mcp_registry() {
-            crate::agent::mcp_bootstrap::start_mcp_notifications(session, registry, warnings);
+            let shared = std::sync::Arc::new(crate::agent::mcp_bootstrap::SharedMcp::from_registry(registry));
+            crate::agent::mcp_bootstrap::start_mcp_notifications(session, &shared, warnings);
         }
         return Ok(0);
     }
@@ -102,12 +103,14 @@ pub async fn attach_client_servers(
     match load_registry(paths, config).await {
         Ok(registry) => {
             session.set_mcp_registry(Arc::clone(&registry)).await;
-            crate::agent::mcp_bootstrap::start_mcp_notifications(session, registry, warnings);
+            let shared = Arc::new(crate::agent::mcp_bootstrap::SharedMcp::from_registry(registry));
+            crate::agent::mcp_bootstrap::start_mcp_notifications(session, &shared, warnings);
         }
         Err(error) => {
             log::warn!("ACP client MCP attach failed: {error}");
             if let Some(registry) = session.mcp_registry() {
-                crate::agent::mcp_bootstrap::start_mcp_notifications(session, registry, warnings);
+                let shared = std::sync::Arc::new(crate::agent::mcp_bootstrap::SharedMcp::from_registry(registry));
+                crate::agent::mcp_bootstrap::start_mcp_notifications(session, &shared, warnings);
             }
         }
     }
