@@ -881,6 +881,33 @@
             "xhigh": null
         }
     },
+    "longcat-2.0-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.bynara.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Meituan LongCat-2.0, a reasoning model with tool calling and a 1M-token context window",
+        "id": "longcat-2.0-free",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "LongCat-2.0 Free",
+        "provider": "nara-router",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "mimo-v2.5": {
         "api": "openai-completions",
         "baseUrl": "https://router.bynara.id/v1",
@@ -1182,15 +1209,16 @@
         "baseUrl": "https://router.bynara.id/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.15,
             "cacheWrite": 0.0,
             "input": 1.25,
             "output": 4.25
         },
+        "description": "Muse Spark 1.3 is a multimodal reasoning model from Meta for long-running agentic, multi-agent, and coding workflows. It improves long-horizon agent collaboration, instruction following, and coding efficiency relative to Muse Spark 1.2.",
         "id": "muse-spark-1.3",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "muse-spark-1.3",
+        "input": ["text", "image", "video", "pdf", "audio"],
+        "maxTokens": 131072,
+        "name": "Muse Spark 1.3",
         "provider": "nara-router",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -1198,9 +1226,9 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "muse-spark-1.3-contributor": {
@@ -1213,10 +1241,10 @@
             "input": 0.1,
             "output": 0.2
         },
-        "description": "Muse Spark 1.3 is a multimodal reasoning model from Meta for coding and agentic workflows.",
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
         "id": "muse-spark-1.3-contributor",
-        "input": ["text", "image", "video", "pdf", "audio"],
-        "maxTokens": 131072,
+        "input": ["text", "image"],
+        "maxTokens": 1048576,
         "name": "Muse Spark 1.3 Contributor",
         "provider": "nara-router",
         "reasoning": true,

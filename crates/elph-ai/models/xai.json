@@ -281,8 +281,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 10.98,
+            "output": 4.68
         },
         "description": "Image model for prompt-driven generation, editing, and visual design workflows",
         "id": "grok-imagine-image-quality",
