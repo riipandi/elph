@@ -59,10 +59,10 @@
         "baseUrl": "https://inference.baseten.co/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.13199999999999998,
+            "cacheRead": 0.132,
             "cacheWrite": 0.0,
             "input": 1.32,
-            "output": 3.9600000000000004
+            "output": 3.96
         },
         "description": "Flagship DeepSeek model for coding, reasoning, and agentic work",
         "id": "deepseek-ai/DeepSeek-V4-Pro-0813",
@@ -194,9 +194,9 @@
         "baseUrl": "https://inference.baseten.co/v1",
         "contextWindow": 128072,
         "cost": {
-            "cacheRead": 0.09999999999999999,
+            "cacheRead": 0.1,
             "cacheWrite": 0.0,
-            "input": 0.09999999999999999,
+            "input": 0.1,
             "output": 0.5
         },
         "description": "Open-weight GPT model for self-hosted reasoning and instruction-following workloads",
@@ -222,7 +222,7 @@
         "baseUrl": "https://inference.baseten.co/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.16999999999999998,
+            "cacheRead": 0.17,
             "cacheWrite": 0.0,
             "input": 1.0,
             "output": 4.05
@@ -250,7 +250,7 @@
         "baseUrl": "https://inference.baseten.co/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.09999999999999999,
+            "cacheRead": 0.1,
             "cacheWrite": 0.0,
             "input": 0.5,
             "output": 1.2
@@ -334,8 +334,8 @@
         "cost": {
             "cacheRead": 0.21,
             "cacheWrite": 0.0,
-            "input": 2.0999999999999996,
-            "output": 6.6000000000000005
+            "input": 2.1,
+            "output": 6.6
         },
         "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "zai-org/GLM-5.2-Fast",
@@ -388,8 +388,8 @@
         "cost": {
             "cacheRead": 0.21,
             "cacheWrite": 0.0,
-            "input": 2.0999999999999996,
-            "output": 6.6000000000000005
+            "input": 2.1,
+            "output": 6.6
         },
         "id": "zai-org/GLM-5.3-Fast",
         "input": ["text"],

@@ -283,7 +283,7 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.19999999999999998,
+            "input": 0.2,
             "output": 1.2
         },
         "description": "",
@@ -310,7 +310,7 @@
         "cost": {
             "cacheRead": 0.02,
             "cacheWrite": 0.0,
-            "input": 0.14700000000000002,
+            "input": 0.147,
             "output": 0.295
         },
         "description": "DeepSeek chat model for instruction following, coding, and analysis",
@@ -339,7 +339,7 @@
         "cost": {
             "cacheRead": 0.028,
             "cacheWrite": 0.0,
-            "input": 0.14700000000000002,
+            "input": 0.147,
             "output": 0.295
         },
         "description": "DeepSeek reasoning model for multi-step analysis, math, coding, and tools",
@@ -368,7 +368,7 @@
         "cost": {
             "cacheRead": 0.02,
             "cacheWrite": 0.0,
-            "input": 0.14700000000000002,
+            "input": 0.147,
             "output": 0.295
         },
         "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
@@ -397,7 +397,7 @@
         "cost": {
             "cacheRead": 0.02,
             "cacheWrite": 0.0,
-            "input": 0.14700000000000002,
+            "input": 0.147,
             "output": 0.295
         },
         "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
@@ -453,7 +453,7 @@
         "cost": {
             "cacheRead": 0.02,
             "cacheWrite": 0.405,
-            "input": 0.14700000000000002,
+            "input": 0.147,
             "output": 0.295
         },
         "description": "Experimental multimodal DeepSeek V4 Flash model for image understanding, coding, and agentic work",
@@ -596,8 +596,8 @@
         "cost": {
             "cacheRead": 0.01,
             "cacheWrite": 0.0,
-            "input": 0.09999999999999999,
-            "output": 0.39999999999999997
+            "input": 0.1,
+            "output": 0.4
         },
         "description": "Lean Gemini 2.5 lane for cheap multimodal traffic and quick agents",
         "id": "google/gemini-2.5-flash-lite",
@@ -1084,8 +1084,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.19999999999999998,
-            "output": 0.19999999999999998
+            "input": 0.2,
+            "output": 0.2
         },
         "description": "",
         "id": "google/gemini-embedding-2-preview",
@@ -1362,8 +1362,8 @@
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0.0,
-            "input": 0.19999999999999998,
-            "output": 1.5999999999999999
+            "input": 0.2,
+            "output": 1.6
         },
         "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
         "id": "gpt-5.6-luna",
@@ -2066,7 +2066,7 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.39999999999999997,
+            "input": 0.4,
             "output": 4.21
         },
         "description": "Dense 27B vision-language model for coding, agent tasks, and image and video understanding",
@@ -2094,7 +2094,7 @@
             "cacheRead": 0.025,
             "cacheWrite": 0.0,
             "input": 0.25,
-            "output": 2.9000000000000004
+            "output": 2.9
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "obsidian/gemma-4-26B-A4B",
@@ -2398,8 +2398,8 @@
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0.0,
-            "input": 0.39999999999999997,
-            "output": 1.5999999999999999
+            "input": 0.4,
+            "output": 1.6
         },
         "description": "Affordable GPT-4.1 lane for fast coding help and structured extraction",
         "id": "openai/gpt-4.1-mini",
@@ -2427,8 +2427,8 @@
         "cost": {
             "cacheRead": 0.09999999999999999,
             "cacheWrite": 0.0,
-            "input": 0.39999999999999997,
-            "output": 1.5999999999999999
+            "input": 0.4,
+            "output": 1.6
         },
         "description": "Compact GPT model for low-latency assistance and high-volume workloads",
         "id": "openai/gpt-4.1-mini-2025-04-14",
@@ -2454,8 +2454,8 @@
         "cost": {
             "cacheRead": 0.025,
             "cacheWrite": 0.0,
-            "input": 0.09999999999999999,
-            "output": 0.39999999999999997
+            "input": 0.1,
+            "output": 0.4
         },
         "description": "Tiny GPT-4.1 option for classification, routing, and very high-volume tasks",
         "id": "openai/gpt-4.1-nano",
@@ -2483,8 +2483,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.09999999999999999,
-            "output": 0.39999999999999997
+            "input": 0.1,
+            "output": 0.4
         },
         "description": "",
         "id": "openai/gpt-4.1-nano-2025-04-14",
@@ -2904,8 +2904,8 @@
         "cost": {
             "cacheRead": 0.005,
             "cacheWrite": 0.0,
-            "input": 0.049999999999999996,
-            "output": 0.39999999999999997
+            "input": 0.05,
+            "output": 0.4
         },
         "description": "Tiny GPT-5 lane for routing, extraction, classification, and bulk jobs",
         "id": "openai/gpt-5-nano",
@@ -2933,8 +2933,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.049999999999999996,
-            "output": 0.39999999999999997
+            "input": 0.05,
+            "output": 0.4
         },
         "description": "",
         "id": "openai/gpt-5-nano-2025-08-07",
@@ -3524,7 +3524,7 @@
         "cost": {
             "cacheRead": 0.02,
             "cacheWrite": 0.0,
-            "input": 0.19999999999999998,
+            "input": 0.2,
             "output": 1.25
         },
         "description": "Cheapest GPT-5.4 lane for simple routing, extraction, and bulk automation",
@@ -3553,7 +3553,7 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.19999999999999998,
+            "input": 0.2,
             "output": 1.25
         },
         "description": "Compact GPT model for low-latency assistance and high-volume workloads",
@@ -3748,7 +3748,7 @@
         "cost": {
             "cacheRead": 0.02,
             "cacheWrite": 0.25,
-            "input": 0.19999999999999998,
+            "input": 0.2,
             "output": 1.2
         },
         "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
@@ -3947,7 +3947,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.03,
-            "output": 0.16999999999999998
+            "output": 0.17
         },
         "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "openai/gpt-oss-120b",
@@ -4028,8 +4028,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.09999999999999999,
-            "output": 0.09999999999999999
+            "input": 0.1,
+            "output": 0.1
         },
         "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
         "id": "openai/text-embedding-ada-002",
@@ -4325,7 +4325,7 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.35900000000000004,
+            "input": 0.359,
             "output": 1.434
         },
         "description": "Flagship Qwen3 model for coding agents, complex reasoning, and tool use",
@@ -4353,7 +4353,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.861,
-            "output": 3.4410000000000003
+            "output": 3.441
         },
         "description": "Flagship Qwen model for complex reasoning, coding, and agentic workflows",
         "id": "qwen/qwen3-max-preview",
@@ -4379,8 +4379,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.39999999999999997,
-            "output": 1.5999999999999999
+            "input": 0.4,
+            "output": 1.6
         },
         "description": "Qwen vision-language instruct model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3-vl-235b-a22b-instruct",
@@ -4406,7 +4406,7 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.39999999999999997,
+            "input": 0.4,
             "output": 4.0
         },
         "description": "Qwen vision-language thinking model for visual reasoning, documents, and agent tasks",
@@ -4461,7 +4461,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.18,
-            "output": 2.0999999999999996
+            "output": 2.1
         },
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3-vl-8b-thinking",
@@ -4487,8 +4487,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.11499999999999999,
-            "output": 0.9169999999999999
+            "input": 0.115,
+            "output": 0.917
         },
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-122b-a10b",
@@ -4514,8 +4514,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.08600000000000001,
-            "output": 0.6880000000000001
+            "input": 0.086,
+            "output": 0.688
         },
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-27b",
@@ -4568,7 +4568,7 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.17200000000000001,
+            "input": 0.172,
             "output": 1.032
         },
         "description": "Large open Qwen multimodal MoE for visual agents and long technical tasks",
@@ -4595,8 +4595,8 @@
         "cost": {
             "cacheRead": 0.0058,
             "cacheWrite": 0.0,
-            "input": 0.09999999999999999,
-            "output": 0.39999999999999997
+            "input": 0.1,
+            "output": 0.4
         },
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-flash",
@@ -4622,8 +4622,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.09999999999999999,
-            "output": 0.39999999999999997
+            "input": 0.1,
+            "output": 0.4
         },
         "description": "Qwen3.5 Flash snapshot 2026-02-23 — frozen version of qwen3.5-flash, same capabilities.",
         "id": "qwen/qwen3.5-flash-2026-02-23",
@@ -4649,8 +4649,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.11499999999999999,
-            "output": 0.6880000000000001
+            "input": 0.115,
+            "output": 0.688
         },
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen/qwen3.5-plus",
@@ -4676,8 +4676,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.11499999999999999,
-            "output": 0.6880000000000001
+            "input": 0.115,
+            "output": 0.688
         },
         "description": "Qwen3.5 Plus snapshot 2026-02-15 — frozen version of qwen3.5-plus, same capabilities.",
         "id": "qwen/qwen3.5-plus-2026-02-15",
@@ -4704,7 +4704,7 @@
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.248,
-            "output": 1.4849999999999999
+            "output": 1.485
         },
         "description": "Open multimodal Qwen MoE for local agents that need vision, audio, and code",
         "id": "qwen/qwen3.6-35b-a3b",
@@ -4811,7 +4811,7 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.27599999999999997,
+            "input": 0.276,
             "output": 1.651
         },
         "description": "Qwen3.6 Plus snapshot 2026-04-02 — frozen version of qwen3.6-plus, same capabilities.",
@@ -5162,7 +5162,7 @@
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.0,
-            "input": 0.19999999999999998,
+            "input": 0.2,
             "output": 1.1
         },
         "description": "Lighter GLM-4.5 variant for fast coding assistance and cheaper agents",
@@ -5244,7 +5244,7 @@
             "cacheRead": 0.26,
             "cacheWrite": 0.0,
             "input": 1.0,
-            "output": 3.1999999999999997
+            "output": 3.2
         },
         "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
         "id": "z-ai/glm-5",
@@ -5325,7 +5325,7 @@
             "cacheRead": 0.234,
             "cacheWrite": 1.2,
             "input": 1.26,
-            "output": 3.9600000000000004
+            "output": 3.96
         },
         "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
         "id": "z-ai/glm-5.3",

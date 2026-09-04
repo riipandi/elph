@@ -158,9 +158,9 @@ fn parse_live_probe_body(body: &Value) -> LiveProbeResult {
             } else if let Some(pricing_obj) = entry.get("pricing") {
                 // OpenRouter shape: per-token strings keyed prompt/completion/input_cache_read.
                 if pricing_obj.get("prompt").is_some() || pricing_obj.get("completion").is_some() {
-                    let i = num_or_str(pricing_obj.get("prompt")) * 1_000_000.0;
-                    let o = num_or_str(pricing_obj.get("completion")) * 1_000_000.0;
-                    let c = num_or_str(pricing_obj.get("input_cache_read")) * 1_000_000.0;
+                    let i = per_token_to_per_million(num_or_str(pricing_obj.get("prompt")));
+                    let o = per_token_to_per_million(num_or_str(pricing_obj.get("completion")));
+                    let c = per_token_to_per_million(num_or_str(pricing_obj.get("input_cache_read")));
                     (i, o, c)
                 } else {
                     let i = num_or_str(pricing_obj.get("input"));
@@ -384,6 +384,12 @@ fn num_or_str(v: Option<&Value>) -> f64 {
     }
 }
 
+/// Convert a per-token USD rate to USD per million tokens, rounding away
+/// IEEE-754 noise so catalogs diff cleanly (`0.8`, not `0.7999999999999999`).
+fn per_token_to_per_million(rate: f64) -> f64 {
+    (rate * 1_000_000.0 * 1_000_000.0).round() / 1_000_000.0
+}
+
 /// ----------------------------------------------------------------------------
 /// ai-model-directory (The-Best-Codes) — community-curated, multi-provider catalog
 /// used as a secondary (compiled) pricing source when neither a live provider API
@@ -594,6 +600,16 @@ mod tests {
     }
 
     #[test]
+    fn per_token_rates_round_to_clean_per_million_values() {
+        assert_eq!(per_token_to_per_million(0.0000008), 0.8);
+        assert_eq!(per_token_to_per_million(0.0000016), 1.6);
+        assert_eq!(per_token_to_per_million(0.0000002), 0.2);
+        assert_eq!(per_token_to_per_million(0.0), 0.0);
+        // Rounding to 6 decimals keeps realistic precision intact.
+        assert_eq!(per_token_to_per_million(0.000000125), 0.125);
+    }
+
+    #[test]
     fn live_context_reads_openrouter_context_length_and_max_completion_tokens() {
         let body = serde_json::json!({
             "data": [
@@ -616,5 +632,13 @@ mod tests {
         assert_eq!(res.max_tokens.get("google/gemini-2.5-flash:batch"), Some(&65_535));
         assert_eq!(res.context.get("databyte/m1"), Some(&262_144));
         assert_eq!(res.max_tokens.get("databyte/m1"), Some(&65_536));
+        // Per-token strings convert to clean per-million USD (no float noise).
+        let (i, o, _) = res
+            .pricing
+            .get("google/gemini-2.5-flash:batch")
+            .copied()
+            .expect("pricing");
+        assert_eq!(i, 0.15);
+        assert_eq!(o, 1.25);
     }
 }
