@@ -377,6 +377,9 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
     let is_resume = config.resume_id.is_some();
     let shared_mcp = match config.shared_mcp.as_ref() {
         Some(shared) => Arc::clone(shared),
+        // INVARIANT: the deferred bootstrap path always attaches an MCP registry
+        // (runtime.rs sets `mcp_registry: Some(...)` for every created session),
+        // so this expect cannot fire on any reachable path.
         None => {
             let registry = session
                 .mcp_registry()

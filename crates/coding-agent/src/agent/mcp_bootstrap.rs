@@ -150,9 +150,12 @@ pub fn fingerprint_mcp_config(config: &McpConfig) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     match serde_json::to_vec(config) {
         Ok(bytes) => bytes.hash(&mut hasher),
+        // Serialization of a Deserialize-derived config is infallible in
+        // practice; fall back to the full Debug rendering so a collision still
+        // requires identical configs (never just an equal server count).
         Err(error) => {
             log::debug!("MCP config fingerprint serialization failed: {error:#}");
-            config.enabled_servers().count().hash(&mut hasher);
+            format!("{config:?}").hash(&mut hasher);
         }
     }
     hasher.finish()
