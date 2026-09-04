@@ -83,19 +83,31 @@ pub fn start_mcp_notifications(
 }
 
 fn spawn_mcp_event_loop(session: &CodingAgentSession, mcp_registry: Arc<McpToolRegistry>) {
-    let harness_for_reload = session.harness();
-    let mode_state = session.mode_state();
+    // Hold the harness and mode state weakly: this task lives as long as the
+    // registry's event channel (the registry pool owns the sender), and the
+    // harness's MCP tools own strong `Arc<McpToolRegistry>` clones. A strong
+    // capture here forms task → harness → tools → registry → sender, which
+    // keeps `rx.recv()` pending forever and leaks the whole previous session
+    // (harness + MCP pool) every time `/new` replaces the session.
+    let harness_for_reload = Arc::downgrade(&session.harness());
+    let mode_state = Arc::downgrade(&session.mode_state());
     let ui_tx = session.ui_event_sender();
     let started = mcp_registry.spawn_event_loop(
         move |registry| {
-            let harness = Arc::clone(&harness_for_reload);
-            let mode_state = Arc::clone(&mode_state);
+            // Session dropped — the stale catalog no longer has anywhere to go.
+            let Some(harness) = harness_for_reload.upgrade() else {
+                return;
+            };
+            let mode_state = mode_state.clone();
             let registry = Arc::clone(&registry);
             tokio::spawn(async move {
                 if let Err(error) = apply_mcp_tools_to_harness(&harness, &registry).await {
                     log::warn!("failed to apply MCP hot-reload tools: {error}");
                     return;
                 }
+                let Some(mode_state) = mode_state.upgrade() else {
+                    return;
+                };
                 let mode = *mode_state.lock().await;
                 if let Err(error) = reconcile_harness_tools(&harness, mode, Some(registry.as_ref()), None).await {
                     log::warn!("failed to reconcile tools after MCP hot-reload: {error}");
