@@ -1,214 +1,192 @@
 {
-  "$schema": "https://elph.space/provider-schema.json",
-  "DeepSeek-V4-Flash-0731-Fast": {
-    "api": "openai-completions",
-    "baseUrl": "https://pass.wafer.ai/v1",
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.0875,
-      "cacheWrite": 0.0,
-      "input": 0.35,
-      "output": 0.7
+    "$schema": "https://elph.space/provider-schema.json",
+    "DeepSeek-V4-Flash-0731-Fast": {
+        "api": "openai-completions",
+        "baseUrl": "https://pass.wafer.ai/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0875,
+            "cacheWrite": 0.0,
+            "input": 0.35,
+            "output": 0.7
+        },
+        "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
+        "id": "DeepSeek-V4-Flash-0731-Fast",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "DeepSeek V4 Flash 0731 Fast",
+        "provider": "wafer",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
     },
-    "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
-    "id": "DeepSeek-V4-Flash-0731-Fast",
-    "input": [
-      "text"
-    ],
-    "maxTokens": 32768,
-    "name": "DeepSeek V4 Flash 0731 Fast",
-    "provider": "wafer",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": null,
-      "minimal": null,
-      "off": "off",
-      "xhigh": null
-    }
-  },
-  "GLM-5.2": {
-    "api": "openai-completions",
-    "baseUrl": "https://pass.wafer.ai/v1",
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.2,
-      "cacheWrite": 0.0,
-      "input": 1.2,
-      "output": 4.1
+    "GLM-5.2": {
+        "api": "openai-completions",
+        "baseUrl": "https://pass.wafer.ai/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 0.0,
+            "input": 1.2,
+            "output": 4.1
+        },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "id": "GLM-5.2",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-5.2",
+        "provider": "wafer",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
     },
-    "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
-    "id": "GLM-5.2",
-    "input": [
-      "text"
-    ],
-    "maxTokens": 131072,
-    "name": "GLM-5.2",
-    "provider": "wafer",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": "medium",
-      "minimal": null,
-      "off": "off",
-      "xhigh": "xhigh"
-    }
-  },
-  "GLM-5.3": {
-    "api": "openai-completions",
-    "baseUrl": "https://pass.wafer.ai/v1",
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.2817,
-      "cacheWrite": 0.0,
-      "input": 1.1268,
-      "output": 3.9438
+    "GLM-5.3": {
+        "api": "openai-completions",
+        "baseUrl": "https://pass.wafer.ai/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.2817,
+            "cacheWrite": 0.0,
+            "input": 1.1268,
+            "output": 3.9438
+        },
+        "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
+        "id": "GLM-5.3",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "GLM-5.3",
+        "provider": "wafer",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
-    "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
-    "id": "GLM-5.3",
-    "input": [
-      "text"
-    ],
-    "maxTokens": 128000,
-    "name": "GLM-5.3",
-    "provider": "wafer",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": null,
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "GLM-5.3-Flash": {
-    "api": "openai-completions",
-    "baseUrl": "https://pass.wafer.ai/v1",
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.0319,
-      "cacheWrite": 0.0,
-      "input": 0.165,
-      "output": 0.55
+    "GLM-5.3-Flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://pass.wafer.ai/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0319,
+            "cacheWrite": 0.0,
+            "input": 0.165,
+            "output": 0.55
+        },
+        "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+        "id": "GLM-5.3-Flash",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "GLM 5.3 Flash",
+        "provider": "wafer",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
-    "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
-    "id": "GLM-5.3-Flash",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 131072,
-    "name": "GLM 5.3 Flash",
-    "provider": "wafer",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": null,
-      "max": "max",
-      "medium": null,
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "Kimi-K2.6": {
-    "api": "openai-completions",
-    "baseUrl": "https://pass.wafer.ai/v1",
-    "contextWindow": 262144,
-    "cost": {
-      "cacheRead": 0.19,
-      "cacheWrite": 0.0,
-      "input": 1.14,
-      "output": 4.8
+    "Kimi-K2.6": {
+        "api": "openai-completions",
+        "baseUrl": "https://pass.wafer.ai/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.19,
+            "cacheWrite": 0.0,
+            "input": 1.14,
+            "output": 4.8
+        },
+        "description": "Kimi K2.6 sparse MoE model with a 262K context window. Available serverless and not included in standard Wafer Pass. Non-ZDR only: requests with `Wafer-ZDR: required` are rejected.",
+        "id": "Kimi-K2.6",
+        "input": ["text", "image", "video"],
+        "maxTokens": 65536,
+        "name": "Kimi K2.6",
+        "provider": "wafer",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
     },
-    "description": "Kimi K2.6 sparse MoE model with a 262K context window. Available serverless and not included in standard Wafer Pass. Non-ZDR only: requests with `Wafer-ZDR: required` are rejected.",
-    "id": "Kimi-K2.6",
-    "input": [
-      "text",
-      "image",
-      "video"
-    ],
-    "maxTokens": 65536,
-    "name": "Kimi K2.6",
-    "provider": "wafer",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": "off",
-      "xhigh": "xhigh"
-    }
-  },
-  "Kimi-K3": {
-    "api": "openai-completions",
-    "baseUrl": "https://pass.wafer.ai/v1",
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.3,
-      "cacheWrite": 0.0,
-      "input": 3.0,
-      "output": 15.0
+    "Kimi-K3": {
+        "api": "openai-completions",
+        "baseUrl": "https://pass.wafer.ai/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 0.0,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
+        "id": "Kimi-K3",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "Kimi K3",
+        "provider": "wafer",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
-    "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
-    "id": "Kimi-K3",
-    "input": [
-      "text",
-      "image",
-      "video"
-    ],
-    "maxTokens": 131072,
-    "name": "Kimi K3",
-    "provider": "wafer",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": null,
-      "minimal": null,
-      "off": null,
-      "xhigh": null
+    "Qwen3.5-397B-A17B": {
+        "api": "openai-completions",
+        "baseUrl": "https://pass.wafer.ai/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.6,
+            "output": 3.6
+        },
+        "description": "Large open Qwen multimodal MoE for visual agents and long technical tasks",
+        "id": "Qwen3.5-397B-A17B",
+        "input": ["text", "image", "video", "audio"],
+        "maxTokens": 65536,
+        "name": "Qwen3.5 397B-A17B",
+        "provider": "wafer",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
     }
-  },
-  "Qwen3.5-397B-A17B": {
-    "api": "openai-completions",
-    "baseUrl": "https://pass.wafer.ai/v1",
-    "contextWindow": 262144,
-    "cost": {
-      "cacheRead": 0.0,
-      "cacheWrite": 0.0,
-      "input": 0.6,
-      "output": 3.6
-    },
-    "description": "Large open Qwen multimodal MoE for visual agents and long technical tasks",
-    "id": "Qwen3.5-397B-A17B",
-    "input": [
-      "text",
-      "image",
-      "video",
-      "audio"
-    ],
-    "maxTokens": 65536,
-    "name": "Qwen3.5 397B-A17B",
-    "provider": "wafer",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": "off",
-      "xhigh": "xhigh"
-    }
-  }
 }

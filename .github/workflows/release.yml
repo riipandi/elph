@@ -112,13 +112,16 @@ jobs:
       matrix:
         include:
           - arch: x86_64
-            runner: namespace-profile-linux-base-amd64
+            # runner: namespace-profile-linux-base-amd64
+            runner: avrea-ubuntu-latest-4-vcpu
             rust_arch: x86_64
           - arch: arm64
-            runner: namespace-profile-linux-base-arm64
+            # runner: namespace-profile-linux-base-arm64
+            runner: avrea-ubuntu-latest-arm-4-vcpu
             rust_arch: aarch64
           - arch: armv8
-            runner: namespace-profile-linux-base-arm64
+            # runner: namespace-profile-linux-base-arm64
+            runner: avrea-ubuntu-latest-arm-4-vcpu
             rust_arch: aarch64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
@@ -196,7 +199,8 @@ jobs:
             target: aarch64-apple-darwin
           - arch: x86_64
             target: x86_64-apple-darwin
-    runs-on: namespace-profile-macos-base-arm64
+    # runs-on: namespace-profile-macos-base-arm64
+    runs-on: avrea-macos-26-8-vcpu
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7

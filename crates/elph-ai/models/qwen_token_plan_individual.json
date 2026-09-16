@@ -1,211 +1,197 @@
 {
-  "$schema": "https://elph.space/provider-schema.json",
-  "deepseek-v4-flash": {
-    "api": "openai-completions",
-    "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
-    "compat": {
-      "requiresReasoningContentOnAssistantMessages": true,
-      "supportsDeveloperRole": false,
-      "supportsStore": false,
-      "thinkingFormat": "deepseek"
+    "$schema": "https://elph.space/provider-schema.json",
+    "deepseek-v4-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        "compat": {
+            "requiresReasoningContentOnAssistantMessages": true,
+            "supportsDeveloperRole": false,
+            "supportsStore": false,
+            "thinkingFormat": "deepseek"
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0077,
+            "cacheWrite": 0.0,
+            "input": 0.242,
+            "output": 0.726
+        },
+        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
+        "id": "deepseek-v4-flash",
+        "input": ["text"],
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Flash",
+        "provider": "qwen-token-plan-individual",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.0077,
-      "cacheWrite": 0.0,
-      "input": 0.242,
-      "output": 0.726
+    "deepseek-v4-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        "compat": {
+            "requiresReasoningContentOnAssistantMessages": true,
+            "supportsDeveloperRole": false,
+            "supportsStore": false,
+            "thinkingFormat": "deepseek"
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0242,
+            "cacheWrite": 0.0,
+            "input": 0.726,
+            "output": 2.178
+        },
+        "description": "DeepSeek V4 Pro snapshot with million-token context and support for thinking and non-thinking modes",
+        "id": "deepseek-v4-pro",
+        "input": ["text"],
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Pro",
+        "provider": "qwen-token-plan-individual",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
-    "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
-    "id": "deepseek-v4-flash",
-    "input": [
-      "text"
-    ],
-    "maxTokens": 384000,
-    "name": "DeepSeek V4 Flash",
-    "provider": "qwen-token-plan-individual",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": null,
-      "minimal": null,
-      "off": null,
-      "xhigh": null
+    "glm-5.2": {
+        "api": "openai-completions",
+        "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false,
+            "thinkingFormat": "qwen"
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.154,
+            "cacheWrite": 0.0,
+            "input": 1.54,
+            "output": 4.84
+        },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "id": "glm-5.2",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM 5.2",
+        "provider": "qwen-token-plan-individual",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "qwen3.6-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false,
+            "thinkingFormat": "qwen"
+        },
+        "contextWindow": 991000,
+        "cost": {
+            "cacheRead": 0.0169,
+            "cacheWrite": 0.21125,
+            "input": 0.17,
+            "output": 1.01
+        },
+        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
+        "id": "qwen3.6-flash",
+        "input": ["text", "image", "video"],
+        "maxTokens": 64000,
+        "name": "Qwen3.6 Flash",
+        "provider": "qwen-token-plan-individual",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "qwen3.7-max": {
+        "api": "openai-completions",
+        "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false,
+            "thinkingFormat": "qwen"
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 3.125,
+            "input": 2.5,
+            "output": 7.5
+        },
+        "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
+        "id": "qwen3.7-max",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "Qwen3.7 Max",
+        "provider": "qwen-token-plan-individual",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "qwen3.7-plus": {
+        "api": "openai-completions",
+        "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false,
+            "thinkingFormat": "qwen"
+        },
+        "contextWindow": 991000,
+        "cost": {
+            "cacheRead": 0.0564,
+            "cacheWrite": 0.3525,
+            "input": 0.282,
+            "output": 1.128
+        },
+        "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
+        "id": "qwen3.7-plus",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "Qwen3.7 Plus",
+        "provider": "qwen-token-plan-individual",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
     }
-  },
-  "deepseek-v4-pro": {
-    "api": "openai-completions",
-    "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
-    "compat": {
-      "requiresReasoningContentOnAssistantMessages": true,
-      "supportsDeveloperRole": false,
-      "supportsStore": false,
-      "thinkingFormat": "deepseek"
-    },
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.0242,
-      "cacheWrite": 0.0,
-      "input": 0.726,
-      "output": 2.178
-    },
-    "description": "DeepSeek V4 Pro snapshot with million-token context and support for thinking and non-thinking modes",
-    "id": "deepseek-v4-pro",
-    "input": [
-      "text"
-    ],
-    "maxTokens": 384000,
-    "name": "DeepSeek V4 Pro",
-    "provider": "qwen-token-plan-individual",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": null,
-      "max": "max",
-      "medium": null,
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "glm-5.2": {
-    "api": "openai-completions",
-    "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
-    "compat": {
-      "supportsDeveloperRole": false,
-      "supportsStore": false,
-      "thinkingFormat": "qwen"
-    },
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.154,
-      "cacheWrite": 0.0,
-      "input": 1.54,
-      "output": 4.84
-    },
-    "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
-    "id": "glm-5.2",
-    "input": [
-      "text"
-    ],
-    "maxTokens": 131072,
-    "name": "GLM 5.2",
-    "provider": "qwen-token-plan-individual",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": null,
-      "max": "max",
-      "medium": null,
-      "minimal": null,
-      "off": "off",
-      "xhigh": null
-    }
-  },
-  "qwen3.6-flash": {
-    "api": "openai-completions",
-    "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
-    "compat": {
-      "supportsDeveloperRole": false,
-      "supportsStore": false,
-      "thinkingFormat": "qwen"
-    },
-    "contextWindow": 991000,
-    "cost": {
-      "cacheRead": 0.0169,
-      "cacheWrite": 0.21125,
-      "input": 0.17,
-      "output": 1.01
-    },
-    "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
-    "id": "qwen3.6-flash",
-    "input": [
-      "text",
-      "image",
-      "video"
-    ],
-    "maxTokens": 64000,
-    "name": "Qwen3.6 Flash",
-    "provider": "qwen-token-plan-individual",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": "off",
-      "xhigh": "xhigh"
-    }
-  },
-  "qwen3.7-max": {
-    "api": "openai-completions",
-    "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
-    "compat": {
-      "supportsDeveloperRole": false,
-      "supportsStore": false,
-      "thinkingFormat": "qwen"
-    },
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.5,
-      "cacheWrite": 3.125,
-      "input": 2.5,
-      "output": 7.5
-    },
-    "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
-    "id": "qwen3.7-max",
-    "input": [
-      "text"
-    ],
-    "maxTokens": 64000,
-    "name": "Qwen3.7 Max",
-    "provider": "qwen-token-plan-individual",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": "off",
-      "xhigh": "xhigh"
-    }
-  },
-  "qwen3.7-plus": {
-    "api": "openai-completions",
-    "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
-    "compat": {
-      "supportsDeveloperRole": false,
-      "supportsStore": false,
-      "thinkingFormat": "qwen"
-    },
-    "contextWindow": 991000,
-    "cost": {
-      "cacheRead": 0.0564,
-      "cacheWrite": 0.3525,
-      "input": 0.282,
-      "output": 1.128
-    },
-    "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
-    "id": "qwen3.7-plus",
-    "input": [
-      "text"
-    ],
-    "maxTokens": 64000,
-    "name": "Qwen3.7 Plus",
-    "provider": "qwen-token-plan-individual",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": "off",
-      "xhigh": "xhigh"
-    }
-  }
 }

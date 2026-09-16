@@ -75,6 +75,25 @@ pub fn todo_panel_should_show(todos: &[TodoPanelRow]) -> bool {
     !todos.iter().all(|t| t.finished)
 }
 
+/// Limit the rows shown in the live panel while keeping the original order.
+/// Completed rows are removed from the tail first; active rows are then clipped
+/// as a final hard cap so a large todo list cannot consume the terminal height.
+fn limit_todo_panel_rows(rows: &[TodoPanelRow], cap: usize) -> (Vec<TodoPanelRow>, usize) {
+    let mut display = rows.to_vec();
+    let mut hidden_done_count = 0usize;
+    while display.len() > cap {
+        match display.iter().rposition(|row| row.finished) {
+            Some(index) => {
+                display.remove(index);
+                hidden_done_count += 1;
+            }
+            None => break,
+        }
+    }
+    display.truncate(cap);
+    (display, hidden_done_count)
+}
+
 /// Border title: `Todos 2/5` or `Todos 2/5 · steered` when the user redirected.
 pub fn todo_panel_header_line(done: usize, total: usize, redirected: bool) -> String {
     if redirected {
@@ -129,20 +148,9 @@ pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl I
     } else {
         props.max_rows.min(visible.len())
     };
-    // When items exceed the cap, hide finished items from the tail one by one
-    // while preserving original order. Stop when within cap or no more finished
-    // items can be removed.
-    let mut hidden_done_count = 0usize;
-    let mut display: Vec<&TodoPanelRow> = visible.iter().collect();
-    while display.len() > cap {
-        match display.iter().rposition(|r| r.finished) {
-            Some(idx) => {
-                display.remove(idx);
-                hidden_done_count += 1;
-            }
-            None => break,
-        }
-    }
+    // When items exceed the cap, hide finished items from the tail first, then
+    // enforce the hard cap for active rows while preserving original order.
+    let (display, hidden_done_count) = limit_todo_panel_rows(&visible, cap);
     let hidden_count = visible.len().saturating_sub(display.len());
     let show_more = hidden_count > 0;
     let header = todo_panel_header_line(done, total, props.redirected);
@@ -163,7 +171,7 @@ pub fn TodoProgressPanel(props: &TodoProgressPanelProps, hooks: Hooks) -> impl I
     let label_max = (inner_width as usize).saturating_sub(2).max(4);
 
     let mut rows: Vec<AnyElement<'static>> = Vec::new();
-    for row in display.iter() {
+    for row in &display {
         let color = if row.finished {
             // Muted styling for completed items (iocraft has no strikethrough).
             theme.text_muted
@@ -545,16 +553,7 @@ mod tests {
         // Simulate the panel's cap logic: cap=4, 5 items → hide 1 finished from tail.
         let (visible, _done, _total) = build_todo_panel_rows(&rows);
         let cap = 4;
-        let mut display: Vec<&TodoPanelRow> = visible.iter().collect();
-        let mut hidden_done = 0usize;
-        while display.len() > cap {
-            if let Some(idx) = display.iter().rposition(|r| r.finished) {
-                display.remove(idx);
-                hidden_done += 1;
-            } else {
-                break;
-            }
-        }
+        let (display, hidden_done) = limit_todo_panel_rows(&visible, cap);
         assert_eq!(display.len(), 4);
         assert_eq!(hidden_done, 1);
         // Last finished item ("d") removed; order preserved.
@@ -562,5 +561,23 @@ mod tests {
             display.iter().map(|r| r.label.as_str()).collect::<Vec<_>>(),
             vec!["a", "b", "c", "e"]
         );
+    }
+
+    #[test]
+    fn cap_is_hard_even_when_all_rows_are_active() {
+        let rows: Vec<TodoPanelRow> = (0..35)
+            .map(|i| TodoPanelRow {
+                label: format!("task-{i}"),
+                running: i == 0,
+                finished: false,
+            })
+            .collect();
+
+        let (display, hidden_done) = limit_todo_panel_rows(&rows, TODO_PANEL_DEFAULT_MAX_ROWS);
+
+        assert_eq!(display.len(), TODO_PANEL_DEFAULT_MAX_ROWS);
+        assert_eq!(hidden_done, 0);
+        assert_eq!(display.first().map(|row| row.label.as_str()), Some("task-0"));
+        assert_eq!(display.last().map(|row| row.label.as_str()), Some("task-4"));
     }
 }

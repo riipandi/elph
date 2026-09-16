@@ -1,514 +1,458 @@
 {
-  "$schema": "https://elph.space/provider-schema.json",
-  "claude-fable-5": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.anthropic.com",
-    "compat": {
-      "forceAdaptiveThinking": true,
-      "supportsStrictTools": true
+    "$schema": "https://elph.space/provider-schema.json",
+    "claude-fable-5": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "compat": {
+            "forceAdaptiveThinking": true,
+            "supportsStrictTools": true
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 1.0,
+            "cacheWrite": 12.5,
+            "input": 10.0,
+            "output": 50.0
+        },
+        "description": "Claude model for creative writing, analysis, and controlled agent workflows",
+        "id": "claude-fable-5",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-01-31",
+        "maxTokens": 128000,
+        "name": "Claude Fable 5",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2026-06-09",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
     },
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 1.0,
-      "cacheWrite": 12.5,
-      "input": 10.0,
-      "output": 50.0
+    "claude-fable-5-1": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 12.5,
+            "input": 10.0,
+            "output": 50.0
+        },
+        "description": "Claude model for demanding reasoning and long-horizon agentic work",
+        "id": "claude-fable-5-1",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-06",
+        "maxTokens": 128000,
+        "name": "Claude Fable 5.1",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2026-09-01",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
     },
-    "description": "Claude model for creative writing, analysis, and controlled agent workflows",
-    "id": "claude-fable-5",
-    "input": [
-      "text",
-      "image",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2026-01-31",
-    "maxTokens": 128000,
-    "name": "Claude Fable 5",
-    "provider": "anthropic",
-    "reasoning": true,
-    "releaseDate": "2026-06-09",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": "xhigh"
+    "claude-haiku-4-5": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "compat": {
+            "supportsStrictTools": true
+        },
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 1.25,
+            "input": 1.0,
+            "output": 5.0
+        },
+        "description": "Fast Claude lane for lightweight agents, office tasks, and responsive chat",
+        "id": "claude-haiku-4-5",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-02-28",
+        "maxTokens": 64000,
+        "name": "Claude Haiku 4.5 (latest)",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2025-10-15",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-haiku-4-5-20251001": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "compat": {
+            "supportsStrictTools": true
+        },
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 1.25,
+            "input": 1.0,
+            "output": 5.0
+        },
+        "description": "Fast Claude model for responsive assistance, classification, and lightweight agents",
+        "id": "claude-haiku-4-5-20251001",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-02-28",
+        "maxTokens": 64000,
+        "name": "Claude Haiku 4.5",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2025-10-15",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-opus-4-5": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "compat": {
+            "supportsStrictTools": true
+        },
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
+        "id": "claude-opus-4-5",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-05",
+        "maxTokens": 64000,
+        "name": "Claude Opus 4.5 (latest)",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2025-11-24",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-opus-4-5-20251101": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "compat": {
+            "supportsStrictTools": true
+        },
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
+        "id": "claude-opus-4-5-20251101",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-05",
+        "maxTokens": 64000,
+        "name": "Claude Opus 4.5",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2025-11-01",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-opus-4-6": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "compat": {
+            "forceAdaptiveThinking": true,
+            "supportsStrictTools": true
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "description": "High-end Claude for difficult coding, planning, and slower expert reasoning",
+        "id": "claude-opus-4-6",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-05-31",
+        "maxTokens": 128000,
+        "name": "Claude Opus 4.6",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2026-02-05",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-opus-4-7": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "compat": {
+            "forceAdaptiveThinking": true,
+            "supportsStrictTools": true,
+            "supportsTemperature": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "description": "Stronger Opus tier for advanced software work and high-stakes reasoning",
+        "id": "claude-opus-4-7",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-01-31",
+        "maxTokens": 128000,
+        "name": "Claude Opus 4.7",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2026-04-16",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "claude-opus-4-8": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "compat": {
+            "forceAdaptiveThinking": true,
+            "supportsStrictTools": true,
+            "supportsTemperature": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
+        "id": "claude-opus-4-8",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-01",
+        "maxTokens": 128000,
+        "name": "Claude Opus 4.8",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2026-05-28",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "claude-opus-5": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "compat": {
+            "forceAdaptiveThinking": true,
+            "supportsStrictTools": true,
+            "supportsTemperature": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "description": "Strongest Claude Opus model for coding, agents, and professional work",
+        "id": "claude-opus-5",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-05",
+        "maxTokens": 128000,
+        "name": "Claude Opus 5",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2026-07-24",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "claude-sonnet-4-5": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "compat": {
+            "supportsStrictTools": true
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
+        "id": "claude-sonnet-4-5",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-07-31",
+        "maxTokens": 64000,
+        "name": "Claude Sonnet 4.5 (latest)",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2025-09-29",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-sonnet-4-5-20250929": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "compat": {
+            "supportsStrictTools": true
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
+        "id": "claude-sonnet-4-5-20250929",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-07-31",
+        "maxTokens": 64000,
+        "name": "Claude Sonnet 4.5",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2025-09-29",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-sonnet-4-6": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "compat": {
+            "forceAdaptiveThinking": true,
+            "supportsStrictTools": true
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "id": "claude-sonnet-4-6",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2025-08-31",
+        "maxTokens": 128000,
+        "name": "Claude Sonnet 4.6",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2026-02-17",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-sonnet-5": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "compat": {
+            "forceAdaptiveThinking": true,
+            "supportsStrictTools": true
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 2.5,
+            "input": 2.0,
+            "output": 10.0
+        },
+        "description": "Everyday Claude agent model for coding, planning, browsing, and general work",
+        "id": "claude-sonnet-5",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-01-31",
+        "maxTokens": 128000,
+        "name": "Claude Sonnet 5",
+        "provider": "anthropic",
+        "reasoning": true,
+        "releaseDate": "2026-06-30",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
     }
-  },
-  "claude-fable-5-1": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.anthropic.com",
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.25,
-      "cacheWrite": 12.5,
-      "input": 10.0,
-      "output": 50.0
-    },
-    "description": "Claude model for demanding reasoning and long-horizon agentic work",
-    "id": "claude-fable-5-1",
-    "input": [
-      "text",
-      "image",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2026-06",
-    "maxTokens": 128000,
-    "name": "Claude Fable 5.1",
-    "provider": "anthropic",
-    "reasoning": true,
-    "releaseDate": "2026-09-01",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "claude-haiku-4-5": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.anthropic.com",
-    "compat": {
-      "supportsStrictTools": true
-    },
-    "contextWindow": 200000,
-    "cost": {
-      "cacheRead": 0.1,
-      "cacheWrite": 1.25,
-      "input": 1.0,
-      "output": 5.0
-    },
-    "description": "Fast Claude lane for lightweight agents, office tasks, and responsive chat",
-    "id": "claude-haiku-4-5",
-    "input": [
-      "text",
-      "image",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2025-02-28",
-    "maxTokens": 64000,
-    "name": "Claude Haiku 4.5 (latest)",
-    "provider": "anthropic",
-    "reasoning": true,
-    "releaseDate": "2025-10-15",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "claude-haiku-4-5-20251001": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.anthropic.com",
-    "compat": {
-      "supportsStrictTools": true
-    },
-    "contextWindow": 200000,
-    "cost": {
-      "cacheRead": 0.1,
-      "cacheWrite": 1.25,
-      "input": 1.0,
-      "output": 5.0
-    },
-    "description": "Fast Claude model for responsive assistance, classification, and lightweight agents",
-    "id": "claude-haiku-4-5-20251001",
-    "input": [
-      "text",
-      "image",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2025-02-28",
-    "maxTokens": 64000,
-    "name": "Claude Haiku 4.5",
-    "provider": "anthropic",
-    "reasoning": true,
-    "releaseDate": "2025-10-15",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "claude-opus-4-5": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.anthropic.com",
-    "compat": {
-      "supportsStrictTools": true
-    },
-    "contextWindow": 200000,
-    "cost": {
-      "cacheRead": 0.5,
-      "cacheWrite": 6.25,
-      "input": 5.0,
-      "output": 25.0
-    },
-    "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
-    "id": "claude-opus-4-5",
-    "input": [
-      "text",
-      "image",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2025-05",
-    "maxTokens": 64000,
-    "name": "Claude Opus 4.5 (latest)",
-    "provider": "anthropic",
-    "reasoning": true,
-    "releaseDate": "2025-11-24",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "claude-opus-4-5-20251101": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.anthropic.com",
-    "compat": {
-      "supportsStrictTools": true
-    },
-    "contextWindow": 200000,
-    "cost": {
-      "cacheRead": 0.5,
-      "cacheWrite": 6.25,
-      "input": 5.0,
-      "output": 25.0
-    },
-    "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
-    "id": "claude-opus-4-5-20251101",
-    "input": [
-      "text",
-      "image",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2025-05",
-    "maxTokens": 64000,
-    "name": "Claude Opus 4.5",
-    "provider": "anthropic",
-    "reasoning": true,
-    "releaseDate": "2025-11-01",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "claude-opus-4-6": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.anthropic.com",
-    "compat": {
-      "forceAdaptiveThinking": true,
-      "supportsStrictTools": true
-    },
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.5,
-      "cacheWrite": 6.25,
-      "input": 5.0,
-      "output": 25.0
-    },
-    "description": "High-end Claude for difficult coding, planning, and slower expert reasoning",
-    "id": "claude-opus-4-6",
-    "input": [
-      "text",
-      "image",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2025-05-31",
-    "maxTokens": 128000,
-    "name": "Claude Opus 4.6",
-    "provider": "anthropic",
-    "reasoning": true,
-    "releaseDate": "2026-02-05",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "claude-opus-4-7": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.anthropic.com",
-    "compat": {
-      "forceAdaptiveThinking": true,
-      "supportsStrictTools": true,
-      "supportsTemperature": false
-    },
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.5,
-      "cacheWrite": 6.25,
-      "input": 5.0,
-      "output": 25.0
-    },
-    "description": "Stronger Opus tier for advanced software work and high-stakes reasoning",
-    "id": "claude-opus-4-7",
-    "input": [
-      "text",
-      "image",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2026-01-31",
-    "maxTokens": 128000,
-    "name": "Claude Opus 4.7",
-    "provider": "anthropic",
-    "reasoning": true,
-    "releaseDate": "2026-04-16",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "claude-opus-4-8": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.anthropic.com",
-    "compat": {
-      "forceAdaptiveThinking": true,
-      "supportsStrictTools": true,
-      "supportsTemperature": false
-    },
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.5,
-      "cacheWrite": 6.25,
-      "input": 5.0,
-      "output": 25.0
-    },
-    "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
-    "id": "claude-opus-4-8",
-    "input": [
-      "text",
-      "image",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2026-01",
-    "maxTokens": 128000,
-    "name": "Claude Opus 4.8",
-    "provider": "anthropic",
-    "reasoning": true,
-    "releaseDate": "2026-05-28",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "claude-opus-5": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.anthropic.com",
-    "compat": {
-      "forceAdaptiveThinking": true,
-      "supportsStrictTools": true,
-      "supportsTemperature": false
-    },
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.5,
-      "cacheWrite": 6.25,
-      "input": 5.0,
-      "output": 25.0
-    },
-    "description": "Strongest Claude Opus model for coding, agents, and professional work",
-    "id": "claude-opus-5",
-    "input": [
-      "text",
-      "image",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2026-05",
-    "maxTokens": 128000,
-    "name": "Claude Opus 5",
-    "provider": "anthropic",
-    "reasoning": true,
-    "releaseDate": "2026-07-24",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "claude-sonnet-4-5": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.anthropic.com",
-    "compat": {
-      "supportsStrictTools": true
-    },
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.3,
-      "cacheWrite": 3.75,
-      "input": 3.0,
-      "output": 15.0
-    },
-    "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
-    "id": "claude-sonnet-4-5",
-    "input": [
-      "text",
-      "image",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2025-07-31",
-    "maxTokens": 64000,
-    "name": "Claude Sonnet 4.5 (latest)",
-    "provider": "anthropic",
-    "reasoning": true,
-    "releaseDate": "2025-09-29",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "claude-sonnet-4-5-20250929": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.anthropic.com",
-    "compat": {
-      "supportsStrictTools": true
-    },
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.3,
-      "cacheWrite": 3.75,
-      "input": 3.0,
-      "output": 15.0
-    },
-    "description": "Balanced Claude model for coding, analysis, agent workflows, and cost control",
-    "id": "claude-sonnet-4-5-20250929",
-    "input": [
-      "text",
-      "image",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2025-07-31",
-    "maxTokens": 64000,
-    "name": "Claude Sonnet 4.5",
-    "provider": "anthropic",
-    "reasoning": true,
-    "releaseDate": "2025-09-29",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "claude-sonnet-4-6": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.anthropic.com",
-    "compat": {
-      "forceAdaptiveThinking": true,
-      "supportsStrictTools": true
-    },
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.3,
-      "cacheWrite": 3.75,
-      "input": 3.0,
-      "output": 15.0
-    },
-    "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
-    "id": "claude-sonnet-4-6",
-    "input": [
-      "text",
-      "image",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2025-08-31",
-    "maxTokens": 128000,
-    "name": "Claude Sonnet 4.6",
-    "provider": "anthropic",
-    "reasoning": true,
-    "releaseDate": "2026-02-17",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "claude-sonnet-5": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.anthropic.com",
-    "compat": {
-      "forceAdaptiveThinking": true,
-      "supportsStrictTools": true
-    },
-    "contextWindow": 1000000,
-    "cost": {
-      "cacheRead": 0.2,
-      "cacheWrite": 2.5,
-      "input": 2.0,
-      "output": 10.0
-    },
-    "description": "Everyday Claude agent model for coding, planning, browsing, and general work",
-    "id": "claude-sonnet-5",
-    "input": [
-      "text",
-      "image",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2026-01-31",
-    "maxTokens": 128000,
-    "name": "Claude Sonnet 5",
-    "provider": "anthropic",
-    "reasoning": true,
-    "releaseDate": "2026-06-30",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  }
 }

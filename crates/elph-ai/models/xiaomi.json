@@ -1,220 +1,201 @@
 {
-  "$schema": "https://elph.space/provider-schema.json",
-  "mimo-v2-flash": {
-    "api": "openai-completions",
-    "baseUrl": "https://api.xiaomimimo.com/v1",
-    "compat": {
-      "requiresReasoningContentOnAssistantMessages": true,
-      "thinkingFormat": "deepseek"
+    "$schema": "https://elph.space/provider-schema.json",
+    "mimo-v2-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.xiaomimimo.com/v1",
+        "compat": {
+            "requiresReasoningContentOnAssistantMessages": true,
+            "thinkingFormat": "deepseek"
+        },
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "description": "Legacy model retained for compatibility with older integrations",
+        "id": "mimo-v2-flash",
+        "input": ["text"],
+        "knowledgeCutoff": "2024-12-01",
+        "maxTokens": 65536,
+        "name": "MiMo-V2-Flash",
+        "provider": "xiaomi",
+        "reasoning": true,
+        "releaseDate": "2025-12-16",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
-    "contextWindow": 262144,
-    "cost": {
-      "cacheRead": 0.0028,
-      "cacheWrite": 0.0,
-      "input": 0.14,
-      "output": 0.28
+    "mimo-v2-omni": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.xiaomimimo.com/v1",
+        "compat": {
+            "requiresReasoningContentOnAssistantMessages": true,
+            "thinkingFormat": "deepseek"
+        },
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "description": "Legacy model retained for compatibility with older integrations",
+        "id": "mimo-v2-omni",
+        "input": ["text", "image", "audio", "video", "pdf"],
+        "knowledgeCutoff": "2024-12",
+        "maxTokens": 131072,
+        "name": "MiMo-V2-Omni",
+        "provider": "xiaomi",
+        "reasoning": true,
+        "releaseDate": "2026-03-18",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
-    "description": "Legacy model retained for compatibility with older integrations",
-    "id": "mimo-v2-flash",
-    "input": [
-      "text"
-    ],
-    "knowledgeCutoff": "2024-12-01",
-    "maxTokens": 65536,
-    "name": "MiMo-V2-Flash",
-    "provider": "xiaomi",
-    "reasoning": true,
-    "releaseDate": "2025-12-16",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
+    "mimo-v2-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.xiaomimimo.com/v1",
+        "compat": {
+            "requiresReasoningContentOnAssistantMessages": true,
+            "thinkingFormat": "deepseek"
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0036,
+            "cacheWrite": 0.0,
+            "input": 0.435,
+            "output": 0.87
+        },
+        "description": "Earlier MiMo Pro model for multimodal agents, reasoning, and code tasks",
+        "id": "mimo-v2-pro",
+        "input": ["text"],
+        "knowledgeCutoff": "2024-12",
+        "maxTokens": 131072,
+        "name": "MiMo-V2-Pro",
+        "provider": "xiaomi",
+        "reasoning": true,
+        "releaseDate": "2026-03-18",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "mimo-v2.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.xiaomimimo.com/v1",
+        "compat": {
+            "requiresReasoningContentOnAssistantMessages": true,
+            "thinkingFormat": "deepseek"
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "id": "mimo-v2.5",
+        "input": ["text", "image", "audio", "video"],
+        "knowledgeCutoff": "2024-12",
+        "maxTokens": 131072,
+        "name": "MiMo-V2.5",
+        "provider": "xiaomi",
+        "reasoning": true,
+        "releaseDate": "2026-04-22",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "mimo-v2.5-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.xiaomimimo.com/v1",
+        "compat": {
+            "requiresReasoningContentOnAssistantMessages": true,
+            "thinkingFormat": "deepseek"
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0036,
+            "cacheWrite": 0.0,
+            "input": 0.435,
+            "output": 0.87
+        },
+        "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
+        "id": "mimo-v2.5-pro",
+        "input": ["text"],
+        "knowledgeCutoff": "2024-12",
+        "maxTokens": 131072,
+        "name": "MiMo-V2.5-Pro",
+        "provider": "xiaomi",
+        "reasoning": true,
+        "releaseDate": "2026-04-22",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "mimo-v2.5-pro-ultraspeed": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.xiaomimimo.com/v1",
+        "compat": {
+            "requiresReasoningContentOnAssistantMessages": true,
+            "thinkingFormat": "deepseek"
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0108,
+            "cacheWrite": 0.0,
+            "input": 1.305,
+            "output": 2.61
+        },
+        "description": "MiMo pro model for strong multimodal reasoning and agent execution",
+        "id": "mimo-v2.5-pro-ultraspeed",
+        "input": ["text"],
+        "knowledgeCutoff": "2024-12",
+        "maxTokens": 131072,
+        "name": "MiMo-V2.5-Pro-UltraSpeed",
+        "provider": "xiaomi",
+        "reasoning": true,
+        "releaseDate": "2026-06-08",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
-  },
-  "mimo-v2-omni": {
-    "api": "openai-completions",
-    "baseUrl": "https://api.xiaomimimo.com/v1",
-    "compat": {
-      "requiresReasoningContentOnAssistantMessages": true,
-      "thinkingFormat": "deepseek"
-    },
-    "contextWindow": 262144,
-    "cost": {
-      "cacheRead": 0.0028,
-      "cacheWrite": 0.0,
-      "input": 0.14,
-      "output": 0.28
-    },
-    "description": "Legacy model retained for compatibility with older integrations",
-    "id": "mimo-v2-omni",
-    "input": [
-      "text",
-      "image",
-      "audio",
-      "video",
-      "pdf"
-    ],
-    "knowledgeCutoff": "2024-12",
-    "maxTokens": 131072,
-    "name": "MiMo-V2-Omni",
-    "provider": "xiaomi",
-    "reasoning": true,
-    "releaseDate": "2026-03-18",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "mimo-v2-pro": {
-    "api": "openai-completions",
-    "baseUrl": "https://api.xiaomimimo.com/v1",
-    "compat": {
-      "requiresReasoningContentOnAssistantMessages": true,
-      "thinkingFormat": "deepseek"
-    },
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.0036,
-      "cacheWrite": 0.0,
-      "input": 0.435,
-      "output": 0.87
-    },
-    "description": "Earlier MiMo Pro model for multimodal agents, reasoning, and code tasks",
-    "id": "mimo-v2-pro",
-    "input": [
-      "text"
-    ],
-    "knowledgeCutoff": "2024-12",
-    "maxTokens": 131072,
-    "name": "MiMo-V2-Pro",
-    "provider": "xiaomi",
-    "reasoning": true,
-    "releaseDate": "2026-03-18",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "mimo-v2.5": {
-    "api": "openai-completions",
-    "baseUrl": "https://api.xiaomimimo.com/v1",
-    "compat": {
-      "requiresReasoningContentOnAssistantMessages": true,
-      "thinkingFormat": "deepseek"
-    },
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.0028,
-      "cacheWrite": 0.0,
-      "input": 0.14,
-      "output": 0.28
-    },
-    "description": "Open MiMo model for multimodal coding agents and long-context automation",
-    "id": "mimo-v2.5",
-    "input": [
-      "text",
-      "image",
-      "audio",
-      "video"
-    ],
-    "knowledgeCutoff": "2024-12",
-    "maxTokens": 131072,
-    "name": "MiMo-V2.5",
-    "provider": "xiaomi",
-    "reasoning": true,
-    "releaseDate": "2026-04-22",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "mimo-v2.5-pro": {
-    "api": "openai-completions",
-    "baseUrl": "https://api.xiaomimimo.com/v1",
-    "compat": {
-      "requiresReasoningContentOnAssistantMessages": true,
-      "thinkingFormat": "deepseek"
-    },
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.0036,
-      "cacheWrite": 0.0,
-      "input": 0.435,
-      "output": 0.87
-    },
-    "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
-    "id": "mimo-v2.5-pro",
-    "input": [
-      "text"
-    ],
-    "knowledgeCutoff": "2024-12",
-    "maxTokens": 131072,
-    "name": "MiMo-V2.5-Pro",
-    "provider": "xiaomi",
-    "reasoning": true,
-    "releaseDate": "2026-04-22",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "mimo-v2.5-pro-ultraspeed": {
-    "api": "openai-completions",
-    "baseUrl": "https://api.xiaomimimo.com/v1",
-    "compat": {
-      "requiresReasoningContentOnAssistantMessages": true,
-      "thinkingFormat": "deepseek"
-    },
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.0108,
-      "cacheWrite": 0.0,
-      "input": 1.305,
-      "output": 2.61
-    },
-    "description": "MiMo pro model for strong multimodal reasoning and agent execution",
-    "id": "mimo-v2.5-pro-ultraspeed",
-    "input": [
-      "text"
-    ],
-    "knowledgeCutoff": "2024-12",
-    "maxTokens": 131072,
-    "name": "MiMo-V2.5-Pro-UltraSpeed",
-    "provider": "xiaomi",
-    "reasoning": true,
-    "releaseDate": "2026-06-08",
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  }
 }

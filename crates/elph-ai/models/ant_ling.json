@@ -1,114 +1,108 @@
 {
-  "$schema": "https://elph.space/provider-schema.json",
-  "Ling-2.6-1T": {
-    "api": "openai-completions",
-    "baseUrl": "https://api.ant-ling.com/v1",
-    "compat": {
-      "maxTokensField": "max_tokens",
-      "supportsDeveloperRole": false,
-      "supportsLongCacheRetention": false,
-      "supportsReasoningEffort": false,
-      "supportsStore": false,
-      "thinkingFormat": "ant-ling"
+    "$schema": "https://elph.space/provider-schema.json",
+    "Ling-2.6-1T": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.ant-ling.com/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsDeveloperRole": false,
+            "supportsLongCacheRetention": false,
+            "supportsReasoningEffort": false,
+            "supportsStore": false,
+            "thinkingFormat": "ant-ling"
+        },
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 2.5
+        },
+        "description": "Inclusion AI ling-2.6-1t",
+        "id": "Ling-2.6-1T",
+        "input": ["text"],
+        "maxTokens": 262144,
+        "name": "ling-2.6-1t",
+        "provider": "ant-ling",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
-    "contextWindow": 262144,
-    "cost": {
-      "cacheRead": 0.0,
-      "cacheWrite": 0.0,
-      "input": 0.3,
-      "output": 2.5
+    "Ling-2.6-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.ant-ling.com/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsDeveloperRole": false,
+            "supportsLongCacheRetention": false,
+            "supportsReasoningEffort": false,
+            "supportsStore": false,
+            "thinkingFormat": "ant-ling"
+        },
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.1,
+            "output": 0.3
+        },
+        "description": "Inclusion AI ling-2.6-flash",
+        "id": "Ling-2.6-flash",
+        "input": ["text"],
+        "maxTokens": 262144,
+        "name": "ling-2.6-flash",
+        "provider": "ant-ling",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
-    "description": "Inclusion AI ling-2.6-1t",
-    "id": "Ling-2.6-1T",
-    "input": [
-      "text"
-    ],
-    "maxTokens": 262144,
-    "name": "ling-2.6-1t",
-    "provider": "ant-ling",
-    "reasoning": false,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
+    "Ring-2.6-1T": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.ant-ling.com/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsDeveloperRole": false,
+            "supportsLongCacheRetention": false,
+            "supportsReasoningEffort": false,
+            "supportsStore": false,
+            "thinkingFormat": "ant-ling"
+        },
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 2.5
+        },
+        "description": "Inclusion AI ring-2.6-1t",
+        "id": "Ring-2.6-1T",
+        "input": ["text"],
+        "maxTokens": 262144,
+        "name": "ring-2.6-1t",
+        "provider": "ant-ling",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
     }
-  },
-  "Ling-2.6-flash": {
-    "api": "openai-completions",
-    "baseUrl": "https://api.ant-ling.com/v1",
-    "compat": {
-      "maxTokensField": "max_tokens",
-      "supportsDeveloperRole": false,
-      "supportsLongCacheRetention": false,
-      "supportsReasoningEffort": false,
-      "supportsStore": false,
-      "thinkingFormat": "ant-ling"
-    },
-    "contextWindow": 262144,
-    "cost": {
-      "cacheRead": 0.0,
-      "cacheWrite": 0.0,
-      "input": 0.1,
-      "output": 0.3
-    },
-    "description": "Inclusion AI ling-2.6-flash",
-    "id": "Ling-2.6-flash",
-    "input": [
-      "text"
-    ],
-    "maxTokens": 262144,
-    "name": "ling-2.6-flash",
-    "provider": "ant-ling",
-    "reasoning": false,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": null,
-      "xhigh": null
-    }
-  },
-  "Ring-2.6-1T": {
-    "api": "openai-completions",
-    "baseUrl": "https://api.ant-ling.com/v1",
-    "compat": {
-      "maxTokensField": "max_tokens",
-      "supportsDeveloperRole": false,
-      "supportsLongCacheRetention": false,
-      "supportsReasoningEffort": false,
-      "supportsStore": false,
-      "thinkingFormat": "ant-ling"
-    },
-    "contextWindow": 262144,
-    "cost": {
-      "cacheRead": 0.0,
-      "cacheWrite": 0.0,
-      "input": 0.3,
-      "output": 2.5
-    },
-    "description": "Inclusion AI ring-2.6-1t",
-    "id": "Ring-2.6-1T",
-    "input": [
-      "text"
-    ],
-    "maxTokens": 262144,
-    "name": "ring-2.6-1t",
-    "provider": "ant-ling",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": "max",
-      "medium": "medium",
-      "minimal": null,
-      "off": "off",
-      "xhigh": null
-    }
-  }
 }

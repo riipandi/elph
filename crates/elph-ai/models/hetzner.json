@@ -1,63 +1,57 @@
 {
-  "$schema": "https://elph.space/provider-schema.json",
-  "Qwen/Qwen3.6-35B-A3B-FP8": {
-    "api": "openai-completions",
-    "baseUrl": "https://inference.hetzner.com/api/v1",
-    "contextWindow": 262144,
-    "cost": {
-      "cacheRead": 0.0,
-      "cacheWrite": 0.0,
-      "input": 0.17,
-      "output": 1.1
+    "$schema": "https://elph.space/provider-schema.json",
+    "Qwen/Qwen3.6-35B-A3B-FP8": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.hetzner.com/api/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.17,
+            "output": 1.1
+        },
+        "description": "Open multimodal Qwen MoE for local agents that need vision, audio, and code",
+        "id": "Qwen/Qwen3.6-35B-A3B-FP8",
+        "input": ["text", "image"],
+        "maxTokens": 262144,
+        "name": "Qwen3.6 35B A3B FP8",
+        "provider": "hetzner",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
     },
-    "description": "Open multimodal Qwen MoE for local agents that need vision, audio, and code",
-    "id": "Qwen/Qwen3.6-35B-A3B-FP8",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 262144,
-    "name": "Qwen3.6 35B A3B FP8",
-    "provider": "hetzner",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": "off",
-      "xhigh": "xhigh"
+    "Qwen3.8-27B": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.hetzner.com/api/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.41,
+            "output": 2.5
+        },
+        "description": "Dense 27B vision-language model for coding, agent tasks, and image and video understanding",
+        "id": "Qwen3.8-27B",
+        "input": ["text", "image"],
+        "maxTokens": 262144,
+        "name": "Qwen3.8-27B",
+        "provider": "hetzner",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
     }
-  },
-  "Qwen3.8-27B": {
-    "api": "openai-completions",
-    "baseUrl": "https://inference.hetzner.com/api/v1",
-    "contextWindow": 262144,
-    "cost": {
-      "cacheRead": 0.0,
-      "cacheWrite": 0.0,
-      "input": 0.41,
-      "output": 2.5
-    },
-    "description": "Dense 27B vision-language model for coding, agent tasks, and image and video understanding",
-    "id": "Qwen3.8-27B",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 262144,
-    "name": "Qwen3.8-27B",
-    "provider": "hetzner",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "high",
-      "low": "low",
-      "max": null,
-      "medium": "medium",
-      "minimal": null,
-      "off": "off",
-      "xhigh": "xhigh"
-    }
-  }
 }
