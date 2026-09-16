@@ -737,13 +737,10 @@ pub fn get_supported_thinking_levels(model: &Model) -> Vec<crate::types::Thinkin
         .filter(|level| {
             if let Some(map) = &model.thinking_level_map {
                 let key = crate::models::thinking_level_to_str(*level);
-                if map.get(key) == Some(&None) {
-                    return false;
-                }
-                // xhigh/max are opt-in via thinkingLevelMap; other levels default on.
-                if matches!(level, crate::types::ThinkingLevel::Xhigh | crate::types::ThinkingLevel::Max) {
-                    return map.contains_key(key);
-                }
+                // A generated map is authoritative for every level. Missing and
+                // explicit-null entries are both unsupported; this keeps an
+                // off-only sentinel from advertising unmapped reasoning levels.
+                return matches!(map.get(key), Some(Some(_)));
             } else if matches!(level, crate::types::ThinkingLevel::Xhigh | crate::types::ThinkingLevel::Max) {
                 return false;
             }

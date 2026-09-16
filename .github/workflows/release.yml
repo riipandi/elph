@@ -42,7 +42,7 @@ env:
 jobs:
   auth:
     name: auth
-    runs-on: ubuntu-slim
+    runs-on: avrea-ubuntu-24.04-1-vcpu
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@v7
@@ -52,7 +52,7 @@ jobs:
   version-gate:
     name: version
     needs: auth
-    runs-on: ubuntu-slim
+    runs-on: avrea-ubuntu-24.04-1-vcpu
     timeout-minutes: 5
     outputs:
       should_continue: ${{ steps.gate.outputs.should_continue }}
@@ -112,13 +112,16 @@ jobs:
       matrix:
         include:
           - arch: x86_64
-            runner: namespace-profile-linux-base-amd64
+            # runner: namespace-profile-linux-base-amd64
+            runner: avrea-ubuntu-24.04-4-vcpu
             rust_arch: x86_64
           - arch: arm64
-            runner: namespace-profile-linux-base-arm64
+            # runner: namespace-profile-linux-base-arm64
+            runner: avrea-ubuntu-24.04-arm-4-vcpu
             rust_arch: aarch64
           - arch: armv8
-            runner: namespace-profile-linux-base-arm64
+            # runner: namespace-profile-linux-base-arm64
+            runner: avrea-ubuntu-24.04-arm-4-vcpu
             rust_arch: aarch64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
@@ -196,7 +199,8 @@ jobs:
             target: aarch64-apple-darwin
           - arch: x86_64
             target: x86_64-apple-darwin
-    runs-on: namespace-profile-macos-base-arm64
+    # runs-on: namespace-profile-macos-base-arm64
+    runs-on: avrea-macos-26-8-vcpu
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -251,7 +255,7 @@ jobs:
     name: windows
     needs: [version-gate, check-windows]
     if: needs.version-gate.outputs.should_continue == 'true'
-    runs-on: avrea-windows-2025-16-vcpu
+    runs-on: avrea-windows-2025-4-vcpu
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -302,7 +306,7 @@ jobs:
     name: publish
     needs: [version-gate, build-linux, build-macos, build-windows]
     if: needs.version-gate.outputs.should_continue == 'true'
-    runs-on: ubuntu-slim
+    runs-on: avrea-ubuntu-24.04-1-vcpu
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -407,7 +411,7 @@ jobs:
     if: >-
       needs.version-gate.outputs.should_continue == 'true' &&
       needs.version-gate.outputs.release_channel == 'release'
-    runs-on: ubuntu-slim
+    runs-on: avrea-ubuntu-24.04-1-vcpu
     timeout-minutes: 10
     concurrency:
       group: sync-main-version

@@ -5,10 +5,10 @@
         "baseUrl": "https://pass.wafer.ai/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.05,
+            "cacheRead": 0.0875,
             "cacheWrite": 0.0,
-            "input": 0.1,
-            "output": 0.25
+            "input": 0.35,
+            "output": 0.7
         },
         "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
         "id": "DeepSeek-V4-Flash-0731-Fast",
@@ -32,10 +32,10 @@
         "baseUrl": "https://pass.wafer.ai/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.23,
+            "cacheRead": 0.2,
             "cacheWrite": 0.0,
-            "input": 1.26,
-            "output": 3.96
+            "input": 1.2,
+            "output": 4.1
         },
         "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "GLM-5.2",
@@ -59,10 +59,10 @@
         "baseUrl": "https://pass.wafer.ai/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.26,
+            "cacheRead": 0.2817,
             "cacheWrite": 0.0,
-            "input": 1.19,
-            "output": 4.4
+            "input": 1.1268,
+            "output": 3.9438
         },
         "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
         "id": "GLM-5.3",
@@ -86,10 +86,10 @@
         "baseUrl": "https://pass.wafer.ai/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.02,
+            "cacheRead": 0.0319,
             "cacheWrite": 0.0,
-            "input": 0.1,
-            "output": 0.35
+            "input": 0.165,
+            "output": 0.55
         },
         "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
         "id": "GLM-5.3-Flash",
@@ -143,7 +143,7 @@
             "cacheRead": 0.3,
             "cacheWrite": 0.0,
             "input": 3.0,
-            "output": 12.75
+            "output": 15.0
         },
         "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
         "id": "Kimi-K3",

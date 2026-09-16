@@ -3,7 +3,7 @@
     "accounts/fireworks/models/deepseek-v4-flash-0731": {
         "api": "openai-completions",
         "baseUrl": "https://api.fireworks.ai/inference/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.007,
             "cacheWrite": 0.0,
@@ -32,7 +32,7 @@
     "accounts/fireworks/models/deepseek-v4-flash-vision-exp": {
         "api": "openai-completions",
         "baseUrl": "https://api.fireworks.ai/inference/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.007,
             "cacheWrite": 0.0,
@@ -61,7 +61,7 @@
     "accounts/fireworks/models/deepseek-v4-pro-0813": {
         "api": "openai-completions",
         "baseUrl": "https://api.fireworks.ai/inference/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.044,
             "cacheWrite": 0.0,
@@ -94,7 +94,7 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1048576,
+        "contextWindow": 1048575,
         "cost": {
             "cacheRead": 0.14,
             "cacheWrite": 0.0,
@@ -123,7 +123,7 @@
     "accounts/fireworks/models/glm-5p3": {
         "api": "openai-completions",
         "baseUrl": "https://api.fireworks.ai/inference/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 0.0,
@@ -152,7 +152,7 @@
     "accounts/fireworks/models/glm-5p3-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.fireworks.ai/inference/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.0,
@@ -251,7 +251,7 @@
             "supportsEagerToolInputStreaming": false,
             "supportsLongCacheRetention": false
         },
-        "contextWindow": 262144,
+        "contextWindow": 262000,
         "cost": {
             "cacheRead": 0.16,
             "cacheWrite": 0.0,
@@ -286,7 +286,7 @@
             "supportsEagerToolInputStreaming": false,
             "supportsLongCacheRetention": false
         },
-        "contextWindow": 262144,
+        "contextWindow": 262000,
         "cost": {
             "cacheRead": 0.19,
             "cacheWrite": 0.0,
@@ -540,7 +540,7 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 1048576,
+        "contextWindow": 1048575,
         "cost": {
             "cacheRead": 0.21,
             "cacheWrite": 0.0,

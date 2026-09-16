@@ -46,6 +46,11 @@ function initReveal() {
   const els = document.querySelectorAll(".reveal");
   if (!els.length) return;
 
+  if (typeof IntersectionObserver === "undefined") {
+    els.forEach((el) => el.classList.add("visible"));
+    return;
+  }
+
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
@@ -73,24 +78,29 @@ function initMobileMenu() {
 
   if (!btn || !menu) return;
 
+  let restoreFocus: HTMLElement | null = null;
+
   function open() {
     const header = document.querySelector("header");
+    restoreFocus = document.activeElement instanceof HTMLElement ? document.activeElement : btn;
     header?.classList.add("menu-open");
     menu!.classList.remove("hidden");
     overlay?.classList.remove("hidden");
     menuIcon?.classList.add("hidden");
     closeIcon?.classList.remove("hidden");
     btn!.setAttribute("aria-expanded", "true");
+    menu!.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         menu!.classList.add("open");
+        menu!.querySelector<HTMLElement>("a, button, [tabindex]")?.focus();
       });
     });
   }
 
-  function close() {
+  function close(shouldRestoreFocus = true) {
     const header = document.querySelector("header");
     header?.classList.remove("menu-open");
     menu!.classList.remove("open");
@@ -100,7 +110,9 @@ function initMobileMenu() {
       menuIcon?.classList.remove("hidden");
       closeIcon?.classList.add("hidden");
       btn!.setAttribute("aria-expanded", "false");
+      menu!.setAttribute("aria-hidden", "true");
       document.body.style.overflow = "";
+      if (shouldRestoreFocus) (restoreFocus || btn)!.focus();
     }, 250);
   }
 
@@ -110,9 +122,12 @@ function initMobileMenu() {
     if (expanded) close();
     else open();
   });
-  overlay?.addEventListener("click", close);
-  menu.querySelectorAll("a").forEach((a) => a.addEventListener("click", close));
-  menu.querySelector("pagefind-modal-trigger")?.addEventListener("click", close);
+  overlay?.addEventListener("click", () => close());
+  menu.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => close(false)));
+  menu.querySelector("pagefind-modal-trigger")?.addEventListener("click", () => close(false));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && btn!.getAttribute("aria-expanded") === "true") close();
+  });
 }
 
 // ----------------------------------------------------------------------------

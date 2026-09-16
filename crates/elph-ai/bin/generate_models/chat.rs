@@ -280,6 +280,13 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
         write_cline_catalogs(&options.models_dir, &mut index, &models_dev)?;
     }
 
+    let repaired = repair_legacy_all_null_maps(&options.models_dir)?;
+    if repaired > 0 {
+        term::note(format!(
+            "Repaired {repaired} legacy all-null thinkingLevelMap entries with explicit off"
+        ));
+    }
+
     index.sort_by(|a, b| a.provider_id.cmp(&b.provider_id));
     let index_path = options.models_dir.join("index.json");
     let index_json = serde_json::to_string_pretty(&index).context("serialize index")?;
@@ -301,6 +308,39 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
     verify_providers_registered(&index, &options.builtin_rs)?;
 
     Ok(())
+}
+
+/// Repair catalogs that were preserved because an auxiliary provider endpoint
+/// was unavailable during generation. This keeps the no-all-null invariant true
+/// even when a provider's live catalog refresh is skipped.
+fn repair_legacy_all_null_maps(models_dir: &PathBuf) -> Result<usize> {
+    let mut repaired = 0;
+    for item in fs::read_dir(models_dir).with_context(|| format!("read {}", models_dir.display()))? {
+        let path = item?.path();
+        if path.extension().and_then(|ext| ext.to_str()) != Some("json")
+            || path.file_name().and_then(|name| name.to_str()) == Some("index.json")
+        {
+            continue;
+        }
+        let raw = fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
+        let mut json: Value = serde_json::from_str(&raw).with_context(|| format!("parse {}", path.display()))?;
+        if let Some(entries) = json.as_object_mut() {
+            let mut changed = false;
+            for entry in entries.values_mut() {
+                if let Some(map) = entry.get_mut("thinkingLevelMap") {
+                    if super::thinking_map::ensure_non_empty_map(map) {
+                        changed = true;
+                        repaired += 1;
+                    }
+                }
+            }
+            if changed {
+                let pretty = serde_json::to_string_pretty(&json).context("serialize repaired catalog")?;
+                fs::write(&path, format!("{pretty}\n")).with_context(|| format!("write {}", path.display()))?;
+            }
+        }
+    }
+    Ok(repaired)
 }
 
 /// Fetch and write the Cline (usage-billing) + ClinePass catalogs from Cline's
@@ -351,7 +391,7 @@ fn tally_map(entry: &Value, ok: &mut usize, bad: &mut usize) {
         *bad += 1;
         return;
     };
-    if KEYS.iter().all(|k| map.contains_key(*k)) {
+    if KEYS.iter().all(|k| map.contains_key(*k)) && map.values().any(|v| !v.is_null()) {
         *ok += 1;
     } else {
         *bad += 1;

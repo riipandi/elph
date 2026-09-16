@@ -124,7 +124,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -188,7 +188,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -220,7 +220,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -252,7 +252,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -284,7 +284,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -316,7 +316,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -348,7 +348,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -679,7 +679,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1000000,
+        "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
@@ -1079,7 +1079,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -1355,7 +1355,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 163840,
+        "contextWindow": 161000,
         "cost": {
             "cacheRead": 0.135,
             "cacheWrite": 0.0,
@@ -1485,7 +1485,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 163840,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.135,
             "cacheWrite": 0.0,
@@ -1583,7 +1583,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1048576,
+        "contextWindow": 1024000,
         "cost": {
             "cacheRead": 0.028,
             "cacheWrite": 0.0,
@@ -1612,7 +1612,7 @@
     "deepseek/deepseek-v4-flash-0731": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 1310720,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.028,
             "cacheWrite": 0.0,
@@ -1674,7 +1674,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1048576,
+        "contextWindow": 1024000,
         "cost": {
             "cacheRead": 0.135,
             "cacheWrite": 0.0,
@@ -1703,7 +1703,7 @@
     "deepseek/deepseek-v4-pro-0813": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 1048576,
+        "contextWindow": 1024000,
         "cost": {
             "cacheRead": 0.132,
             "cacheWrite": 0.0,
@@ -1997,7 +1997,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 131072,
+        "contextWindow": 65536,
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 0.375,
@@ -2677,7 +2677,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2710,7 +2710,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2722,7 +2722,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 8192,
+        "contextWindow": 4096,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -2742,7 +2742,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2774,7 +2774,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -2806,7 +2806,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3257,7 +3257,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3322,7 +3322,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3354,7 +3354,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3386,7 +3386,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3418,7 +3418,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3450,7 +3450,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3462,7 +3462,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1048576,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -3482,7 +3482,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3494,7 +3494,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1310720,
+        "contextWindow": 327680,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -3514,7 +3514,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3546,7 +3546,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3750,7 +3750,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3782,7 +3782,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3814,7 +3814,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -3954,7 +3954,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 204800,
+        "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.0,
@@ -4045,7 +4045,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1048576,
+        "contextWindow": 524288,
         "cost": {
             "cacheRead": 0.06,
             "cacheWrite": 0.0,
@@ -4124,7 +4124,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -4151,7 +4151,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -4183,7 +4183,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -4215,7 +4215,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -4247,7 +4247,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -4611,7 +4611,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 131072,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.011,
             "cacheWrite": 0.0,
@@ -4663,7 +4663,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -4695,7 +4695,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -4960,7 +4960,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -4992,7 +4992,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5088,7 +5088,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5120,7 +5120,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5261,7 +5261,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1000000,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0.0,
@@ -5326,7 +5326,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 262144,
+        "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0.0,
@@ -5528,7 +5528,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5560,7 +5560,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5592,7 +5592,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5624,7 +5624,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5658,7 +5658,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5692,7 +5692,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5724,7 +5724,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5758,7 +5758,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5792,7 +5792,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5826,7 +5826,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5860,7 +5860,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5894,7 +5894,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5928,7 +5928,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5962,7 +5962,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -5996,7 +5996,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -6028,7 +6028,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7025,7 +7025,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7057,7 +7057,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7089,7 +7089,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7518,7 +7518,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7550,7 +7550,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7614,7 +7614,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7626,7 +7626,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 2000000,
+        "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -7646,7 +7646,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7712,7 +7712,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -7780,7 +7780,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -8180,7 +8180,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 131072,
+        "contextWindow": 40960,
         "cost": {
             "cacheRead": 0.025,
             "cacheWrite": 0.0,
@@ -8308,7 +8308,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 131072,
+        "contextWindow": 40960,
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.0,
@@ -8340,7 +8340,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 262144,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.04,
             "cacheWrite": 0.0,
@@ -8404,7 +8404,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 131072,
+        "contextWindow": 40960,
         "cost": {
             "cacheRead": 0.04,
             "cacheWrite": 0.0,
@@ -8724,7 +8724,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 262144,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -8756,7 +8756,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 262144,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.11,
             "cacheWrite": 0.0,
@@ -8852,7 +8852,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 262144,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -8916,7 +8916,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 262144,
+        "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -9482,7 +9482,7 @@
     "qwen/qwen3.8-2.4t-a95b": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.25,
             "cacheWrite": 2.5,
@@ -9615,7 +9615,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -9679,7 +9679,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -9711,7 +9711,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -9799,7 +9799,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -9831,7 +9831,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -9863,7 +9863,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -10069,7 +10069,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 262144,
+        "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.04,
             "cacheWrite": 0.0,
@@ -10182,7 +10182,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -10209,7 +10209,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -10236,7 +10236,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -10362,7 +10362,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -10394,7 +10394,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -10406,7 +10406,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1024000,
+        "contextWindow": 32768,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -10426,7 +10426,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -10438,7 +10438,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1048576,
+        "contextWindow": 524288,
         "cost": {
             "cacheRead": 0.16,
             "cacheWrite": 0.0,
@@ -10466,7 +10466,7 @@
     "thinkingmachines/inkling-small": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 1048576,
+        "contextWindow": 524288,
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0.0,
@@ -10573,7 +10573,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -10666,7 +10666,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -10865,7 +10865,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1050000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.003,
             "cacheWrite": 0.0,
@@ -10899,7 +10899,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 1050000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.004,
             "cacheWrite": 0.0,
@@ -11093,7 +11093,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 204800,
+        "contextWindow": 202752,
         "cost": {
             "cacheRead": 0.08,
             "cacheWrite": 0.0,
@@ -11157,7 +11157,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 204800,
+        "contextWindow": 198000,
         "cost": {
             "cacheRead": 0.12,
             "cacheWrite": 0.0,
@@ -11221,7 +11221,7 @@
             "supportsStore": false,
             "thinkingFormat": "openrouter"
         },
-        "contextWindow": 204800,
+        "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 0.0,
@@ -11280,7 +11280,7 @@
     "z-ai/glm-5.3": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 1310720,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 0.0,
@@ -11307,7 +11307,7 @@
     "z-ai/glm-5.3-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 1310720,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.0,
@@ -11494,7 +11494,7 @@
     "~deepseek/deepseek-v4-flash-latest": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 1310720,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.013,
             "cacheWrite": 0.0,
@@ -11713,7 +11713,7 @@
     "~z-ai/glm-flash-latest": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 1310720,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.015,
             "cacheWrite": 0.0,
@@ -11740,7 +11740,7 @@
     "~z-ai/glm-latest": {
         "api": "openai-completions",
         "baseUrl": "https://api.kilo.ai/api/gateway",
-        "contextWindow": 1310720,
+        "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 0.0,

@@ -3,7 +3,7 @@
     "MiniMax-M2.7": {
         "api": "openai-completions",
         "baseUrl": "https://ai.databyte.co.id/v1",
-        "contextWindow": 200000,
+        "contextWindow": 204800,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -13,7 +13,7 @@
         "description": "MiniMax model for chat, coding, office work, and agentic tasks",
         "id": "MiniMax-M2.7",
         "input": ["text"],
-        "maxTokens": 32000,
+        "maxTokens": 131072,
         "name": "MiniMax-M2.7",
         "provider": "databyte",
         "reasoning": false,
@@ -30,7 +30,7 @@
     "MiniMax-M3": {
         "api": "openai-completions",
         "baseUrl": "https://ai.databyte.co.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 524288,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -40,7 +40,7 @@
         "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "id": "MiniMax-M3",
         "input": ["text", "image", "video"],
-        "maxTokens": 70000,
+        "maxTokens": 512000,
         "name": "MiniMax-M3",
         "provider": "databyte",
         "reasoning": true,
@@ -76,7 +76,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -93,7 +93,7 @@
         "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-v4-flash",
         "input": ["text"],
-        "maxTokens": 200000,
+        "maxTokens": 384000,
         "name": "DeepSeek V4 Flash",
         "provider": "databyte",
         "reasoning": true,
@@ -110,7 +110,7 @@
     "mimo-v2.5": {
         "api": "openai-completions",
         "baseUrl": "https://ai.databyte.co.id/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.0028,
             "cacheWrite": 0.0,

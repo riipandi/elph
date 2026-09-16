@@ -6,7 +6,7 @@
 //! 2. models.dev `reasoning_options` (direct provider catalogs)
 //! 3. Provider-family override map (known defaults from official docs)
 //! 4. Previous complete map (preserved Elph overlay)
-//! 5. Unresolved — all values null, never silently guessed
+//! 5. Unresolved — explicit `off` sentinel, never silently guessed
 
 use serde_json::{Value, json};
 
@@ -45,13 +45,13 @@ pub fn build_thinking_level_map(
                 && mdev_fallback.get("reasoning").and_then(|v| v.as_bool()) == Some(true)
             {
                 // Found a reasoning-capable family member — apply provider override
-                // based on the matched family instead of silently returning all-null.
+                // based on the matched family instead of silently returning an off-only map.
                 if let Some(map) = provider_override_map(provider_id, model_id) {
                     return map;
                 }
             }
         }
-        return all_null_map();
+        return off_only_map();
     }
 
     // 2. Direct models.dev reasoning_options (authoritative per-model data).
@@ -98,7 +98,20 @@ pub fn build_thinking_level_map(
     }
 
     // 5. No source found.
-    all_null_map()
+    off_only_map()
+}
+
+/// Replace a legacy all-null map with the explicit off sentinel.
+pub(crate) fn ensure_non_empty_map(map: &mut Value) -> bool {
+    let Some(obj) = map.as_object() else {
+        return false;
+    };
+    if LEVELS.iter().all(|level| obj.get(*level).is_none_or(Value::is_null)) {
+        *map = off_only_map();
+        true
+    } else {
+        false
+    }
 }
 
 /// Extract a family keyword from a model id for models.dev fallback lookup.
@@ -198,12 +211,13 @@ pub(crate) fn extract_family_keyword(model_id: &str) -> String {
         .unwrap_or_else(|| normalized.clone())
 }
 
-fn all_null_map() -> Value {
-    let mut obj = serde_json::Map::new();
-    for k in LEVELS {
-        obj.insert((*k).to_string(), Value::Null);
-    }
-    Value::Object(obj)
+/// Explicitly represent a model with no confirmed discrete thinking effort.
+///
+/// `off` is a control sentinel, not a claim that the model supports reasoning.
+/// Keeping the remaining levels null preserves the strict no-guessing rule while
+/// preventing an ambiguous all-null map from entering generated catalogs.
+fn off_only_map() -> Value {
+    map_with(&[("off", Some("off"))])
 }
 
 fn map_with(pairs: &[(&str, Option<&str>)]) -> Value {
@@ -578,7 +592,7 @@ fn provider_override_map(provider_id: &str, model_id: &str) -> Option<Value> {
         }
         // Gemini batch/free routes — no discrete thinking effort levels
         b if b.contains("gemini") && (b.contains(":batch") || b.contains(":free") || b.contains("-batch")) => {
-            Some(all_null_map())
+            Some(off_only_map())
         }
         _ => None,
     }
@@ -626,11 +640,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn non_reasoning_all_null() {
+    fn non_reasoning_uses_off_sentinel() {
         let m = build_thinking_level_map("openai", "gpt-4", false, None, None, None, None);
-        for k in LEVELS {
-            assert!(m[k].is_null(), "{k}");
-        }
+        assert_eq!(m["off"], "off");
+        assert!(m["medium"].is_null());
+    }
+
+    #[test]
+    fn unresolved_reasoning_uses_off_sentinel_without_guessing() {
+        let m = build_thinking_level_map("unknown-provider", "unknown-model", true, None, None, None, None);
+        assert_eq!(m["off"], "off");
+        assert!(m["medium"].is_null());
     }
 
     #[test]
@@ -840,22 +860,20 @@ mod tests {
     }
 
     #[test]
-    fn gemini_batch_free_returns_all_null() {
-        // Batch/free routes have no discrete thinking effort — all-null is correct
+    fn gemini_batch_free_returns_off_sentinel() {
+        // Batch/free routes have no discrete thinking effort — off is explicit.
         let m = build_thinking_level_map("openrouter", "google/gemini-2.5-flash:batch", true, None, None, None, None);
-        for k in ["off", "minimal", "low", "medium", "high", "xhigh", "max"] {
-            assert!(m[k].is_null(), "{k} should be null for batch route");
-        }
+        assert_eq!(m["off"], "off");
+        assert!(m["medium"].is_null());
     }
 
     #[test]
-    fn openrouter_free_route_returns_all_null() {
-        // Batch/free routes for models with NO family match get all-null
+    fn openrouter_free_route_returns_off_sentinel() {
+        // Batch/free routes for models with NO family match use explicit off.
         // (gpt-3.5-turbo:batch has no known family override)
         let m = build_thinking_level_map("openrouter", "openai/gpt-3.5-turbo:batch", true, None, None, None, None);
-        for k in ["off", "minimal", "low", "medium", "high", "xhigh", "max"] {
-            assert!(m[k].is_null(), "{k} should be null for unknown free route");
-        }
+        assert_eq!(m["off"], "off");
+        assert!(m["medium"].is_null());
     }
 
     #[test]

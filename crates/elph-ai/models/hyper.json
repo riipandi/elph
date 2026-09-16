@@ -104,7 +104,7 @@
         "baseUrl": "https://hyper.charm.land/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0479072,
+            "cacheRead": 0.047907,
             "cacheWrite": 0.0,
             "input": 1.437216,
             "output": 4.311648
@@ -283,7 +283,7 @@
         "baseUrl": "https://hyper.charm.land/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.031575200000000005,
+            "cacheRead": 0.031575,
             "cacheWrite": 0.0,
             "input": 0.16332,
             "output": 0.5444
@@ -523,7 +523,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -555,7 +555,7 @@
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": null,
+            "off": "off",
             "xhigh": null
         }
     },
@@ -602,7 +602,7 @@
         },
         "contextWindow": 512000,
         "cost": {
-            "cacheRead": 0.0642392,
+            "cacheRead": 0.064239,
             "cacheWrite": 0.0,
             "input": 0.32664,
             "output": 1.30656
