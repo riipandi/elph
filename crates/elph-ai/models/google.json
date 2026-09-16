@@ -1,1134 +1,1307 @@
 {
-    "$schema": "https://elph.space/provider-schema.json",
-    "deep-research-max-preview-04-2026": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 0.0,
-            "input": 2.0,
-            "output": 12.0
-        },
-        "description": "Maximum-comprehensiveness agentic researcher for multi-step investigation, synthesis, and cited reports",
-        "id": "deep-research-max-preview-04-2026",
-        "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Deep Research Max Preview (Apr-21-2026)",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-04-21",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
+  "$schema": "https://elph.space/provider-schema.json",
+  "deep-research-max-preview-04-2026": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.2,
+      "cacheWrite": 0.0,
+      "input": 2.0,
+      "output": 12.0
     },
-    "deep-research-preview-04-2026": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 0.0,
-            "input": 2.0,
-            "output": 12.0
-        },
-        "description": "Agentic model for autonomous multi-step research, synthesis, and cited reports",
-        "id": "deep-research-preview-04-2026",
-        "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Deep Research Preview (Apr-21-2026)",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-04-21",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-2.5-computer-use-preview-10-2025": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 1.25,
-            "output": 10.0
-        },
-        "description": "Specialized Gemini 2.5 model for browser-control agents that automate UI tasks",
-        "id": "gemini-2.5-computer-use-preview-10-2025",
-        "input": ["text", "image"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Gemini 2.5 Computer Use Preview 10-2025",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2025-10-07",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-2.5-flash": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.03,
-            "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 2.5
-        },
-        "description": "Fast Gemini workhorse for multimodal apps where latency and price matter",
-        "id": "gemini-2.5-flash",
-        "input": ["text", "image", "audio", "video", "pdf"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Gemini 2.5 Flash",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2025-06-17",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-2.5-flash-image": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 32768,
-        "cost": {
-            "cacheRead": 0.075,
-            "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 30.0
-        },
-        "description": "Nano Banana image model for fast generation, edits, and character-consistent assets",
-        "id": "gemini-2.5-flash-image",
-        "input": ["text", "image"],
-        "knowledgeCutoff": "2024-06",
-        "maxTokens": 32768,
-        "name": "Nano Banana",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2025-08-26",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-2.5-flash-lite": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.01,
-            "cacheWrite": 0.0,
-            "input": 0.1,
-            "output": 0.4
-        },
-        "description": "Lean Gemini 2.5 lane for cheap multimodal traffic and quick agents",
-        "id": "gemini-2.5-flash-lite",
-        "input": ["text", "image", "audio", "video", "pdf"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Gemini 2.5 Flash-Lite",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2025-06-17",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-2.5-flash-preview-tts": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 8192,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.5,
-            "output": 10.0
-        },
-        "description": "Speech generation model for controllable voice, narration, and audio delivery",
-        "id": "gemini-2.5-flash-preview-tts",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 16384,
-        "name": "Gemini 2.5 Flash Preview TTS",
-        "provider": "google",
-        "reasoning": false,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-2.5-pro": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.125,
-            "cacheWrite": 0.0,
-            "input": 1.25,
-            "output": 10.0
-        },
-        "description": "Google's proven reasoning model for coding, math, and multimodal analysis",
-        "id": "gemini-2.5-pro",
-        "input": ["text", "image", "audio", "video", "pdf"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Gemini 2.5 Pro",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2025-06-17",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-2.5-pro-preview-tts": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 8192,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 1.0,
-            "output": 20.0
-        },
-        "description": "Speech generation model for controllable voice, narration, and audio delivery",
-        "id": "gemini-2.5-pro-preview-tts",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 16384,
-        "name": "Gemini 2.5 Pro Preview TTS",
-        "provider": "google",
-        "reasoning": false,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3-flash-preview": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.05,
-            "cacheWrite": 0.0,
-            "input": 0.5,
-            "output": 3.0
-        },
-        "description": "New Gemini flash lane bringing frontier-style multimodal reasoning to cheaper runs",
-        "id": "gemini-3-flash-preview",
-        "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Gemini 3 Flash Preview",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2025-12-17",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": "minimal",
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3-pro-image": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 2.0,
-            "output": 120.0
-        },
-        "description": "Nano Banana Pro for higher-fidelity image generation and design-heavy edits",
-        "id": "gemini-3-pro-image",
-        "input": ["text", "image"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 32768,
-        "name": "Nano Banana Pro",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-05-28",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3-pro-image-preview": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 2.0,
-            "output": 120.0
-        },
-        "description": "Nano Banana Pro for higher-fidelity image generation and design-heavy edits",
-        "id": "gemini-3-pro-image-preview",
-        "input": ["text", "image"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 32768,
-        "name": "Nano Banana Pro",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2025-11-20",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.1-flash-image": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 65536,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.5,
-            "output": 60.0
-        },
-        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
-        "id": "gemini-3.1-flash-image",
-        "input": ["text", "image", "video", "pdf"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Nano Banana 2",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-05-28",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": "minimal",
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.1-flash-image-preview": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 65536,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.5,
-            "output": 60.0
-        },
-        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
-        "id": "gemini-3.1-flash-image-preview",
-        "input": ["text", "image", "pdf"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Nano Banana 2",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-02-26",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": "minimal",
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.1-flash-lite": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.025,
-            "cacheWrite": 0.0,
-            "input": 0.25,
-            "output": 1.5
-        },
-        "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
-        "id": "gemini-3.1-flash-lite",
-        "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Gemini 3.1 Flash Lite",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-05-07",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": "minimal",
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.1-flash-lite-image": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 65536,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.25,
-            "output": 30.0
-        },
-        "description": "Fastest, most cost-efficient Gemini image model for high-volume 1K generation and editing",
-        "id": "gemini-3.1-flash-lite-image",
-        "input": ["text", "image"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Nano Banana 2 Lite",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-06-30",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": "minimal",
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.1-flash-lite-preview": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.025,
-            "cacheWrite": 0.0,
-            "input": 0.25,
-            "output": 1.5
-        },
-        "description": "Legacy model retained for compatibility with older integrations",
-        "id": "gemini-3.1-flash-lite-preview",
-        "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Gemini 3.1 Flash Lite Preview",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-03-03",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": "minimal",
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.1-flash-live-preview": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.75,
-            "output": 4.5
-        },
-        "description": "High-quality, low-latency Live API model for real-time dialogue and voice-first AI applications",
-        "id": "gemini-3.1-flash-live-preview",
-        "input": ["text", "image", "video", "audio"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Gemini 3.1 Flash Live Preview",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-03-26",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": "minimal",
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.1-flash-tts-preview": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 8192,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 1.0,
-            "output": 20.0
-        },
-        "description": "Low-latency speech generation with steerable prompts and expressive audio tags",
-        "id": "gemini-3.1-flash-tts-preview",
-        "input": ["text"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 16384,
-        "name": "Gemini 3.1 Flash TTS Preview",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-04-15",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.1-pro-preview": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 0.0,
-            "input": 2.0,
-            "output": 12.0
-        },
-        "description": "Reasoning-first Gemini preview for agentic coding and complex problem solving",
-        "id": "gemini-3.1-pro-preview",
-        "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Gemini 3.1 Pro Preview",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-02-19",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.1-pro-preview-customtools": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 0.0,
-            "input": 2.0,
-            "output": 12.0
-        },
-        "description": "Advanced Gemini model for complex reasoning, coding, and multimodal analysis",
-        "id": "gemini-3.1-pro-preview-customtools",
-        "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Gemini 3.1 Pro Preview Custom Tools",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-02-19",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.5-flash": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.15,
-            "cacheWrite": 0.0,
-            "input": 1.5,
-            "output": 9.0
-        },
-        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
-        "id": "gemini-3.5-flash",
-        "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 65536,
-        "name": "Gemini 3.5 Flash",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-05-19",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": "minimal",
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.5-flash-lite": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.03,
-            "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 2.5
-        },
-        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
-        "id": "gemini-3.5-flash-lite",
-        "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2026-03",
-        "maxTokens": 65536,
-        "name": "Gemini 3.5 Flash Lite",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-07-21",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": "minimal",
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.5-live-translate-preview": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 16384,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 3.5,
-            "output": 21.0
-        },
-        "description": "Low-latency audio-to-audio model for real-time speech translation across 70+ languages",
-        "id": "gemini-3.5-live-translate-preview",
-        "input": ["audio"],
-        "knowledgeCutoff": "2025-01",
-        "maxTokens": 32768,
-        "name": "Gemini 3.5 Live Translate Preview",
-        "provider": "google",
-        "reasoning": false,
-        "releaseDate": "2026-06-09",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.6-flash": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.075,
-            "cacheWrite": 0.0,
-            "input": 0.75,
-            "output": 3.75
-        },
-        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
-        "id": "gemini-3.6-flash",
-        "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2026-03",
-        "maxTokens": 65536,
-        "name": "Gemini 3.6 Flash",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-07-21",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": "minimal",
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.7-flash": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.075,
-            "cacheWrite": 0.0,
-            "input": 0.75,
-            "output": 3.75
-        },
-        "description": "High-efficiency Gemini model for agentic workflows, coding, and multimodal reasoning",
-        "id": "gemini-3.7-flash",
-        "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2026-03",
-        "maxTokens": 65536,
-        "name": "Gemini 3.7 Flash",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-08-13",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-3.8-flash": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.075,
-            "cacheWrite": 0.0,
-            "input": 0.75,
-            "output": 3.75
-        },
-        "description": "Google's most intelligent Flash model, engineered for long-horizon software engineering, autonomous agents, and complex enterprise workflows",
-        "id": "gemini-3.8-flash",
-        "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "",
-        "maxTokens": 65536,
-        "name": "Gemini 3.8 Flash",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-09-02",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-embedding-001": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 2048,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.15,
-            "output": 0.0
-        },
-        "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
-        "id": "gemini-embedding-001",
-        "input": ["text"],
-        "knowledgeCutoff": "2025-05",
-        "maxTokens": 1,
-        "name": "Gemini Embedding 001",
-        "provider": "google",
-        "reasoning": false,
-        "releaseDate": "2025-05-20",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-embedding-2": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 8192,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.2,
-            "output": 0.0
-        },
-        "description": "Multimodal embedding model mapping text, images, video, audio, and PDFs into a unified embedding space",
-        "id": "gemini-embedding-2",
-        "input": ["text", "image", "audio", "video", "pdf"],
-        "knowledgeCutoff": "2025-11",
-        "maxTokens": 1,
-        "name": "Gemini Embedding 2",
-        "provider": "google",
-        "reasoning": false,
-        "releaseDate": "2026-04-22",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-flash-latest": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.075,
-            "cacheWrite": 0.0,
-            "input": 0.75,
-            "output": 3.75
-        },
-        "description": "High-efficiency Gemini model for agentic workflows, coding, and multimodal reasoning",
-        "id": "gemini-flash-latest",
-        "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2026-03",
-        "maxTokens": 65536,
-        "name": "Gemini Flash Latest",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-08-13",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-flash-lite-latest": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.03,
-            "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 2.5
-        },
-        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
-        "id": "gemini-flash-lite-latest",
-        "input": ["text", "image", "video", "audio", "pdf"],
-        "knowledgeCutoff": "2026-03",
-        "maxTokens": 65536,
-        "name": "Gemini Flash-Lite Latest",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-07-21",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": "minimal",
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemini-omni-flash-preview": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 1.5,
-            "output": 17.5
-        },
-        "description": "Video generation and editing model for fast, conversational text- and image-to-video workflows",
-        "id": "gemini-omni-flash-preview",
-        "input": ["text", "image", "video"],
-        "knowledgeCutoff": "",
-        "maxTokens": 65536,
-        "name": "Gemini Omni Flash Preview",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-06-30",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemma-4-26b-a4b-it": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.062,
-            "input": 0.111,
-            "output": 0.557
-        },
-        "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
-        "id": "gemma-4-26b-a4b-it",
-        "input": ["text", "image"],
-        "knowledgeCutoff": "",
-        "maxTokens": 32768,
-        "name": "Gemma 4 26B A4B IT",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-04-02",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "gemma-4-31b-it": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.02,
-            "cacheWrite": 0.0,
-            "input": 0.223,
-            "output": 0.39
-        },
-        "description": "Largest Gemma 4 instruction model for open, self-hosted chat and reasoning",
-        "id": "gemma-4-31b-it",
-        "input": ["text", "image"],
-        "knowledgeCutoff": "",
-        "maxTokens": 32768,
-        "name": "Gemma 4 31B IT",
-        "provider": "google",
-        "reasoning": true,
-        "releaseDate": "2026-04-02",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "lyria-3-clip-preview": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Music generation model for short 30-second clips, loops, and previews from text or image prompts",
-        "id": "lyria-3-clip-preview",
-        "input": ["text", "image"],
-        "knowledgeCutoff": "",
-        "maxTokens": 65536,
-        "name": "Lyria 3 Clip Preview",
-        "provider": "google",
-        "reasoning": false,
-        "releaseDate": "2026-03-25",
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "lyria-3-pro-preview": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Music generation model for full-length songs from text or images with vocals and structure",
-        "id": "lyria-3-pro-preview",
-        "input": ["text", "image"],
-        "knowledgeCutoff": "",
-        "maxTokens": 65536,
-        "name": "Lyria 3 Pro Preview",
-        "provider": "google",
-        "reasoning": false,
-        "releaseDate": "2026-03-25",
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "veo-3.1-fast-generate-preview": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 480,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Video model for prompt-guided generation, editing, and motion workflows",
-        "id": "veo-3.1-fast-generate-preview",
-        "input": ["text", "image", "video"],
-        "knowledgeCutoff": "",
-        "maxTokens": 8192,
-        "name": "Veo 3.1 fast",
-        "provider": "google",
-        "reasoning": false,
-        "releaseDate": "2025-10-15",
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "veo-3.1-generate-preview": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 480,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Video model for prompt-guided generation, editing, and motion workflows",
-        "id": "veo-3.1-generate-preview",
-        "input": ["text", "image"],
-        "knowledgeCutoff": "",
-        "maxTokens": 8192,
-        "name": "Veo 3.1",
-        "provider": "google",
-        "reasoning": false,
-        "releaseDate": "2025-10-15",
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "veo-3.1-lite-generate-preview": {
-        "api": "google-generative-ai",
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
-        "contextWindow": 480,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Video model for prompt-guided generation, editing, and motion workflows",
-        "id": "veo-3.1-lite-generate-preview",
-        "input": ["text", "image"],
-        "knowledgeCutoff": "",
-        "maxTokens": 8192,
-        "name": "Veo 3.1 lite",
-        "provider": "google",
-        "reasoning": false,
-        "releaseDate": "2026-03-31",
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
+    "description": "Maximum-comprehensiveness agentic researcher for multi-step investigation, synthesis, and cited reports",
+    "id": "deep-research-max-preview-04-2026",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Deep Research Max Preview (Apr-21-2026)",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-04-21",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
     }
+  },
+  "deep-research-preview-04-2026": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.2,
+      "cacheWrite": 0.0,
+      "input": 2.0,
+      "output": 12.0
+    },
+    "description": "Agentic model for autonomous multi-step research, synthesis, and cited reports",
+    "id": "deep-research-preview-04-2026",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Deep Research Preview (Apr-21-2026)",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-04-21",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-2.5-computer-use-preview-10-2025": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 1.25,
+      "output": 10.0
+    },
+    "description": "Specialized Gemini 2.5 model for browser-control agents that automate UI tasks",
+    "id": "gemini-2.5-computer-use-preview-10-2025",
+    "input": [
+      "text",
+      "image"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Gemini 2.5 Computer Use Preview 10-2025",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2025-10-07",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-2.5-flash": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.03,
+      "cacheWrite": 0.0,
+      "input": 0.3,
+      "output": 2.5
+    },
+    "description": "Fast Gemini workhorse for multimodal apps where latency and price matter",
+    "id": "gemini-2.5-flash",
+    "input": [
+      "text",
+      "image",
+      "audio",
+      "video",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Gemini 2.5 Flash",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2025-06-17",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-2.5-flash-image": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 32768,
+    "cost": {
+      "cacheRead": 0.075,
+      "cacheWrite": 0.0,
+      "input": 0.3,
+      "output": 30.0
+    },
+    "description": "Nano Banana image model for fast generation, edits, and character-consistent assets",
+    "id": "gemini-2.5-flash-image",
+    "input": [
+      "text",
+      "image"
+    ],
+    "knowledgeCutoff": "2024-06",
+    "maxTokens": 32768,
+    "name": "Nano Banana",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2025-08-26",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-2.5-flash-lite": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.01,
+      "cacheWrite": 0.0,
+      "input": 0.1,
+      "output": 0.4
+    },
+    "description": "Lean Gemini 2.5 lane for cheap multimodal traffic and quick agents",
+    "id": "gemini-2.5-flash-lite",
+    "input": [
+      "text",
+      "image",
+      "audio",
+      "video",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Gemini 2.5 Flash-Lite",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2025-06-17",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-2.5-flash-preview-tts": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 8192,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.5,
+      "output": 10.0
+    },
+    "description": "Speech generation model for controllable voice, narration, and audio delivery",
+    "id": "gemini-2.5-flash-preview-tts",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 16384,
+    "name": "Gemini 2.5 Flash Preview TTS",
+    "provider": "google",
+    "reasoning": false,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-2.5-pro": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.125,
+      "cacheWrite": 0.0,
+      "input": 1.25,
+      "output": 10.0
+    },
+    "description": "Google's proven reasoning model for coding, math, and multimodal analysis",
+    "id": "gemini-2.5-pro",
+    "input": [
+      "text",
+      "image",
+      "audio",
+      "video",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Gemini 2.5 Pro",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2025-06-17",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-2.5-pro-preview-tts": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 8192,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 1.0,
+      "output": 20.0
+    },
+    "description": "Speech generation model for controllable voice, narration, and audio delivery",
+    "id": "gemini-2.5-pro-preview-tts",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 16384,
+    "name": "Gemini 2.5 Pro Preview TTS",
+    "provider": "google",
+    "reasoning": false,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3-flash-preview": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.05,
+      "cacheWrite": 0.0,
+      "input": 0.5,
+      "output": 3.0
+    },
+    "description": "New Gemini flash lane bringing frontier-style multimodal reasoning to cheaper runs",
+    "id": "gemini-3-flash-preview",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Gemini 3 Flash Preview",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2025-12-17",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": "minimal",
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3-pro-image": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 2.0,
+      "output": 120.0
+    },
+    "description": "Nano Banana Pro for higher-fidelity image generation and design-heavy edits",
+    "id": "gemini-3-pro-image",
+    "input": [
+      "text",
+      "image"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 32768,
+    "name": "Nano Banana Pro",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-05-28",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": null,
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3-pro-image-preview": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 2.0,
+      "output": 120.0
+    },
+    "description": "Nano Banana Pro for higher-fidelity image generation and design-heavy edits",
+    "id": "gemini-3-pro-image-preview",
+    "input": [
+      "text",
+      "image"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 32768,
+    "name": "Nano Banana Pro",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2025-11-20",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.1-flash-image": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 65536,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.5,
+      "output": 60.0
+    },
+    "description": "Image model for prompt-driven generation, editing, and visual design workflows",
+    "id": "gemini-3.1-flash-image",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Nano Banana 2",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-05-28",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": null,
+      "max": null,
+      "medium": null,
+      "minimal": "minimal",
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.1-flash-image-preview": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 65536,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.5,
+      "output": 60.0
+    },
+    "description": "Image model for prompt-driven generation, editing, and visual design workflows",
+    "id": "gemini-3.1-flash-image-preview",
+    "input": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Nano Banana 2",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-02-26",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": null,
+      "max": null,
+      "medium": null,
+      "minimal": "minimal",
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.1-flash-lite": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.025,
+      "cacheWrite": 0.0,
+      "input": 0.25,
+      "output": 1.5
+    },
+    "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
+    "id": "gemini-3.1-flash-lite",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Gemini 3.1 Flash Lite",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-05-07",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": "minimal",
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.1-flash-lite-image": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 65536,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.25,
+      "output": 30.0
+    },
+    "description": "Fastest, most cost-efficient Gemini image model for high-volume 1K generation and editing",
+    "id": "gemini-3.1-flash-lite-image",
+    "input": [
+      "text",
+      "image"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Nano Banana 2 Lite",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-06-30",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": null,
+      "max": null,
+      "medium": null,
+      "minimal": "minimal",
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.1-flash-lite-preview": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.025,
+      "cacheWrite": 0.0,
+      "input": 0.25,
+      "output": 1.5
+    },
+    "description": "Legacy model retained for compatibility with older integrations",
+    "id": "gemini-3.1-flash-lite-preview",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Gemini 3.1 Flash Lite Preview",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-03-03",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": "minimal",
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.1-flash-live-preview": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.75,
+      "output": 4.5
+    },
+    "description": "High-quality, low-latency Live API model for real-time dialogue and voice-first AI applications",
+    "id": "gemini-3.1-flash-live-preview",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Gemini 3.1 Flash Live Preview",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-03-26",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": "minimal",
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.1-flash-tts-preview": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 8192,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 1.0,
+      "output": 20.0
+    },
+    "description": "Low-latency speech generation with steerable prompts and expressive audio tags",
+    "id": "gemini-3.1-flash-tts-preview",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 16384,
+    "name": "Gemini 3.1 Flash TTS Preview",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-04-15",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.1-pro-preview": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.2,
+      "cacheWrite": 0.0,
+      "input": 2.0,
+      "output": 12.0
+    },
+    "description": "Reasoning-first Gemini preview for agentic coding and complex problem solving",
+    "id": "gemini-3.1-pro-preview",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Gemini 3.1 Pro Preview",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-02-19",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.1-pro-preview-customtools": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.2,
+      "cacheWrite": 0.0,
+      "input": 2.0,
+      "output": 12.0
+    },
+    "description": "Advanced Gemini model for complex reasoning, coding, and multimodal analysis",
+    "id": "gemini-3.1-pro-preview-customtools",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Gemini 3.1 Pro Preview Custom Tools",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-02-19",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.5-flash": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.15,
+      "cacheWrite": 0.0,
+      "input": 1.5,
+      "output": 9.0
+    },
+    "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
+    "id": "gemini-3.5-flash",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 65536,
+    "name": "Gemini 3.5 Flash",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-05-19",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": "minimal",
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.5-flash-lite": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.03,
+      "cacheWrite": 0.0,
+      "input": 0.3,
+      "output": 2.5
+    },
+    "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
+    "id": "gemini-3.5-flash-lite",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2026-03",
+    "maxTokens": 65536,
+    "name": "Gemini 3.5 Flash Lite",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-07-21",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": "minimal",
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.5-live-translate-preview": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 16384,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 3.5,
+      "output": 21.0
+    },
+    "description": "Low-latency audio-to-audio model for real-time speech translation across 70+ languages",
+    "id": "gemini-3.5-live-translate-preview",
+    "input": [
+      "audio"
+    ],
+    "knowledgeCutoff": "2025-01",
+    "maxTokens": 32768,
+    "name": "Gemini 3.5 Live Translate Preview",
+    "provider": "google",
+    "reasoning": false,
+    "releaseDate": "2026-06-09",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.6-flash": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.075,
+      "cacheWrite": 0.0,
+      "input": 0.75,
+      "output": 3.75
+    },
+    "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
+    "id": "gemini-3.6-flash",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2026-03",
+    "maxTokens": 65536,
+    "name": "Gemini 3.6 Flash",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-07-21",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": "minimal",
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.7-flash": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.075,
+      "cacheWrite": 0.0,
+      "input": 0.75,
+      "output": 3.75
+    },
+    "description": "High-efficiency Gemini model for agentic workflows, coding, and multimodal reasoning",
+    "id": "gemini-3.7-flash",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2026-03",
+    "maxTokens": 65536,
+    "name": "Gemini 3.7 Flash",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-08-13",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-3.8-flash": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.075,
+      "cacheWrite": 0.0,
+      "input": 0.75,
+      "output": 3.75
+    },
+    "description": "Google's most intelligent Flash model, engineered for long-horizon software engineering, autonomous agents, and complex enterprise workflows",
+    "id": "gemini-3.8-flash",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 65536,
+    "name": "Gemini 3.8 Flash",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-09-02",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-embedding-001": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 2048,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.15,
+      "output": 0.0
+    },
+    "description": "Embedding model for semantic search, retrieval, clustering, and ranking pipelines",
+    "id": "gemini-embedding-001",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "2025-05",
+    "maxTokens": 1,
+    "name": "Gemini Embedding 001",
+    "provider": "google",
+    "reasoning": false,
+    "releaseDate": "2025-05-20",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-embedding-2": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 8192,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.2,
+      "output": 0.0
+    },
+    "description": "Multimodal embedding model mapping text, images, video, audio, and PDFs into a unified embedding space",
+    "id": "gemini-embedding-2",
+    "input": [
+      "text",
+      "image",
+      "audio",
+      "video",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2025-11",
+    "maxTokens": 1,
+    "name": "Gemini Embedding 2",
+    "provider": "google",
+    "reasoning": false,
+    "releaseDate": "2026-04-22",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-flash-latest": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.075,
+      "cacheWrite": 0.0,
+      "input": 0.75,
+      "output": 3.75
+    },
+    "description": "High-efficiency Gemini model for agentic workflows, coding, and multimodal reasoning",
+    "id": "gemini-flash-latest",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2026-03",
+    "maxTokens": 65536,
+    "name": "Gemini Flash Latest",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-08-13",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-flash-lite-latest": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.03,
+      "cacheWrite": 0.0,
+      "input": 0.3,
+      "output": 2.5
+    },
+    "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
+    "id": "gemini-flash-lite-latest",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+    ],
+    "knowledgeCutoff": "2026-03",
+    "maxTokens": 65536,
+    "name": "Gemini Flash-Lite Latest",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-07-21",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": "minimal",
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemini-omni-flash-preview": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 1.5,
+      "output": 17.5
+    },
+    "description": "Video generation and editing model for fast, conversational text- and image-to-video workflows",
+    "id": "gemini-omni-flash-preview",
+    "input": [
+      "text",
+      "image",
+      "video"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 65536,
+    "name": "Gemini Omni Flash Preview",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-06-30",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemma-4-26b-a4b-it": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.062,
+      "input": 0.111,
+      "output": 0.557
+    },
+    "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
+    "id": "gemma-4-26b-a4b-it",
+    "input": [
+      "text",
+      "image"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 32768,
+    "name": "Gemma 4 26B A4B IT",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-04-02",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": "max",
+      "medium": null,
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "gemma-4-31b-it": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.02,
+      "cacheWrite": 0.0,
+      "input": 0.223,
+      "output": 0.39
+    },
+    "description": "Largest Gemma 4 instruction model for open, self-hosted chat and reasoning",
+    "id": "gemma-4-31b-it",
+    "input": [
+      "text",
+      "image"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 32768,
+    "name": "Gemma 4 31B IT",
+    "provider": "google",
+    "reasoning": true,
+    "releaseDate": "2026-04-02",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": "max",
+      "medium": null,
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "lyria-3-clip-preview": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.0,
+      "output": 0.0
+    },
+    "description": "Music generation model for short 30-second clips, loops, and previews from text or image prompts",
+    "id": "lyria-3-clip-preview",
+    "input": [
+      "text",
+      "image"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 65536,
+    "name": "Lyria 3 Clip Preview",
+    "provider": "google",
+    "reasoning": false,
+    "releaseDate": "2026-03-25",
+    "thinkingLevelMap": {
+      "high": null,
+      "low": null,
+      "max": null,
+      "medium": null,
+      "minimal": null,
+      "off": "off",
+      "xhigh": null
+    }
+  },
+  "lyria-3-pro-preview": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.0,
+      "output": 0.0
+    },
+    "description": "Music generation model for full-length songs from text or images with vocals and structure",
+    "id": "lyria-3-pro-preview",
+    "input": [
+      "text",
+      "image"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 65536,
+    "name": "Lyria 3 Pro Preview",
+    "provider": "google",
+    "reasoning": false,
+    "releaseDate": "2026-03-25",
+    "thinkingLevelMap": {
+      "high": null,
+      "low": null,
+      "max": null,
+      "medium": null,
+      "minimal": null,
+      "off": "off",
+      "xhigh": null
+    }
+  },
+  "veo-3.1-fast-generate-preview": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 480,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.0,
+      "output": 0.0
+    },
+    "description": "Video model for prompt-guided generation, editing, and motion workflows",
+    "id": "veo-3.1-fast-generate-preview",
+    "input": [
+      "text",
+      "image",
+      "video"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 8192,
+    "name": "Veo 3.1 fast",
+    "provider": "google",
+    "reasoning": false,
+    "releaseDate": "2025-10-15",
+    "thinkingLevelMap": {
+      "high": null,
+      "low": null,
+      "max": null,
+      "medium": null,
+      "minimal": null,
+      "off": "off",
+      "xhigh": null
+    }
+  },
+  "veo-3.1-generate-preview": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 480,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.0,
+      "output": 0.0
+    },
+    "description": "Video model for prompt-guided generation, editing, and motion workflows",
+    "id": "veo-3.1-generate-preview",
+    "input": [
+      "text",
+      "image"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 8192,
+    "name": "Veo 3.1",
+    "provider": "google",
+    "reasoning": false,
+    "releaseDate": "2025-10-15",
+    "thinkingLevelMap": {
+      "high": null,
+      "low": null,
+      "max": null,
+      "medium": null,
+      "minimal": null,
+      "off": "off",
+      "xhigh": null
+    }
+  },
+  "veo-3.1-lite-generate-preview": {
+    "api": "google-generative-ai",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+    "contextWindow": 480,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.0,
+      "output": 0.0
+    },
+    "description": "Video model for prompt-guided generation, editing, and motion workflows",
+    "id": "veo-3.1-lite-generate-preview",
+    "input": [
+      "text",
+      "image"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 8192,
+    "name": "Veo 3.1 lite",
+    "provider": "google",
+    "reasoning": false,
+    "releaseDate": "2026-03-31",
+    "thinkingLevelMap": {
+      "high": null,
+      "low": null,
+      "max": null,
+      "medium": null,
+      "minimal": null,
+      "off": "off",
+      "xhigh": null
+    }
+  }
 }

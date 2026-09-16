@@ -1,96 +1,105 @@
 {
-    "$schema": "https://elph.space/provider-schema.json",
-    "mimo-v2-pro": {
-        "api": "openai-completions",
-        "baseUrl": "https://token-plan-ams.xiaomimimo.com/v1",
-        "compat": {
-            "requiresReasoningContentOnAssistantMessages": true,
-            "thinkingFormat": "deepseek"
-        },
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.0036,
-            "cacheWrite": 0.0,
-            "input": 0.435,
-            "output": 0.87
-        },
-        "description": "Earlier MiMo Pro model for multimodal agents, reasoning, and code tasks",
-        "id": "mimo-v2-pro",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "MiMo-V2-Pro",
-        "provider": "xiaomi-token-plan-ams",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
+  "$schema": "https://elph.space/provider-schema.json",
+  "mimo-v2-pro": {
+    "api": "openai-completions",
+    "baseUrl": "https://token-plan-ams.xiaomimimo.com/v1",
+    "compat": {
+      "requiresReasoningContentOnAssistantMessages": true,
+      "thinkingFormat": "deepseek"
     },
-    "mimo-v2.5": {
-        "api": "openai-completions",
-        "baseUrl": "https://token-plan-ams.xiaomimimo.com/v1",
-        "compat": {
-            "requiresReasoningContentOnAssistantMessages": true,
-            "thinkingFormat": "deepseek"
-        },
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.0028,
-            "cacheWrite": 0.0,
-            "input": 0.14,
-            "output": 0.28
-        },
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
-        "id": "mimo-v2.5",
-        "input": ["text", "image", "audio", "video"],
-        "maxTokens": 131072,
-        "name": "MiMo-V2.5",
-        "provider": "xiaomi-token-plan-ams",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.0036,
+      "cacheWrite": 0.0,
+      "input": 0.435,
+      "output": 0.87
     },
-    "mimo-v2.5-pro": {
-        "api": "openai-completions",
-        "baseUrl": "https://token-plan-ams.xiaomimimo.com/v1",
-        "compat": {
-            "requiresReasoningContentOnAssistantMessages": true,
-            "thinkingFormat": "deepseek"
-        },
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.0036,
-            "cacheWrite": 0.0,
-            "input": 0.435,
-            "output": 0.87
-        },
-        "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
-        "id": "mimo-v2.5-pro",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "MiMo-V2.5-Pro",
-        "provider": "xiaomi-token-plan-ams",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
+    "description": "Earlier MiMo Pro model for multimodal agents, reasoning, and code tasks",
+    "id": "mimo-v2-pro",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "MiMo-V2-Pro",
+    "provider": "xiaomi-token-plan-ams",
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
     }
+  },
+  "mimo-v2.5": {
+    "api": "openai-completions",
+    "baseUrl": "https://token-plan-ams.xiaomimimo.com/v1",
+    "compat": {
+      "requiresReasoningContentOnAssistantMessages": true,
+      "thinkingFormat": "deepseek"
+    },
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.0028,
+      "cacheWrite": 0.0,
+      "input": 0.14,
+      "output": 0.28
+    },
+    "description": "Open MiMo model for multimodal coding agents and long-context automation",
+    "id": "mimo-v2.5",
+    "input": [
+      "text",
+      "image",
+      "audio",
+      "video"
+    ],
+    "maxTokens": 131072,
+    "name": "MiMo-V2.5",
+    "provider": "xiaomi-token-plan-ams",
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "mimo-v2.5-pro": {
+    "api": "openai-completions",
+    "baseUrl": "https://token-plan-ams.xiaomimimo.com/v1",
+    "compat": {
+      "requiresReasoningContentOnAssistantMessages": true,
+      "thinkingFormat": "deepseek"
+    },
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.0036,
+      "cacheWrite": 0.0,
+      "input": 0.435,
+      "output": 0.87
+    },
+    "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
+    "id": "mimo-v2.5-pro",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "MiMo-V2.5-Pro",
+    "provider": "xiaomi-token-plan-ams",
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  }
 }

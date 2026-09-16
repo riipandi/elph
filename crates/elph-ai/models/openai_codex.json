@@ -1,219 +1,246 @@
 {
-    "$schema": "https://elph.space/provider-schema.json",
-    "gpt-5.3-codex-spark": {
-        "api": "openai-codex-responses",
-        "baseUrl": "https://chatgpt.com/backend-api",
-        "compat": {
-            "supportsOpenAIGrammarTools": true
-        },
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.175,
-            "cacheWrite": 0.0,
-            "input": 1.75,
-            "output": 14.0
-        },
-        "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
-        "id": "gpt-5.3-codex-spark",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 32000,
-        "name": "GPT-5.3 Codex Spark",
-        "provider": "openai-codex",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
+  "$schema": "https://elph.space/provider-schema.json",
+  "gpt-5.3-codex-spark": {
+    "api": "openai-codex-responses",
+    "baseUrl": "https://chatgpt.com/backend-api",
+    "compat": {
+      "supportsOpenAIGrammarTools": true
     },
-    "gpt-5.4": {
-        "api": "openai-codex-responses",
-        "baseUrl": "https://chatgpt.com/backend-api",
-        "compat": {
-            "supportsOpenAIGrammarTools": true,
-            "supportsToolSearch": true
-        },
-        "contextWindow": 1050000,
-        "cost": {
-            "cacheRead": 0.25,
-            "cacheWrite": 0.0,
-            "input": 2.5,
-            "output": 15.0
-        },
-        "description": "Agent-ready GPT for coding and computer-use workflows at a lower cost",
-        "id": "gpt-5.4",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 128000,
-        "name": "GPT-5.4",
-        "provider": "openai-codex",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
+    "contextWindow": 128000,
+    "cost": {
+      "cacheRead": 0.175,
+      "cacheWrite": 0.0,
+      "input": 1.75,
+      "output": 14.0
     },
-    "gpt-5.4-mini": {
-        "api": "openai-codex-responses",
-        "baseUrl": "https://chatgpt.com/backend-api",
-        "compat": {
-            "supportsOpenAIGrammarTools": true,
-            "supportsToolSearch": true
-        },
-        "contextWindow": 400000,
-        "cost": {
-            "cacheRead": 0.075,
-            "cacheWrite": 0.0,
-            "input": 0.75,
-            "output": 4.5
-        },
-        "description": "Strong small GPT for coding subagents, quick tool use, and high-volume work",
-        "id": "gpt-5.4-mini",
-        "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "GPT-5.4 mini",
-        "provider": "openai-codex",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "gpt-5.5": {
-        "api": "openai-codex-responses",
-        "baseUrl": "https://chatgpt.com/backend-api",
-        "compat": {
-            "supportsOpenAIGrammarTools": true,
-            "supportsToolSearch": true
-        },
-        "contextWindow": 1050000,
-        "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 0.0,
-            "input": 5.0,
-            "output": 30.0
-        },
-        "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
-        "id": "gpt-5.5",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 128000,
-        "name": "GPT-5.5",
-        "provider": "openai-codex",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "gpt-5.6-luna": {
-        "api": "openai-codex-responses",
-        "baseUrl": "https://chatgpt.com/backend-api",
-        "compat": {
-            "supportsOpenAIGrammarTools": true,
-            "supportsToolSearch": true
-        },
-        "contextWindow": 1050000,
-        "cost": {
-            "cacheRead": 0.02,
-            "cacheWrite": 0.25,
-            "input": 0.2,
-            "output": 1.2
-        },
-        "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
-        "id": "gpt-5.6-luna",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 128000,
-        "name": "GPT-5.6 Luna",
-        "provider": "openai-codex",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "gpt-5.6-sol": {
-        "api": "openai-codex-responses",
-        "baseUrl": "https://chatgpt.com/backend-api",
-        "compat": {
-            "supportsOpenAIGrammarTools": true,
-            "supportsToolSearch": true
-        },
-        "contextWindow": 1050000,
-        "cost": {
-            "cacheRead": 0.4,
-            "cacheWrite": 5.0,
-            "input": 4.0,
-            "output": 20.0
-        },
-        "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
-        "id": "gpt-5.6-sol",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 128000,
-        "name": "GPT-5.6 Sol",
-        "provider": "openai-codex",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "gpt-5.6-terra": {
-        "api": "openai-codex-responses",
-        "baseUrl": "https://chatgpt.com/backend-api",
-        "compat": {
-            "supportsOpenAIGrammarTools": true,
-            "supportsToolSearch": true
-        },
-        "contextWindow": 1050000,
-        "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 2.5,
-            "input": 2.0,
-            "output": 12.0
-        },
-        "description": "Balanced GPT-5.6 model for capable, cost-efficient everyday work",
-        "id": "gpt-5.6-terra",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 128000,
-        "name": "GPT-5.6 Terra",
-        "provider": "openai-codex",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
+    "description": "Coding-optimized GPT model for repository edits, reviews, and agentic software work",
+    "id": "gpt-5.3-codex-spark",
+    "input": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "maxTokens": 32000,
+    "name": "GPT-5.3 Codex Spark",
+    "provider": "openai-codex",
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
     }
+  },
+  "gpt-5.4": {
+    "api": "openai-codex-responses",
+    "baseUrl": "https://chatgpt.com/backend-api",
+    "compat": {
+      "supportsOpenAIGrammarTools": true,
+      "supportsToolSearch": true
+    },
+    "contextWindow": 1050000,
+    "cost": {
+      "cacheRead": 0.25,
+      "cacheWrite": 0.0,
+      "input": 2.5,
+      "output": 15.0
+    },
+    "description": "Agent-ready GPT for coding and computer-use workflows at a lower cost",
+    "id": "gpt-5.4",
+    "input": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "maxTokens": 128000,
+    "name": "GPT-5.4",
+    "provider": "openai-codex",
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "gpt-5.4-mini": {
+    "api": "openai-codex-responses",
+    "baseUrl": "https://chatgpt.com/backend-api",
+    "compat": {
+      "supportsOpenAIGrammarTools": true,
+      "supportsToolSearch": true
+    },
+    "contextWindow": 400000,
+    "cost": {
+      "cacheRead": 0.075,
+      "cacheWrite": 0.0,
+      "input": 0.75,
+      "output": 4.5
+    },
+    "description": "Strong small GPT for coding subagents, quick tool use, and high-volume work",
+    "id": "gpt-5.4-mini",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 128000,
+    "name": "GPT-5.4 mini",
+    "provider": "openai-codex",
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "gpt-5.5": {
+    "api": "openai-codex-responses",
+    "baseUrl": "https://chatgpt.com/backend-api",
+    "compat": {
+      "supportsOpenAIGrammarTools": true,
+      "supportsToolSearch": true
+    },
+    "contextWindow": 1050000,
+    "cost": {
+      "cacheRead": 0.5,
+      "cacheWrite": 0.0,
+      "input": 5.0,
+      "output": 30.0
+    },
+    "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
+    "id": "gpt-5.5",
+    "input": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "maxTokens": 128000,
+    "name": "GPT-5.5",
+    "provider": "openai-codex",
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "gpt-5.6-luna": {
+    "api": "openai-codex-responses",
+    "baseUrl": "https://chatgpt.com/backend-api",
+    "compat": {
+      "supportsOpenAIGrammarTools": true,
+      "supportsToolSearch": true
+    },
+    "contextWindow": 1050000,
+    "cost": {
+      "cacheRead": 0.02,
+      "cacheWrite": 0.25,
+      "input": 0.2,
+      "output": 1.2
+    },
+    "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
+    "id": "gpt-5.6-luna",
+    "input": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "maxTokens": 128000,
+    "name": "GPT-5.6 Luna",
+    "provider": "openai-codex",
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": "max",
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "gpt-5.6-sol": {
+    "api": "openai-codex-responses",
+    "baseUrl": "https://chatgpt.com/backend-api",
+    "compat": {
+      "supportsOpenAIGrammarTools": true,
+      "supportsToolSearch": true
+    },
+    "contextWindow": 1050000,
+    "cost": {
+      "cacheRead": 0.4,
+      "cacheWrite": 5.0,
+      "input": 4.0,
+      "output": 20.0
+    },
+    "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
+    "id": "gpt-5.6-sol",
+    "input": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "maxTokens": 128000,
+    "name": "GPT-5.6 Sol",
+    "provider": "openai-codex",
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": "max",
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "gpt-5.6-terra": {
+    "api": "openai-codex-responses",
+    "baseUrl": "https://chatgpt.com/backend-api",
+    "compat": {
+      "supportsOpenAIGrammarTools": true,
+      "supportsToolSearch": true
+    },
+    "contextWindow": 1050000,
+    "cost": {
+      "cacheRead": 0.2,
+      "cacheWrite": 2.5,
+      "input": 2.0,
+      "output": 12.0
+    },
+    "description": "Balanced GPT-5.6 model for capable, cost-efficient everyday work",
+    "id": "gpt-5.6-terra",
+    "input": [
+      "text",
+      "image",
+      "pdf"
+    ],
+    "maxTokens": 128000,
+    "name": "GPT-5.6 Terra",
+    "provider": "openai-codex",
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": "max",
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  }
 }

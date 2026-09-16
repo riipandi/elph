@@ -1,472 +1,512 @@
 {
-    "$schema": "https://elph.space/provider-schema.json",
-    "glm-4.5": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.11,
-            "cacheWrite": 0.0,
-            "input": 0.6,
-            "output": 2.2
-        },
-        "description": "Hybrid-reasoning GLM release that made the 4.5 line broadly useful",
-        "id": "glm-4.5",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 98304,
-        "name": "GLM-4.5",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
+  "$schema": "https://elph.space/provider-schema.json",
+  "glm-4.5": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.11,
+      "cacheWrite": 0.0,
+      "input": 0.6,
+      "output": 2.2
     },
-    "glm-4.5-air": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsReasoningEffort": false,
-            "supportsStore": false,
-            "thinkingFormat": "zai"
-        },
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.03,
-            "cacheWrite": 0.0,
-            "input": 0.2,
-            "output": 1.1
-        },
-        "description": "Lighter GLM-4.5 variant for fast coding assistance and cheaper agents",
-        "id": "glm-4.5-air",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 98304,
-        "name": "GLM-4.5-Air",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "glm-4.5-flash": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
-        "id": "glm-4.5-flash",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 98304,
-        "name": "GLM-4.5-Flash",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "glm-4.5v": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "contextWindow": 64000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.6,
-            "output": 1.8
-        },
-        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
-        "id": "glm-4.5v",
-        "input": ["text", "image", "video"],
-        "knowledgeCutoff": "",
-        "maxTokens": 16384,
-        "name": "GLM-4.5V",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "glm-4.6": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "contextWindow": 204800,
-        "cost": {
-            "cacheRead": 0.11,
-            "cacheWrite": 0.0,
-            "input": 0.6,
-            "output": 2.2
-        },
-        "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
-        "id": "glm-4.6",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 131072,
-        "name": "GLM-4.6",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "glm-4.6v": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 0.9
-        },
-        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
-        "id": "glm-4.6v",
-        "input": ["text", "image", "video"],
-        "knowledgeCutoff": "",
-        "maxTokens": 32768,
-        "name": "GLM-4.6V",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "glm-4.7": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsReasoningEffort": false,
-            "supportsStore": false,
-            "thinkingFormat": "zai",
-            "zaiToolStream": true
-        },
-        "contextWindow": 204800,
-        "cost": {
-            "cacheRead": 0.11,
-            "cacheWrite": 0.0,
-            "input": 0.6,
-            "output": 2.2
-        },
-        "description": "Mature GLM model for dependable coding, reasoning, and structured agent tasks",
-        "id": "glm-4.7",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 131072,
-        "name": "GLM-4.7",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "glm-4.7-flash": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "contextWindow": 200000,
-        "cost": {
-            "cacheRead": 0.008,
-            "cacheWrite": 0.0,
-            "input": 0.08,
-            "output": 0.478
-        },
-        "description": "Budget GLM lane for fast coding help, routing, and everyday automation",
-        "id": "glm-4.7-flash",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 131072,
-        "name": "GLM-4.7-Flash",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "glm-4.7-flashx": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "contextWindow": 200000,
-        "cost": {
-            "cacheRead": 0.01,
-            "cacheWrite": 0.0,
-            "input": 0.07,
-            "output": 0.4
-        },
-        "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
-        "id": "glm-4.7-flashx",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 131072,
-        "name": "GLM-4.7-FlashX",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "glm-5": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "contextWindow": 204800,
-        "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 0.0,
-            "input": 1.0,
-            "output": 3.2
-        },
-        "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
-        "id": "glm-5",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 131072,
-        "name": "GLM-5",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "glm-5.1": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsReasoningEffort": false,
-            "supportsStore": false,
-            "thinkingFormat": "zai",
-            "zaiToolStream": true
-        },
-        "contextWindow": 200000,
-        "cost": {
-            "cacheRead": 0.26,
-            "cacheWrite": 0.0,
-            "input": 1.4,
-            "output": 4.4
-        },
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
-        "id": "glm-5.1",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 131072,
-        "name": "GLM-5.1",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "glm-5.2": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsReasoningEffort": true,
-            "supportsStore": false,
-            "thinkingFormat": "zai",
-            "zaiToolStream": true
-        },
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.26,
-            "cacheWrite": 0.0,
-            "input": 1.4,
-            "output": 4.4
-        },
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
-        "id": "glm-5.2",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 131072,
-        "name": "GLM-5.2",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "glm-5.3": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.26,
-            "cacheWrite": 0.0,
-            "input": 1.4,
-            "output": 4.4
-        },
-        "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
-        "id": "glm-5.3",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 131072,
-        "name": "GLM-5.3",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "glm-5.3-flash": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.015,
-            "cacheWrite": 0.0,
-            "input": 0.075,
-            "output": 0.25
-        },
-        "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
-        "id": "glm-5.3-flash",
-        "input": ["text", "image", "video", "pdf"],
-        "knowledgeCutoff": "",
-        "maxTokens": 131072,
-        "name": "GLM-5.3-Flash",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
-    "glm-5v-turbo": {
-        "api": "openai-completions",
-        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsReasoningEffort": false,
-            "supportsStore": false,
-            "thinkingFormat": "zai",
-            "zaiToolStream": true
-        },
-        "contextWindow": 200000,
-        "cost": {
-            "cacheRead": 1.2,
-            "cacheWrite": 0.0,
-            "input": 5.0,
-            "output": 22.0
-        },
-        "description": "Fast GLM vision model for screenshots, documents, and multimodal agent tasks",
-        "id": "glm-5v-turbo",
-        "input": ["text", "image", "video", "pdf"],
-        "knowledgeCutoff": "",
-        "maxTokens": 131072,
-        "name": "GLM-5V-Turbo",
-        "provider": "zai-coding-cn",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
+    "description": "Hybrid-reasoning GLM release that made the 4.5 line broadly useful",
+    "id": "glm-4.5",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 98304,
+    "name": "GLM-4.5",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
     }
+  },
+  "glm-4.5-air": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "compat": {
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "thinkingFormat": "zai"
+    },
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.03,
+      "cacheWrite": 0.0,
+      "input": 0.2,
+      "output": 1.1
+    },
+    "description": "Lighter GLM-4.5 variant for fast coding assistance and cheaper agents",
+    "id": "glm-4.5-air",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 98304,
+    "name": "GLM-4.5-Air",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "glm-4.5-flash": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.0,
+      "output": 0.0
+    },
+    "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
+    "id": "glm-4.5-flash",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 98304,
+    "name": "GLM-4.5-Flash",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "glm-4.5v": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "contextWindow": 64000,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.6,
+      "output": 1.8
+    },
+    "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
+    "id": "glm-4.5v",
+    "input": [
+      "text",
+      "image",
+      "video"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 16384,
+    "name": "GLM-4.5V",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "glm-4.6": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "contextWindow": 204800,
+    "cost": {
+      "cacheRead": 0.11,
+      "cacheWrite": 0.0,
+      "input": 0.6,
+      "output": 2.2
+    },
+    "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
+    "id": "glm-4.6",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 131072,
+    "name": "GLM-4.6",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "glm-4.6v": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "contextWindow": 128000,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.3,
+      "output": 0.9
+    },
+    "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
+    "id": "glm-4.6v",
+    "input": [
+      "text",
+      "image",
+      "video"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 32768,
+    "name": "GLM-4.6V",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "glm-4.7": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "compat": {
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "thinkingFormat": "zai",
+      "zaiToolStream": true
+    },
+    "contextWindow": 204800,
+    "cost": {
+      "cacheRead": 0.11,
+      "cacheWrite": 0.0,
+      "input": 0.6,
+      "output": 2.2
+    },
+    "description": "Mature GLM model for dependable coding, reasoning, and structured agent tasks",
+    "id": "glm-4.7",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 131072,
+    "name": "GLM-4.7",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "glm-4.7-flash": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "contextWindow": 200000,
+    "cost": {
+      "cacheRead": 0.008,
+      "cacheWrite": 0.0,
+      "input": 0.08,
+      "output": 0.478
+    },
+    "description": "Budget GLM lane for fast coding help, routing, and everyday automation",
+    "id": "glm-4.7-flash",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 131072,
+    "name": "GLM-4.7-Flash",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "glm-4.7-flashx": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "contextWindow": 200000,
+    "cost": {
+      "cacheRead": 0.01,
+      "cacheWrite": 0.0,
+      "input": 0.07,
+      "output": 0.4
+    },
+    "description": "Efficient GLM model for fast reasoning, coding, and agent workflows",
+    "id": "glm-4.7-flashx",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 131072,
+    "name": "GLM-4.7-FlashX",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "glm-5": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "contextWindow": 204800,
+    "cost": {
+      "cacheRead": 0.2,
+      "cacheWrite": 0.0,
+      "input": 1.0,
+      "output": 3.2
+    },
+    "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
+    "id": "glm-5",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 131072,
+    "name": "GLM-5",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "glm-5.1": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "compat": {
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "thinkingFormat": "zai",
+      "zaiToolStream": true
+    },
+    "contextWindow": 200000,
+    "cost": {
+      "cacheRead": 0.26,
+      "cacheWrite": 0.0,
+      "input": 1.4,
+      "output": 4.4
+    },
+    "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+    "id": "glm-5.1",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 131072,
+    "name": "GLM-5.1",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  },
+  "glm-5.2": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "compat": {
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": true,
+      "supportsStore": false,
+      "thinkingFormat": "zai",
+      "zaiToolStream": true
+    },
+    "contextWindow": 1000000,
+    "cost": {
+      "cacheRead": 0.26,
+      "cacheWrite": 0.0,
+      "input": 1.4,
+      "output": 4.4
+    },
+    "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+    "id": "glm-5.2",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 131072,
+    "name": "GLM-5.2",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": null,
+      "max": "max",
+      "medium": null,
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "glm-5.3": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "contextWindow": 1000000,
+    "cost": {
+      "cacheRead": 0.26,
+      "cacheWrite": 0.0,
+      "input": 1.4,
+      "output": 4.4
+    },
+    "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
+    "id": "glm-5.3",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 131072,
+    "name": "GLM-5.3",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": "max",
+      "medium": null,
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "glm-5.3-flash": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "contextWindow": 1000000,
+    "cost": {
+      "cacheRead": 0.015,
+      "cacheWrite": 0.0,
+      "input": 0.075,
+      "output": 0.25
+    },
+    "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+    "id": "glm-5.3-flash",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "pdf"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 131072,
+    "name": "GLM-5.3-Flash",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": "max",
+      "medium": null,
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  },
+  "glm-5v-turbo": {
+    "api": "openai-completions",
+    "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "compat": {
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "thinkingFormat": "zai",
+      "zaiToolStream": true
+    },
+    "contextWindow": 200000,
+    "cost": {
+      "cacheRead": 1.2,
+      "cacheWrite": 0.0,
+      "input": 5.0,
+      "output": 22.0
+    },
+    "description": "Fast GLM vision model for screenshots, documents, and multimodal agent tasks",
+    "id": "glm-5v-turbo",
+    "input": [
+      "text",
+      "image",
+      "video",
+      "pdf"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 131072,
+    "name": "GLM-5V-Turbo",
+    "provider": "zai-coding-cn",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": "xhigh"
+    }
+  }
 }

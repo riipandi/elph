@@ -1,69 +1,74 @@
 {
-    "$schema": "https://elph.space/provider-schema.json",
-    "gemma-4-31b": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.cerebras.ai/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.99,
-            "output": 1.49
-        },
-        "description": "Largest Gemma 4 instruction model for open, self-hosted chat and reasoning",
-        "id": "gemma-4-31b",
-        "input": ["text", "image"],
-        "knowledgeCutoff": "",
-        "maxTokens": 40960,
-        "name": "Gemma 4 31B IT",
-        "provider": "cerebras",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": null
-        }
+  "$schema": "https://elph.space/provider-schema.json",
+  "gemma-4-31b": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cerebras.ai/v1",
+    "compat": {
+      "supportsDeveloperRole": false,
+      "supportsStore": false
     },
-    "gpt-oss-120b": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.cerebras.ai/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.35,
-            "output": 0.75
-        },
-        "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
-        "id": "gpt-oss-120b",
-        "input": ["text"],
-        "knowledgeCutoff": "",
-        "maxTokens": 40960,
-        "name": "GPT OSS 120B",
-        "provider": "cerebras",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.99,
+      "output": 1.49
+    },
+    "description": "Largest Gemma 4 instruction model for open, self-hosted chat and reasoning",
+    "id": "gemma-4-31b",
+    "input": [
+      "text",
+      "image"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 40960,
+    "name": "Gemma 4 31B IT",
+    "provider": "cerebras",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": "off",
+      "xhigh": null
     }
+  },
+  "gpt-oss-120b": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cerebras.ai/v1",
+    "compat": {
+      "supportsDeveloperRole": false,
+      "supportsStore": false
+    },
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.0,
+      "cacheWrite": 0.0,
+      "input": 0.35,
+      "output": 0.75
+    },
+    "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
+    "id": "gpt-oss-120b",
+    "input": [
+      "text"
+    ],
+    "knowledgeCutoff": "",
+    "maxTokens": 40960,
+    "name": "GPT OSS 120B",
+    "provider": "cerebras",
+    "reasoning": true,
+    "releaseDate": "",
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": "low",
+      "max": null,
+      "medium": "medium",
+      "minimal": null,
+      "off": null,
+      "xhigh": null
+    }
+  }
 }
