@@ -70,7 +70,7 @@
   text-decoration-color: color-mix(in srgb, var(--prose-accent) 40%, transparent);
 }
 .prose blockquote {
-  @apply border-l-4 rounded-r-xl px-5 py-4 my-6;
+  @apply border-l-2 rounded-r-lg px-5 py-4 my-6;
   border-color: var(--prose-accent);
   background: color-mix(in srgb, var(--prose-accent) 6%, transparent);
 }
@@ -107,7 +107,7 @@
 .prose img {
   max-width: 100%;
   height: auto;
-  @apply rounded-lg my-6;
+  @apply rounded-lg my-8;
 }
 .prose ul ul,
 .prose ol ol {
@@ -115,6 +115,18 @@
 }
 .prose li::marker {
   color: var(--prose-muted);
+}
+
+.prose pre {
+  overflow-x: auto;
+  border: 1px solid var(--prose-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 30px -24px color-mix(in srgb, var(--chrome-fg) 40%, transparent);
+}
+
+.prose :where(table) {
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 /* ---------------------------------------------------------------------------
@@ -162,36 +174,36 @@
    @mdit/plugin-alert — GFM-style alerts
    --------------------------------------------------------------------------- */
 .markdown-alert {
-  @apply border-l-4 rounded-lg px-5 py-4 my-6;
+  @apply border-l-2 rounded-lg px-5 py-4 my-6;
 }
 
 .markdown-alert-note {
-  border-color: #3b82f6;
-  background: color-mix(in srgb, #3b82f6 6%, transparent);
+  border-color: #3d73c9;
+  background: color-mix(in srgb, #3d73c9 7%, transparent);
 }
 .dark .markdown-alert-note {
-  background: color-mix(in srgb, #3b82f6 8%, transparent);
+  background: color-mix(in srgb, #73a7ff 10%, transparent);
 }
 .markdown-alert-tip {
-  border-color: #10b981;
-  background: color-mix(in srgb, #10b981 6%, transparent);
+  border-color: #4f8f43;
+  background: color-mix(in srgb, #4f8f43 7%, transparent);
 }
 .dark .markdown-alert-tip {
-  background: color-mix(in srgb, #10b981 8%, transparent);
+  background: color-mix(in srgb, #8ed16a 10%, transparent);
 }
 .markdown-alert-important {
-  border-color: #6366f1;
-  background: color-mix(in srgb, #6366f1 6%, transparent);
+  border-color: #7065b6;
+  background: color-mix(in srgb, #7065b6 7%, transparent);
 }
 .dark .markdown-alert-important {
-  background: color-mix(in srgb, #6366f1 8%, transparent);
+  background: color-mix(in srgb, #a69cff 10%, transparent);
 }
 .markdown-alert-warning {
-  border-color: #10b981;
-  background: color-mix(in srgb, #10b981 6%, transparent);
+  border-color: #a46f16;
+  background: color-mix(in srgb, #a46f16 7%, transparent);
 }
 .dark .markdown-alert-warning {
-  background: color-mix(in srgb, #10b981 8%, transparent);
+  background: color-mix(in srgb, #ffb347 10%, transparent);
 }
 .markdown-alert-caution {
   border-color: #ef4444;
@@ -206,19 +218,34 @@
   font-size: 0.8125rem;
 }
 .markdown-alert-note .markdown-alert-title {
-  @apply text-blue-600 dark:text-blue-400;
+  color: #315f9f;
 }
 .markdown-alert-tip .markdown-alert-title {
-  @apply text-emerald-600 dark:text-emerald-400;
+  color: #3d7335;
 }
 .markdown-alert-important .markdown-alert-title {
-  @apply text-indigo-600 dark:text-indigo-400;
+  color: #5b4f9a;
 }
 .markdown-alert-warning .markdown-alert-title {
-  @apply text-emerald-600 dark:text-emerald-400;
+  color: #8a5d11;
 }
 .markdown-alert-caution .markdown-alert-title {
-  @apply text-red-600 dark:text-red-400;
+  color: #b33c3c;
+}
+.dark .markdown-alert-note .markdown-alert-title {
+  color: #73a7ff;
+}
+.dark .markdown-alert-tip .markdown-alert-title {
+  color: #8ed16a;
+}
+.dark .markdown-alert-important .markdown-alert-title {
+  color: #a69cff;
+}
+.dark .markdown-alert-warning .markdown-alert-title {
+  color: #ffb347;
+}
+.dark .markdown-alert-caution .markdown-alert-title {
+  color: #ff6b66;
 }
 .markdown-alert p {
   color: var(--prose-body, inherit);
@@ -278,6 +305,7 @@
 }
 .tabs-tab-content.active {
   @apply block;
+  animation: tabEnter 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .tabs-tab-content > :first-child {
   @apply mt-0;
@@ -339,7 +367,24 @@
   font-weight: 500;
 }
 .dark .toc-link.active {
-  color: var(--color-emerald-400);
+  color: var(--chrome-accent);
+}
+
+@keyframes tabEnter {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabs-tab-content.active {
+    animation: none;
+  }
 }
 
 .stretched-link {

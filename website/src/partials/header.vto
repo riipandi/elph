@@ -34,7 +34,7 @@
         <button id="mobile-menu-button" type="button"
           class="p-2 focus-visible:outline-2 focus-visible:outline-offset-2"
           style="color: var(--chrome-muted); outline-color: var(--chrome-accent)"
-          aria-label="Toggle menu" aria-expanded="false">
+          aria-label="Toggle menu" aria-expanded="false" aria-controls="mobile-menu">
           <svg id="menu-icon" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
@@ -47,9 +47,9 @@
   </nav>
 </header>
 
-<div id="mobile-menu-overlay" class="hidden fixed inset-0 z-40 md:hidden bg-black/40 backdrop-blur-sm"></div>
+<div id="mobile-menu-overlay" class="hidden fixed inset-0 z-40 md:hidden bg-black/40 backdrop-blur-sm" aria-hidden="true"></div>
 
-<div id="mobile-menu" class="hidden fixed top-14 left-0 right-0 bottom-0 z-50 md:hidden">
+<div id="mobile-menu" class="hidden fixed top-14 left-0 right-0 bottom-0 z-50 md:hidden" aria-hidden="true">
   <div class="flex flex-col h-full w-full max-w-sm ml-auto border-l" style="background: var(--chrome-bg); border-color: var(--chrome-line)">
     <nav class="flex-1 overflow-y-auto px-5 py-6 space-y-1">
       <a href="/" class="nav-link block py-3 {{currentPath === '/' ? 'is-active' : ''}}">Home</a>
