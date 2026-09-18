@@ -210,6 +210,33 @@
             "xhigh": null
         }
     },
+    "CohereLabs/command-a-vision-07-2025": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 2.5,
+            "output": 10.0
+        },
+        "description": "Cohere vision model for multilingual document analysis, OCR, and image understanding",
+        "id": "CohereLabs/command-a-vision-07-2025",
+        "input": ["text", "image"],
+        "maxTokens": 8000,
+        "name": "Command A Vision",
+        "provider": "huggingface",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "CohereLabs/tiny-aya-earth": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -533,33 +560,6 @@
         "input": ["text"],
         "maxTokens": 8192,
         "name": "Qwen 2.5 72B Instruct",
-        "provider": "huggingface",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "Qwen/Qwen2.5-7B-Instruct": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 33000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.05,
-            "output": 0.05
-        },
-        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
-        "id": "Qwen/Qwen2.5-7B-Instruct",
-        "input": ["text"],
-        "maxTokens": 4000,
-        "name": "Qwen/Qwen2.5-7B-Instruct",
         "provider": "huggingface",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -1106,7 +1106,7 @@
     "Qwen/Qwen3-VL-30B-A3B-Instruct": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 256000,
+        "contextWindow": 16384,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -1116,7 +1116,7 @@
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "Qwen/Qwen3-VL-30B-A3B-Instruct",
         "input": ["text", "image"],
-        "maxTokens": 32768,
+        "maxTokens": 8192,
         "name": "Qwen3-VL 30B-A3B Instruct",
         "provider": "huggingface",
         "reasoning": false,
@@ -2079,6 +2079,33 @@
             "xhigh": null
         }
     },
+    "deepseek-ai/DeepSeek-V4.1-Flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 1.2
+        },
+        "description": "Fast DeepSeek model for efficient chat, coding help, and agent loops",
+        "id": "deepseek-ai/DeepSeek-V4.1-Flash",
+        "input": ["text", "image"],
+        "maxTokens": 384000,
+        "name": "DeepSeek V4.1 Flash",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
     "google/gemma-3-12b-it": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -2092,10 +2119,12 @@
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3-12b-it",
         "input": ["text", "image"],
-        "maxTokens": 16384,
-        "name": "Google: Gemma 3 12B",
+        "knowledgeCutoff": "2024-08",
+        "maxTokens": 131072,
+        "name": "Gemma 3 12B IT",
         "provider": "huggingface",
         "reasoning": false,
+        "releaseDate": "2025-03-12",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2119,10 +2148,12 @@
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3-27b-it",
         "input": ["text", "image"],
-        "maxTokens": 117964,
-        "name": "Google: Gemma 3 27B",
+        "knowledgeCutoff": "2024-08",
+        "maxTokens": 131072,
+        "name": "Gemma 3 27B IT",
         "provider": "huggingface",
         "reasoning": false,
+        "releaseDate": "2025-03-12",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2146,10 +2177,12 @@
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "google/gemma-3-4b-it",
         "input": ["text", "image"],
-        "maxTokens": 16384,
-        "name": "Google: Gemma 3 4B",
+        "knowledgeCutoff": "2024-08",
+        "maxTokens": 131072,
+        "name": "Gemma 3 4B IT",
         "provider": "huggingface",
         "reasoning": false,
+        "releaseDate": "2025-03-12",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2313,7 +2346,61 @@
         "id": "inclusionAI/Ling-3.0-flash",
         "input": ["text"],
         "maxTokens": 32768,
-        "name": "Ling-3.0-flash",
+        "name": "inclusionAI: Ling 3.0 Flash",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "inclusionAI/Ling-3.0-flash-Fin": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.012,
+            "cacheWrite": 0.0,
+            "input": 0.06,
+            "output": 0.18
+        },
+        "description": "Ling 3.0 Flash Fin is a finance-focused mixture-of-experts model from InclusionAI, built on Ling 3.0 Flash with 5.1B active parameters out of 124B total. It is designed for real-world investment...",
+        "id": "inclusionAI/Ling-3.0-flash-Fin",
+        "input": ["text"],
+        "maxTokens": 235929,
+        "name": "inclusionAI: Ling 3.0 Flash Fin",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "inclusionAI/Ling-3.0-flash-VL": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.012,
+            "cacheWrite": 0.0,
+            "input": 0.06,
+            "output": 0.18
+        },
+        "description": "Ling 3.0 Flash VL builds on Ling 3.0 Flash (124B total / 5.5B active MoE from InclusionAI), further strengthening its language capabilities while adding native visual perception and advanced visual...",
+        "id": "inclusionAI/Ling-3.0-flash-VL",
+        "input": ["text", "image", "video"],
+        "maxTokens": 32768,
+        "name": "inclusionAI: Ling 3.0 Flash VL",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -2857,6 +2944,7 @@
         "name": "Safety GPT OSS 20B",
         "provider": "huggingface",
         "reasoning": true,
+        "releaseDate": "2025-10-29",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -2882,14 +2970,14 @@
         "maxTokens": 64000,
         "name": "prism-ml/Ternary-Bonsai-27B-AWQ-4bit",
         "provider": "huggingface",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": null,
             "medium": null,
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": null
         }
     },
@@ -3006,32 +3094,6 @@
             "xhigh": null
         }
     },
-    "swiss-ai/Apertus-70B-Instruct-2509": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.82,
-            "output": 2.92
-        },
-        "id": "swiss-ai/Apertus-70B-Instruct-2509",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "swiss-ai/Apertus-70B-Instruct-2509",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
     "swiss-ai/Apertus-8B-Instruct-2509": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -3039,8 +3101,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.82,
-            "output": 2.92
+            "input": 0.1,
+            "output": 0.2
         },
         "id": "swiss-ai/Apertus-8B-Instruct-2509",
         "input": ["text"],
@@ -3092,8 +3154,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.82,
-            "output": 2.92
+            "input": 0.1,
+            "output": 0.2
         },
         "id": "swiss-ai/Apertus-v1.5-8B",
         "input": ["text"],
@@ -3628,33 +3690,6 @@
         "input": ["text"],
         "maxTokens": 131072,
         "name": "GLM-5.1",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "zai-org/GLM-5.1-FP8": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 202752,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 1.4,
-            "output": 4.4
-        },
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
-        "id": "zai-org/GLM-5.1-FP8",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "GLM 5.1",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {

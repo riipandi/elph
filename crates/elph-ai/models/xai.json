@@ -219,7 +219,7 @@
     "grok-imagine-image": {
         "api": "openai-completions",
         "baseUrl": "https://api.x.ai/v1",
-        "contextWindow": 8000,
+        "contextWindow": 16000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
@@ -232,64 +232,6 @@
         "knowledgeCutoff": "",
         "maxTokens": 8000,
         "name": "Grok Imagine Image",
-        "provider": "xai",
-        "reasoning": false,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": "off",
-            "xhigh": null
-        }
-    },
-    "grok-imagine-image-2.0": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.x.ai/v1",
-        "contextWindow": 8000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 10.98,
-            "output": 4.68
-        },
-        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
-        "id": "grok-imagine-image-2.0",
-        "input": ["text", "image", "pdf"],
-        "knowledgeCutoff": "",
-        "maxTokens": 8000,
-        "name": "Grok Imagine Image 2.0",
-        "provider": "xai",
-        "reasoning": false,
-        "releaseDate": "2026-08-07",
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": "off",
-            "xhigh": null
-        }
-    },
-    "grok-imagine-image-quality": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.x.ai/v1",
-        "contextWindow": 8000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 10.98,
-            "output": 4.68
-        },
-        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
-        "id": "grok-imagine-image-quality",
-        "input": ["text", "image", "pdf"],
-        "knowledgeCutoff": "",
-        "maxTokens": 8000,
-        "name": "Grok Imagine Image Quality",
         "provider": "xai",
         "reasoning": false,
         "releaseDate": "",

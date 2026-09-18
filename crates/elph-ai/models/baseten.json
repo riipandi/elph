@@ -81,6 +81,33 @@
             "xhigh": null
         }
     },
+    "deepseek-ai/DeepSeek-V4.1-Flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.03,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 1.2
+        },
+        "description": "DeepSeek V4.1 Flash model for reasoning and agentic coding",
+        "id": "deepseek-ai/DeepSeek-V4.1-Flash",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "DeepSeek V4.1 Flash",
+        "provider": "baseten",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
     "moonshotai/Kimi-K2.6": {
         "api": "openai-completions",
         "baseUrl": "https://inference.baseten.co/v1",
@@ -305,7 +332,7 @@
         "baseUrl": "https://inference.baseten.co/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.3,
+            "cacheRead": 0.14,
             "cacheWrite": 0.0,
             "input": 1.4,
             "output": 4.4
@@ -366,7 +393,7 @@
         },
         "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "zai-org/GLM-5.3",
-        "input": ["text"],
+        "input": ["text", "image"],
         "maxTokens": 262144,
         "name": "GLM 5.3",
         "provider": "baseten",
@@ -391,20 +418,21 @@
             "input": 2.1,
             "output": 6.6
         },
+        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "zai-org/GLM-5.3-Fast",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "zai-org/GLM-5.3-Fast",
+        "input": ["text", "image"],
+        "maxTokens": 262144,
+        "name": "GLM 5.3 Fast",
         "provider": "baseten",
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
-            "medium": "medium",
+            "max": "max",
+            "medium": null,
             "minimal": null,
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "zai-org/GLM-5.3-Flash": {

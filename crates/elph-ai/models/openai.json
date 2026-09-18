@@ -1077,6 +1077,35 @@
             "xhigh": "xhigh"
         }
     },
+    "gpt-6-astra": {
+        "api": "openai-responses",
+        "baseUrl": "https://api.openai.com/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 1.0,
+            "cacheWrite": 12.5,
+            "input": 10.0,
+            "output": 50.0
+        },
+        "description": "GPT-6 Astra is OpenAI's most capable model for complex reasoning, coding, computer use, research, and document creation.",
+        "id": "gpt-6-astra",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-04-30",
+        "maxTokens": 128000,
+        "name": "GPT-6 Astra",
+        "provider": "openai",
+        "reasoning": true,
+        "releaseDate": "2026-09-04",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "gpt-image-1": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",

@@ -36,7 +36,7 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
+            "input": 0.0118,
             "output": 0.0
         },
         "description": "Flagship model for demanding analysis, coding, and production agent workflows",
@@ -372,12 +372,12 @@
         },
         "id": "google/gemma-3-12b-it",
         "input": ["text", "image"],
-        "knowledgeCutoff": "",
+        "knowledgeCutoff": "2024-08",
         "maxTokens": 16384,
         "name": "Gemma 3 12B IT",
         "provider": "nvidia",
         "reasoning": false,
-        "releaseDate": "",
+        "releaseDate": "2025-03-12",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -412,12 +412,12 @@
         },
         "id": "google/gemma-3-4b-it",
         "input": ["text", "image"],
-        "knowledgeCutoff": "",
+        "knowledgeCutoff": "2024-08",
         "maxTokens": 16384,
         "name": "Gemma 3 4B IT",
         "provider": "nvidia",
         "reasoning": false,
-        "releaseDate": "",
+        "releaseDate": "2025-03-12",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -617,8 +617,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.99,
+            "output": 0.99
         },
         "description": "Open Llama instruction model for multilingual chat, reasoning, and coding",
         "headers": {
@@ -626,12 +626,12 @@
         },
         "id": "meta/llama-3.1-70b-instruct",
         "input": ["text"],
-        "knowledgeCutoff": "",
+        "knowledgeCutoff": "2023-12",
         "maxTokens": 4096,
         "name": "Llama 3.1 70b Instruct",
         "provider": "nvidia",
         "reasoning": false,
-        "releaseDate": "",
+        "releaseDate": "2024-07-23",
         "thinkingLevelMap": {
             "high": null,
             "low": null,
@@ -1245,8 +1245,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 1.929978,
-            "output": 9.649888
+            "input": 1.907713,
+            "output": 9.538559
         },
         "description": "Balanced Mistral model for enterprise assistants, multilingual work, and tools",
         "headers": {
@@ -2167,8 +2167,8 @@
         "cost": {
             "cacheRead": 0.0525,
             "cacheWrite": 0.0,
-            "input": 0.105,
-            "output": 0.42
+            "input": 2.11,
+            "output": 10.55
         },
         "description": "Open Nemotron omni model combining reasoning with text, vision, and audio",
         "headers": {
@@ -2970,10 +2970,10 @@
         "baseUrl": "https://integrate.api.nvidia.com/v1",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.1003,
             "cacheWrite": 0.0,
-            "input": 0.0633,
-            "output": 0.211
+            "input": 0.2006,
+            "output": 0.2006
         },
         "description": "Qwen coding model for software agents, repository edits, and code reasoning",
         "id": "qwen/qwen2.5-coder-32b-instruct",
@@ -3315,6 +3315,64 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
+        }
+    },
+    "z-ai/glm-5.3": {
+        "api": "openai-completions",
+        "baseUrl": "https://integrate.api.nvidia.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 1.2,
+            "input": 1.2,
+            "output": 4.4
+        },
+        "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
+        "id": "z-ai/glm-5.3",
+        "input": ["text"],
+        "knowledgeCutoff": "",
+        "maxTokens": 131072,
+        "name": "GLM-5.3",
+        "provider": "nvidia",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "z-ai/glm-5.3-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://integrate.api.nvidia.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.03,
+            "cacheWrite": 0.15,
+            "input": 0.15,
+            "output": 0.5
+        },
+        "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+        "id": "z-ai/glm-5.3-flash",
+        "input": ["text", "image", "video", "pdf"],
+        "knowledgeCutoff": "",
+        "maxTokens": 131072,
+        "name": "GLM-5.3-Flash",
+        "provider": "nvidia",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     }
 }

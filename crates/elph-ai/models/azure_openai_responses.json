@@ -546,7 +546,7 @@
         "compat": {
             "supportsOpenAIGrammarTools": true
         },
-        "contextWindow": 400000,
+        "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.175,
             "cacheWrite": 0.0,
@@ -556,10 +556,10 @@
         "description": "Chat-tuned GPT model for conversational assistance, writing, and tool workflows",
         "id": "gpt-5.3-chat-latest",
         "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "GPT-5.3 Chat Latest",
+        "maxTokens": 16384,
+        "name": "GPT-5.3 Chat (latest)",
         "provider": "azure-openai-responses",
-        "reasoning": true,
+        "reasoning": false,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",

@@ -200,10 +200,10 @@
             "input": 0.95,
             "output": 4.0
         },
-        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
+        "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "kimi-k2.6",
         "input": ["text", "image", "video"],
-        "maxTokens": 32768,
+        "maxTokens": 262144,
         "name": "Kimi K2.6",
         "provider": "neuralwatt",
         "reasoning": true,

@@ -618,6 +618,24 @@ pub fn databyte_provider() -> Provider {
     })
 }
 
+/// Kenari — OpenAI-compatible gateway (https://kenari.id).
+/// Model list comes from `https://kenari.id/v1/models` (Bearer `KENARI_API_KEY`).
+pub fn kenari_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "kenari".to_string(),
+        name: Some("Kenari".to_string()),
+        base_url: Some("https://kenari.id/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Kenari API key", vec!["KENARI_API_KEY"])),
+            oauth: None,
+        },
+        models: builtin_catalog("kenari").as_ref().clone(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
 pub fn builtin_providers() -> Vec<Provider> {
     #[allow(unused_mut)]
     let mut providers = vec![
@@ -661,6 +679,7 @@ pub fn builtin_providers() -> Vec<Provider> {
             (vec!["DEEPSEEK_API_KEY"], "DeepSeek API key")
         ),
         databyte_provider(),
+        kenari_provider(),
         fireworks_provider(),
         github_copilot_provider(),
         hetzner_provider(),

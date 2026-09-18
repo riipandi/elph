@@ -62,7 +62,7 @@
             "max": "max",
             "medium": null,
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": null
         }
     },
@@ -102,7 +102,7 @@
     "deepseek-v4-pro-0813": {
         "api": "openai-completions",
         "baseUrl": "https://hyper.charm.land/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.047907,
             "cacheWrite": 0.0,
@@ -122,7 +122,34 @@
             "max": "max",
             "medium": null,
             "minimal": null,
-            "off": "off",
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "deepseek-v4.1-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.03,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 1.2
+        },
+        "description": "DeepSeek V4.1 Flash model for reasoning and agentic coding",
+        "id": "deepseek-v4.1-flash",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "DeepSeek V4.1 Flash",
+        "provider": "hyper",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": null
         }
     },
@@ -136,10 +163,10 @@
         },
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.049,
             "cacheWrite": 0.053,
-            "input": 0.106,
-            "output": 0.368
+            "input": 0.098,
+            "output": 0.334
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "gemma-4-26b-a4b-it",
@@ -156,66 +183,6 @@
             "minimal": null,
             "off": null,
             "xhigh": null
-        }
-    },
-    "glm-5": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "contextWindow": 202752,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.465,
-            "input": 0.93,
-            "output": 2.878
-        },
-        "description": "General GLM flagship for coding, analysis, and tool-heavy engineering workflows",
-        "id": "glm-5",
-        "input": ["text"],
-        "maxTokens": 20275,
-        "name": "GLM-5",
-        "provider": "hyper",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "glm-5.1": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": true,
-            "supportsStore": false,
-            "thinkingFormat": "deepseek"
-        },
-        "contextWindow": 202750,
-        "cost": {
-            "cacheRead": 0.283088,
-            "cacheWrite": 0.645,
-            "input": 1.29,
-            "output": 4.22
-        },
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
-        "id": "glm-5.1",
-        "input": ["text"],
-        "maxTokens": 3276,
-        "name": "GLM-5.1",
-        "provider": "hyper",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
         }
     },
     "glm-5.2": {
@@ -254,7 +221,7 @@
     "glm-5.3": {
         "api": "openai-completions",
         "baseUrl": "https://hyper.charm.land/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.283088,
             "cacheWrite": 0.0,
@@ -264,7 +231,7 @@
         "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
         "id": "glm-5.3",
         "input": ["text"],
-        "maxTokens": 262144,
+        "maxTokens": 128000,
         "name": "GLM-5.3",
         "provider": "hyper",
         "reasoning": true,
@@ -314,12 +281,12 @@
             "supportsStore": false,
             "thinkingFormat": "deepseek"
         },
-        "contextWindow": 128072,
+        "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.0152432,
+            "cacheRead": 0.089,
             "cacheWrite": 0.094,
-            "input": 0.188,
-            "output": 0.7
+            "input": 0.178,
+            "output": 0.68
         },
         "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
         "id": "gpt-oss-120b",
@@ -331,7 +298,34 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "inkling": {
+        "api": "openai-completions",
+        "baseUrl": "https://hyper.charm.land/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.185096,
+            "cacheWrite": 0.0,
+            "input": 1.0888,
+            "output": 4.40964
+        },
+        "description": "Multimodal MoE reasoning model (975B total, 41B active) for text, image, and audio",
+        "id": "inkling",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "Inkling",
+        "provider": "hyper",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
             "medium": "medium",
             "minimal": "minimal",
             "off": "off",
@@ -343,7 +337,7 @@
         "baseUrl": "https://hyper.charm.land/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.3,
             "cacheWrite": 0.3,
             "input": 0.6,
             "output": 2.5
@@ -365,71 +359,6 @@
             "xhigh": "xhigh"
         }
     },
-    "kimi-k2.5": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.2642,
-            "input": 0.5284,
-            "output": 2.785
-        },
-        "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
-        "id": "kimi-k2.5",
-        "input": ["text"],
-        "maxTokens": 26214,
-        "name": "Kimi K2.5",
-        "provider": "hyper",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "kimi-k2.6": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": true,
-            "supportsStore": false,
-            "thinkingFormat": "deepseek"
-        },
-        "contextWindow": 262000,
-        "cost": {
-            "cacheRead": 0.174208,
-            "cacheWrite": 0.16,
-            "input": 1.03436,
-            "output": 4.3552
-        },
-        "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
-        "id": "kimi-k2.6",
-        "input": ["text", "image"],
-        "maxTokens": 26214,
-        "name": "Kimi K2.6",
-        "provider": "hyper",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "kimi-k2.7-code": {
         "api": "openai-completions",
         "baseUrl": "https://hyper.charm.land/v1",
@@ -438,7 +367,7 @@
             "supportsReasoningEffort": false,
             "supportsStore": false
         },
-        "contextWindow": 262000,
+        "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.206872,
             "cacheWrite": 0.0,
@@ -495,70 +424,6 @@
             "xhigh": null
         }
     },
-    "llama-3.3-70b-instruct": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.3033,
-            "input": 0.6066,
-            "output": 1.0386
-        },
-        "description": "Popular open Llama workhorse for multilingual chat, coding, and self-hosting",
-        "id": "llama-3.3-70b-instruct",
-        "input": ["text"],
-        "maxTokens": 12800,
-        "name": "Llama-3.3-70B-Instruct",
-        "provider": "hyper",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": "off",
-            "xhigh": null
-        }
-    },
-    "llama-4-maverick-17b-128e-instruct-fp8": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 430000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.137,
-            "input": 0.274,
-            "output": 0.8992
-        },
-        "description": "Open multimodal Llama for strong reasoning with efficient everyday serving",
-        "id": "llama-4-maverick-17b-128e-instruct-fp8",
-        "input": ["text"],
-        "maxTokens": 43000,
-        "name": "Llama 4 Maverick 17B Instruct",
-        "provider": "hyper",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": null,
-            "low": null,
-            "max": null,
-            "medium": null,
-            "minimal": null,
-            "off": "off",
-            "xhigh": null
-        }
-    },
     "minimax-m2.7": {
         "api": "openai-completions",
         "baseUrl": "https://hyper.charm.land/v1",
@@ -569,10 +434,10 @@
         },
         "contextWindow": 262100,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.242,
             "cacheWrite": 0.209,
-            "input": 0.418,
-            "output": 1.588
+            "input": 0.484,
+            "output": 1.852
         },
         "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "minimax-m2.7",
@@ -624,166 +489,6 @@
             "xhigh": null
         }
     },
-    "qwen3-coder-480b-a35b-instruct-int4-mixed-ar": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 106000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.2225,
-            "input": 0.445,
-            "output": 2.145
-        },
-        "description": "Open Qwen coding heavyweight for repository reasoning and agentic engineering",
-        "id": "qwen3-coder-480b-a35b-instruct-int4-mixed-ar",
-        "input": ["text"],
-        "maxTokens": 10600,
-        "name": "Qwen3-Coder 480B-A35B Instruct",
-        "provider": "hyper",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "qwen3-next-80b-a3b-instruct": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.05875,
-            "input": 0.1175,
-            "output": 1.136
-        },
-        "description": "Qwen instruction model for multilingual chat, reasoning, and tool use",
-        "id": "qwen3-next-80b-a3b-instruct",
-        "input": ["text"],
-        "maxTokens": 26214,
-        "name": "Qwen3-Next 80B-A3B Instruct",
-        "provider": "hyper",
-        "reasoning": false,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "qwen3.6-flash": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.1,
-            "cacheWrite": 1.25,
-            "input": 1.0,
-            "output": 4.0
-        },
-        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
-        "id": "qwen3.6-flash",
-        "input": ["text", "image"],
-        "maxTokens": 64000,
-        "name": "Qwen3.6 Flash",
-        "provider": "hyper",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "qwen3.6-max": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 256000,
-        "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 2.5,
-            "input": 2.0,
-            "output": 12.0
-        },
-        "description": "Flagship Qwen model for complex reasoning, coding, and agentic workflows",
-        "id": "qwen3.6-max",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "Qwen3.6 Max Preview",
-        "provider": "hyper",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "qwen3.6-plus": {
-        "api": "openai-completions",
-        "baseUrl": "https://hyper.charm.land/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 2.5,
-            "input": 2.0,
-            "output": 6.0
-        },
-        "description": "Earlier Qwen multimodal workhorse for million-token agent and document tasks",
-        "id": "qwen3.6-plus",
-        "input": ["text", "image"],
-        "maxTokens": 64000,
-        "name": "Qwen3.6 Plus",
-        "provider": "hyper",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
     "qwen3.7-flash": {
         "api": "openai-completions",
         "baseUrl": "https://hyper.charm.land/v1",
@@ -811,9 +516,9 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "qwen3.7-max": {
@@ -843,9 +548,9 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "qwen3.7-plus": {
@@ -875,9 +580,9 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "qwen3.8-2.4t-a95b": {
@@ -902,9 +607,9 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
         }
     },
     "qwen3.8-27b": {
@@ -929,9 +634,9 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "qwen3.8-flash": {
@@ -956,9 +661,9 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "qwen3.8-max": {
@@ -988,9 +693,9 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     }
 }

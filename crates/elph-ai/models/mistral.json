@@ -424,7 +424,7 @@
         "name": "Mistral Large 3",
         "provider": "mistral",
         "reasoning": false,
-        "releaseDate": "2024-11-01",
+        "releaseDate": "2025-12-02",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -979,6 +979,35 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "zai-glm-5-3": {
+        "api": "mistral-conversations",
+        "baseUrl": "https://api.mistral.ai",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.14,
+            "cacheWrite": 0.0,
+            "input": 1.4,
+            "output": 4.4
+        },
+        "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
+        "id": "zai-glm-5-3",
+        "input": ["text"],
+        "knowledgeCutoff": "",
+        "maxTokens": 131072,
+        "name": "GLM-5.3",
+        "provider": "mistral",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": "max",
             "medium": null,
             "minimal": null,

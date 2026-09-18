@@ -451,6 +451,7 @@ fn named_factory_provider_id(fn_name: &str) -> Option<&'static str> {
         "cline_provider" => "cline",
         "cline_pass_provider" => "cline-pass",
         "databyte_provider" => "databyte",
+        "kenari_provider" => "kenari",
         "fireworks_provider" => "fireworks",
         "github_copilot_provider" => "github-copilot",
         "google_vertex_provider" => "google-vertex",

@@ -194,16 +194,16 @@
         },
         "description": "Claude model for creative writing, analysis, and controlled agent workflows",
         "id": "claude-fable-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Fable 5",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -316,7 +316,7 @@
         "id": "claude-opus-4-5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
-        "name": "claude-opus-4-5",
+        "name": "Claude Opus 4.5 (latest)",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -343,21 +343,21 @@
             "input": 5.0,
             "output": 25.0
         },
-        "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
+        "description": "High-end Claude for difficult coding, planning, and slower expert reasoning",
         "id": "claude-opus-4-6",
-        "input": ["text", "image", "pdf"],
+        "input": ["text", "image"],
         "maxTokens": 128000,
-        "name": "claude-opus-4-6",
+        "name": "Claude Opus 4.6",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
+            "high": null,
+            "low": null,
             "max": "max",
-            "medium": "medium",
+            "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "claude-opus-4-7": {
@@ -409,16 +409,16 @@
         },
         "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
         "id": "claude-opus-4-8",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.8",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -441,16 +441,16 @@
         },
         "description": "Strongest Claude Opus model for coding, agents, and professional work",
         "id": "claude-opus-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 5",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -492,7 +492,7 @@
         "compat": {
             "sendSessionAffinityHeaders": true
         },
-        "contextWindow": 200000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
@@ -503,7 +503,7 @@
         "id": "claude-sonnet-4-5",
         "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
-        "name": "claude-sonnet-4-5",
+        "name": "Claude Sonnet 4.5 (latest)",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -558,21 +558,21 @@
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 2.5,
-            "input": 3.0,
-            "output": 15.0
+            "input": 2.0,
+            "output": 10.0
         },
         "description": "Everyday Claude agent model for coding, planning, browsing, and general work",
         "id": "claude-sonnet-5",
-        "input": ["text", "image"],
-        "maxTokens": 64000,
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
         "name": "Claude Sonnet 5",
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -872,7 +872,7 @@
         "compat": {
             "supportsOpenAIGrammarTools": true
         },
-        "contextWindow": 1000000,
+        "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 5.0,
@@ -881,7 +881,7 @@
         },
         "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
         "id": "gpt-5.5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.5",
         "provider": "cloudflare-ai-gateway",
@@ -902,16 +902,16 @@
         "compat": {
             "supportsOpenAIGrammarTools": true
         },
-        "contextWindow": 1000000,
+        "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 1.25,
-            "input": 1.0,
-            "output": 6.0
+            "input": 0.2,
+            "output": 1.2
         },
         "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
         "id": "gpt-5.6-luna",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Luna",
         "provider": "cloudflare-ai-gateway",
@@ -919,7 +919,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": "off",
@@ -932,7 +932,7 @@
         "compat": {
             "supportsOpenAIGrammarTools": true
         },
-        "contextWindow": 1000000,
+        "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
@@ -941,7 +941,7 @@
         },
         "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
         "id": "gpt-5.6-sol",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Sol",
         "provider": "cloudflare-ai-gateway",
@@ -949,7 +949,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": "off",
@@ -962,16 +962,16 @@
         "compat": {
             "supportsOpenAIGrammarTools": true
         },
-        "contextWindow": 1000000,
+        "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.25,
             "cacheWrite": 3.125,
-            "input": 2.5,
-            "output": 15.0
+            "input": 2.0,
+            "output": 12.0
         },
         "description": "Balanced GPT-5.6 model for capable, cost-efficient everyday work",
         "id": "gpt-5.6-terra",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Terra",
         "provider": "cloudflare-ai-gateway",
@@ -979,7 +979,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": null,
+            "max": "max",
             "medium": "medium",
             "minimal": null,
             "off": "off",
@@ -1025,7 +1025,7 @@
         },
         "description": "Deliberate o-series reasoner for hard math, coding, and multi-step analysis",
         "id": "o3",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 100000,
         "name": "o3",
         "provider": "cloudflare-ai-gateway",

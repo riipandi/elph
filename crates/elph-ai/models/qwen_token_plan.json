@@ -15,7 +15,7 @@
             "input": 0.3,
             "output": 1.2
         },
-        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
+        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
         "id": "MiniMax-M2.5",
         "input": ["text"],
         "maxTokens": 131072,
@@ -75,14 +75,14 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0077,
+            "cacheRead": 0.0033,
             "cacheWrite": 0.0,
-            "input": 0.242,
-            "output": 0.726
+            "input": 0.165,
+            "output": 0.66
         },
-        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
+        "description": "DeepSeek V4.1 Flash model for reasoning and agentic coding",
         "id": "deepseek-v4-flash",
-        "input": ["text"],
+        "input": ["text", "image"],
         "maxTokens": 384000,
         "name": "DeepSeek V4 Flash",
         "provider": "qwen-token-plan",
@@ -174,14 +174,14 @@
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 0.0,
-            "input": 0.86,
-            "output": 3.5
+            "input": 1.4,
+            "output": 4.4
         },
-        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
+        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
         "id": "glm-5.1",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "glm-5.1",
+        "name": "GLM-5.1",
         "provider": "qwen-token-plan",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -238,13 +238,13 @@
         "cost": {
             "cacheRead": 0.07,
             "cacheWrite": 0.0,
-            "input": 0.6,
-            "output": 3.0
+            "input": 0.66,
+            "output": 3.3
         },
-        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
+        "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
         "id": "kimi-k2.5",
         "input": ["text", "image", "video"],
-        "maxTokens": 32768,
+        "maxTokens": 262144,
         "name": "Kimi K2.5",
         "provider": "qwen-token-plan",
         "reasoning": true,
@@ -273,10 +273,10 @@
             "input": 0.95,
             "output": 4.0
         },
-        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
+        "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "kimi-k2.6",
         "input": ["text", "image", "video"],
-        "maxTokens": 32768,
+        "maxTokens": 262144,
         "name": "Kimi K2.6",
         "provider": "qwen-token-plan",
         "reasoning": true,
@@ -303,12 +303,12 @@
             "cacheRead": 0.160835,
             "cacheWrite": 0.0,
             "input": 0.95,
-            "output": 3.9995
+            "output": 4.0
         },
         "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "kimi-k2.7-code",
         "input": ["text", "image", "video"],
-        "maxTokens": 32768,
+        "maxTokens": 262144,
         "name": "Kimi K2.7 Code",
         "provider": "qwen-token-plan",
         "reasoning": true,

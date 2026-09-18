@@ -5,10 +5,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.007,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.22,
+            "output": 0.66
         },
         "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-v4-flash:0731",
@@ -30,17 +30,45 @@
     "deepseek-v4-pro:0813": {
         "api": "openai-completions",
         "baseUrl": "https://ollama.com/v1",
-        "contextWindow": 128000,
+        "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.022,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.66,
+            "output": 1.98
         },
+        "description": "DeepSeek V4 Pro snapshot with million-token context and support for thinking and non-thinking modes",
         "id": "deepseek-v4-pro:0813",
         "input": ["text"],
-        "maxTokens": 64000,
-        "name": "deepseek-v4-pro:0813",
+        "maxTokens": 1048576,
+        "name": "DeepSeek V4 Pro 0813",
+        "provider": "ollama-cloud",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "deepseek-v4.1-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.003,
+            "cacheWrite": 0.0,
+            "input": 0.15,
+            "output": 0.6
+        },
+        "description": "DeepSeek V4.1 Flash model for reasoning and agentic coding",
+        "id": "deepseek-v4.1-flash",
+        "input": ["text", "image"],
+        "maxTokens": 384000,
+        "name": "DeepSeek V4.1 Flash",
         "provider": "ollama-cloud",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -58,10 +86,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.05,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.14,
+            "output": 0.4
         },
         "description": "Open Gemma instruction model for efficient chat and self-hosted deployments",
         "id": "gemma4:31b",
@@ -85,10 +113,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0.26,
+            "cacheRead": 0.2,
             "cacheWrite": 0.0,
-            "input": 0.86,
-            "output": 3.5
+            "input": 1.0,
+            "output": 3.2
         },
         "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
         "id": "glm-5.1",
@@ -112,10 +140,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 976000,
         "cost": {
-            "cacheRead": 0.154,
+            "cacheRead": 0.26,
             "cacheWrite": 0.0,
-            "input": 1.54,
-            "output": 4.84
+            "input": 1.4,
+            "output": 4.4
         },
         "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "glm-5.2",
@@ -139,10 +167,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.2817,
+            "cacheRead": 0.26,
             "cacheWrite": 0.0,
-            "input": 1.1268,
-            "output": 3.9438
+            "input": 1.4,
+            "output": 4.4
         },
         "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
         "id": "glm-5.3",
@@ -166,10 +194,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0319,
+            "cacheRead": 0.03,
             "cacheWrite": 0.0,
-            "input": 0.165,
-            "output": 0.55
+            "input": 0.15,
+            "output": 0.5
         },
         "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
         "id": "glm-5.3-flash",
@@ -193,10 +221,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.014,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.15,
+            "output": 0.6
         },
         "description": "Open-weight GPT model for self-hosted reasoning and instruction-following workloads",
         "id": "gpt-oss:120b",
@@ -220,10 +248,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.035,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.07,
+            "output": 0.3
         },
         "description": "Open-weight GPT model for self-hosted reasoning and instruction-following workloads",
         "id": "gpt-oss:20b",
@@ -274,10 +302,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.160835,
+            "cacheRead": 0.19,
             "cacheWrite": 0.0,
             "input": 0.95,
-            "output": 3.9995
+            "output": 4.0
         },
         "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
         "id": "kimi-k2.7-code",
@@ -355,10 +383,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 512000,
         "cost": {
-            "cacheRead": 0.099,
+            "cacheRead": 0.12,
             "cacheWrite": 0.0,
-            "input": 0.395,
-            "output": 1.977
+            "input": 0.6,
+            "output": 2.4
         },
         "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
         "id": "minimax-m3",
@@ -384,8 +412,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.5,
+            "output": 1.5
         },
         "description": "Flagship Mistral model for advanced reasoning, coding, and multilingual work",
         "id": "mistral-large-3:675b",
@@ -411,8 +439,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.06,
+            "output": 0.24
         },
         "description": "Small Nemotron 3 MoE for efficient coding, math, and long-context agents",
         "id": "nemotron-3-nano:30b",
@@ -436,10 +464,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.015,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.015,
+            "output": 0.6
         },
         "description": "Nemotron middle tier for collaborative agents and high-volume reasoning workloads",
         "id": "nemotron-3-super",
@@ -463,10 +491,10 @@
         "baseUrl": "https://ollama.com/v1",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0.1,
             "cacheWrite": 0.0,
             "input": 0.1,
-            "output": 0.1
+            "output": 3.0
         },
         "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
         "id": "nemotron-3-ultra",
@@ -492,8 +520,8 @@
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.6,
+            "output": 3.6
         },
         "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen3.5:397b",

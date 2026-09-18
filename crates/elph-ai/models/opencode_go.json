@@ -1,5 +1,32 @@
 {
     "$schema": "https://elph.space/provider-schema.json",
+    "deepseek-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.003,
+            "cacheWrite": 0.0,
+            "input": 0.15,
+            "output": 0.6
+        },
+        "description": "DeepSeek V4.1 Flash model for reasoning and agentic coding",
+        "id": "deepseek-flash",
+        "input": ["text", "image"],
+        "maxTokens": 384000,
+        "name": "DeepSeek V4.1 Flash",
+        "provider": "opencode-go",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "deepseek-v4-flash": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/go/v1",
@@ -12,10 +39,10 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.007,
+            "cacheRead": 0.003,
             "cacheWrite": 0.0,
-            "input": 0.22,
-            "output": 0.66
+            "input": 0.15,
+            "output": 0.6
         },
         "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
         "id": "deepseek-v4-flash",
@@ -39,10 +66,10 @@
         "baseUrl": "https://opencode.ai/zen/go/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.007,
+            "cacheRead": 0.003,
             "cacheWrite": 0.0,
-            "input": 0.22,
-            "output": 0.66
+            "input": 0.15,
+            "output": 0.6
         },
         "description": "Experimental multimodal DeepSeek V4 Flash model for image understanding, coding, and agentic work",
         "id": "deepseek-v4-flash-vision-exp",
@@ -88,6 +115,33 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "deepseek-v4.1-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.003,
+            "cacheWrite": 0.0,
+            "input": 0.15,
+            "output": 0.6
+        },
+        "description": "DeepSeek V4.1 Flash model for reasoning and agentic coding",
+        "id": "deepseek-v4.1-flash",
+        "input": ["text", "image"],
+        "maxTokens": 384000,
+        "name": "DeepSeek V4.1 Flash",
+        "provider": "opencode-go",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": "max",
             "medium": null,
             "minimal": null,
@@ -218,16 +272,16 @@
         "baseUrl": "https://opencode.ai/zen/go/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.015,
+            "cacheRead": 0.03,
             "cacheWrite": 0.0,
-            "input": 0.075,
-            "output": 0.25
+            "input": 0.15,
+            "output": 0.5
         },
         "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
         "id": "glm-5.3-flash",
         "input": ["text", "image", "video", "pdf"],
         "maxTokens": 131072,
-        "name": "GLM-5.3-Flash (2x usage)",
+        "name": "GLM-5.3-Flash",
         "provider": "opencode-go",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -819,6 +873,33 @@
             "minimal": "minimal",
             "off": null,
             "xhigh": "xhigh"
+        }
+    },
+    "omen-alpha": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "contextWindow": 500000,
+        "cost": {
+            "cacheRead": 0.04,
+            "cacheWrite": 0.0,
+            "input": 0.2,
+            "output": 0.66
+        },
+        "description": "oH man anothEr aLPha ModEl",
+        "id": "omen-alpha",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Omen Alpha",
+        "provider": "opencode-go",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "qwen3.5-plus": {

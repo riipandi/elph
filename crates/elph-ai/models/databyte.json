@@ -3,20 +3,20 @@
     "MiniMax-M2.7": {
         "api": "openai-completions",
         "baseUrl": "https://ai.databyte.co.id/v1",
-        "contextWindow": 204800,
+        "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 0.3,
             "output": 1.2
         },
-        "description": "MiniMax model for chat, coding, office work, and agentic tasks",
+        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
         "id": "MiniMax-M2.7",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 32000,
         "name": "MiniMax-M2.7",
         "provider": "databyte",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -30,17 +30,17 @@
     "MiniMax-M3": {
         "api": "openai-completions",
         "baseUrl": "https://ai.databyte.co.id/v1",
-        "contextWindow": 524288,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 1.2
+            "input": 0.72,
+            "output": 2.88
         },
         "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "id": "MiniMax-M3",
         "input": ["text", "image", "video"],
-        "maxTokens": 512000,
+        "maxTokens": 70000,
         "name": "MiniMax-M3",
         "provider": "databyte",
         "reasoning": true,
@@ -80,37 +80,10 @@
             "xhigh": null
         }
     },
-    "deepseek-v4-flash": {
-        "api": "openai-completions",
-        "baseUrl": "https://ai.databyte.co.id/v1",
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.0077,
-            "cacheWrite": 0.0,
-            "input": 0.242,
-            "output": 0.726
-        },
-        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
-        "id": "deepseek-v4-flash",
-        "input": ["text"],
-        "maxTokens": 384000,
-        "name": "DeepSeek V4 Flash",
-        "provider": "databyte",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-        }
-    },
     "mimo-v2.5": {
         "api": "openai-completions",
         "baseUrl": "https://ai.databyte.co.id/v1",
-        "contextWindow": 1048576,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0028,
             "cacheWrite": 0.0,

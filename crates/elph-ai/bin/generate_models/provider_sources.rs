@@ -112,6 +112,15 @@ const PROVIDERS: &[ProviderSource] = &[
         live_pricing_env: Some("DATABYTE_API_KEY"),
     },
     ProviderSource {
+        id: "kenari",
+        models_dev_keys: &["kenari"],
+        default_api: "openai-completions",
+        default_base_url: "https://kenari.id/v1",
+        gateway_preserve_ids: true,
+        live_pricing_base: Some("https://kenari.id/v1"),
+        live_pricing_env: Some("KENARI_API_KEY"),
+    },
+    ProviderSource {
         id: "deepseek",
         models_dev_keys: &["deepseek"],
         default_api: "openai-completions",

@@ -11,14 +11,14 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0077,
+            "cacheRead": 0.0033,
             "cacheWrite": 0.0,
-            "input": 0.242,
-            "output": 0.726
+            "input": 0.165,
+            "output": 0.66
         },
-        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
+        "description": "DeepSeek V4.1 Flash model for reasoning and agentic coding",
         "id": "deepseek-v4-flash",
-        "input": ["text"],
+        "input": ["text", "image"],
         "maxTokens": 384000,
         "name": "DeepSeek V4 Flash",
         "provider": "qwen-token-plan-individual",
@@ -78,14 +78,14 @@
         "cost": {
             "cacheRead": 0.154,
             "cacheWrite": 0.0,
-            "input": 1.54,
-            "output": 4.84
+            "input": 1.4,
+            "output": 4.4
         },
         "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "glm-5.2",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "GLM 5.2",
+        "name": "GLM-5.2",
         "provider": "qwen-token-plan-individual",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -94,7 +94,7 @@
             "max": "max",
             "medium": null,
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": null
         }
     },
@@ -106,17 +106,17 @@
             "supportsStore": false,
             "thinkingFormat": "qwen"
         },
-        "contextWindow": 991000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0169,
             "cacheWrite": 0.21125,
-            "input": 0.17,
-            "output": 1.01
+            "input": 0.188,
+            "output": 1.133
         },
-        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen3.6-flash",
         "input": ["text", "image", "video"],
-        "maxTokens": 64000,
+        "maxTokens": 65536,
         "name": "Qwen3.6 Flash",
         "provider": "qwen-token-plan-individual",
         "reasoning": true,
@@ -142,13 +142,13 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 3.125,
-            "input": 2.5,
-            "output": 7.5
+            "input": 1.8,
+            "output": 5.3
         },
         "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "qwen3.7-max",
         "input": ["text"],
-        "maxTokens": 64000,
+        "maxTokens": 65536,
         "name": "Qwen3.7 Max",
         "provider": "qwen-token-plan-individual",
         "reasoning": true,
@@ -170,16 +170,16 @@
             "supportsStore": false,
             "thinkingFormat": "qwen"
         },
-        "contextWindow": 991000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0564,
             "cacheWrite": 0.3525,
-            "input": 0.282,
-            "output": 1.128
+            "input": 0.285,
+            "output": 1.15
         },
         "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
         "id": "qwen3.7-plus",
-        "input": ["text"],
+        "input": ["text", "image", "video"],
         "maxTokens": 64000,
         "name": "Qwen3.7 Plus",
         "provider": "qwen-token-plan-individual",

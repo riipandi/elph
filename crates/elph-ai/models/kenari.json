@@ -1,0 +1,2170 @@
+{
+    "$schema": "https://elph.space/provider-schema.json",
+    "agnes-2-0-flash:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "agnes-2-0-flash:free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "agnes-2-0-flash:free",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "agnes-2-5-flash:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 512000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "agnes-2-5-flash:free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "agnes-2-5-flash:free",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "agnes-3-0-flash:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 512000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "agnes-3-0-flash:free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "agnes-3-0-flash:free",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "claude-fable-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 21000000000.0,
+            "cacheWrite": 0.0,
+            "input": 210000000000.0,
+            "output": 1000000000000.0
+        },
+        "description": "Claude model for creative writing, analysis, and controlled agent workflows",
+        "id": "claude-fable-5",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Fable 5",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "claude-opus-4-7": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 10000000000.0,
+            "cacheWrite": 0.0,
+            "input": 100000000000.0,
+            "output": 520000000000.0
+        },
+        "description": "Stronger Opus tier for advanced software work and high-stakes reasoning",
+        "id": "claude-opus-4-7",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 4.7",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "claude-opus-4-8": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 10000000000.0,
+            "cacheWrite": 0.0,
+            "input": 100000000000.0,
+            "output": 520000000000.0
+        },
+        "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
+        "id": "claude-opus-4-8",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 4.8",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "claude-opus-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 40000000000.0,
+            "cacheWrite": 0.0,
+            "input": 100000000000.0,
+            "output": 500000000000.0
+        },
+        "description": "Strongest Claude Opus model for coding, agents, and professional work",
+        "id": "claude-opus-5",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 5",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "claude-sonnet-4-6": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 6300000000.0,
+            "cacheWrite": 0.0,
+            "input": 63000000000.0,
+            "output": 310000000000.0
+        },
+        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "id": "claude-sonnet-4-6",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 64000,
+        "name": "Claude Sonnet 4.6",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-sonnet-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 10000000000.0,
+            "cacheWrite": 0.0,
+            "input": 25000000000.0,
+            "output": 125000000000.0
+        },
+        "description": "Everyday Claude agent model for coding, planning, browsing, and general work",
+        "id": "claude-sonnet-5",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Sonnet 5",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "deepseek-v4-1-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 4000000.0,
+            "cacheWrite": 0.0,
+            "input": 150000000.0,
+            "output": 300000000.0
+        },
+        "description": "DeepSeek V4.1 Flash model for reasoning and agentic coding",
+        "id": "deepseek-v4-1-flash",
+        "input": ["text", "image"],
+        "maxTokens": 393216,
+        "name": "DeepSeek V4.1 Flash",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "deepseek-v4-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 65000000.0,
+            "cacheWrite": 0.0,
+            "input": 2750000000.0,
+            "output": 5500000000.0
+        },
+        "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
+        "id": "deepseek-v4-flash",
+        "input": ["text"],
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Flash",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "deepseek-v4-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 100000000.0,
+            "cacheWrite": 0.0,
+            "input": 10000000000.0,
+            "output": 20000000000.0
+        },
+        "description": "Open MoE flagship with million-token context for coding and long agent runs",
+        "id": "deepseek-v4-pro",
+        "input": ["text"],
+        "maxTokens": 384000,
+        "name": "DeepSeek V4 Pro",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gemini-2-5-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 200000000.0,
+            "cacheWrite": 0.0,
+            "input": 2000000000.0,
+            "output": 15000000000.0
+        },
+        "description": "Fast Gemini workhorse for multimodal apps where latency and price matter",
+        "id": "gemini-2-5-flash",
+        "input": ["text", "image", "audio", "video", "pdf"],
+        "maxTokens": 65536,
+        "name": "Gemini 2.5 Flash",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-2-5-flash-lite": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 40000000.0,
+            "cacheWrite": 0.0,
+            "input": 400000000.0,
+            "output": 1700000000.0
+        },
+        "description": "Lean Gemini 2.5 lane for cheap multimodal traffic and quick agents",
+        "id": "gemini-2-5-flash-lite",
+        "input": ["text", "image", "audio", "video", "pdf"],
+        "maxTokens": 65536,
+        "name": "Gemini 2.5 Flash-Lite",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-3-1-flash-lite": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 100000000.0,
+            "cacheWrite": 0.0,
+            "input": 1000000000.0,
+            "output": 6000000000.0
+        },
+        "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
+        "id": "gemini-3-1-flash-lite",
+        "input": ["text", "image", "video", "audio", "pdf"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.1 Flash Lite",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-3-1-flash-tts": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 8192,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 2.6,
+            "output": 52.0
+        },
+        "description": "Low-latency speech generation with steerable prompts and expressive audio tags",
+        "id": "gemini-3-1-flash-tts",
+        "input": ["text"],
+        "maxTokens": 16384,
+        "name": "Gemini 3.1 Flash TTS Preview",
+        "provider": "kenari",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-3-1-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 2100000000.0,
+            "cacheWrite": 0.0,
+            "input": 21000000000.0,
+            "output": 125000000000.0
+        },
+        "description": "Reasoning-first Gemini preview for agentic coding and complex problem solving",
+        "id": "gemini-3-1-pro",
+        "input": ["text", "image", "video", "audio", "pdf"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.1 Pro Preview",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-3-6-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 600000000.0,
+            "cacheWrite": 0.0,
+            "input": 6000000000.0,
+            "output": 30000000000.0
+        },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
+        "id": "gemini-3-6-flash",
+        "input": ["text", "image", "video", "audio", "pdf"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.6 Flash",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-3-7-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 600000000.0,
+            "cacheWrite": 0.0,
+            "input": 6000000000.0,
+            "output": 30000000000.0
+        },
+        "description": "High-efficiency Gemini model for agentic workflows, coding, and multimodal reasoning",
+        "id": "gemini-3-7-flash",
+        "input": ["text", "image", "video", "audio", "pdf"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.7 Flash",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-3-8-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 600000000.0,
+            "cacheWrite": 0.0,
+            "input": 6000000000.0,
+            "output": 30000000000.0
+        },
+        "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
+        "id": "gemini-3-8-flash",
+        "input": ["text", "image", "audio", "video"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.8 Flash",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-omni-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 1.5,
+            "output": 9.0
+        },
+        "id": "gemini-omni-flash",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "gemini-omni-flash",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemma-4-31b-it": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 720000000.0,
+            "cacheWrite": 0.0,
+            "input": 1800000000.0,
+            "output": 7100000000.0
+        },
+        "description": "Largest Gemma 4 instruction model for open, self-hosted chat and reasoning",
+        "id": "gemma-4-31b-it",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "Gemma 4 31B IT",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "glm-4-7-flash:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 190000000.0,
+            "cacheWrite": 0.0,
+            "input": 1100000000.0,
+            "output": 7700000000.0
+        },
+        "description": "Budget GLM lane for fast coding help, routing, and everyday automation",
+        "id": "glm-4-7-flash:free",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-4.7-Flash (Free)",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "glm-5-2": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 32768,
+        "cost": {
+            "cacheRead": 4000000000.0,
+            "cacheWrite": 0.0,
+            "input": 10000000000.0,
+            "output": 66000000000.0
+        },
+        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "id": "glm-5-2",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-5.2",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "glm-5-3": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1310720,
+        "cost": {
+            "cacheRead": 4000000000.0,
+            "cacheWrite": 0.0,
+            "input": 10000000000.0,
+            "output": 66000000000.0
+        },
+        "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
+        "id": "glm-5-3",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-5.3",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "glm-5-3-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 350000000.0,
+            "cacheWrite": 0.0,
+            "input": 2000000000.0,
+            "output": 6000000000.0
+        },
+        "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+        "id": "glm-5-3-flash",
+        "input": ["text", "image", "video", "pdf"],
+        "maxTokens": 131072,
+        "name": "GLM-5.3-Flash",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gpt-5-4": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 5200000000.0,
+            "cacheWrite": 0.0,
+            "input": 52000000000.0,
+            "output": 310000000000.0
+        },
+        "description": "Agent-ready GPT for coding and computer-use workflows at a lower cost",
+        "id": "gpt-5-4",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.4",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5-4-mini": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 272000,
+        "cost": {
+            "cacheRead": 1500000000.0,
+            "cacheWrite": 0.0,
+            "input": 15000000000.0,
+            "output": 94000000000.0
+        },
+        "description": "Strong small GPT for coding subagents, quick tool use, and high-volume work",
+        "id": "gpt-5-4-mini",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.4 mini",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 272000,
+        "cost": {
+            "cacheRead": 10000000000.0,
+            "cacheWrite": 0.0,
+            "input": 100000000000.0,
+            "output": 630000000000.0
+        },
+        "description": "Default frontier GPT for coding, computer use, research, and knowledge work",
+        "id": "gpt-5-5",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.5",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5-6-luna": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 872000,
+        "cost": {
+            "cacheRead": 350000000.0,
+            "cacheWrite": 0.0,
+            "input": 3500000000.0,
+            "output": 20000000000.0
+        },
+        "description": "Cost-efficient GPT-5.6 model for fast, high-volume workloads",
+        "id": "gpt-5-6-luna",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Luna",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5-6-sol": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 872000,
+        "cost": {
+            "cacheRead": 20800000000.0,
+            "cacheWrite": 0.0,
+            "input": 52000000000.0,
+            "output": 310000000000.0
+        },
+        "description": "Frontier GPT-5.6 model for complex professional work, coding, and agentic workflows",
+        "id": "gpt-5-6-sol",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Sol",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5-6-terra": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 872000,
+        "cost": {
+            "cacheRead": 16800000000.0,
+            "cacheWrite": 0.0,
+            "input": 42000000000.0,
+            "output": 250000000000.0
+        },
+        "description": "Balanced GPT-5.6 model for capable, cost-efficient everyday work",
+        "id": "gpt-5-6-terra",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Terra",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-6-astra": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 20000000000.0,
+            "cacheWrite": 0.0,
+            "input": 200000000000.0,
+            "output": 1000000000000.0
+        },
+        "description": "GPT-6 Astra is OpenAI's most capable model for complex reasoning, coding, computer use, research, and document creation.",
+        "id": "gpt-6-astra",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "GPT-6 Astra",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-image-2": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 272000,
+        "cost": {
+            "cacheRead": 1.25,
+            "cacheWrite": 0.0,
+            "input": 5.0,
+            "output": 30.0
+        },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
+        "id": "gpt-image-2",
+        "input": ["text", "image"],
+        "maxTokens": 16384,
+        "name": "GPT-Image-2",
+        "provider": "kenari",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "gpt-oss-120b": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 63000000.0,
+            "cacheWrite": 0.0,
+            "input": 630000000.0,
+            "output": 3500000000.0
+        },
+        "description": "Open GPT reasoning model for self-hosted agents and controllable deployments",
+        "id": "gpt-oss-120b",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "GPT OSS 120B",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gpt-oss-20b": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 65000000.0,
+            "cacheWrite": 0.0,
+            "input": 630000000.0,
+            "output": 2700000000.0
+        },
+        "description": "Open-weight GPT reasoning model for self-hosted agents and controllable deployments",
+        "id": "gpt-oss-20b",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "GPT OSS 20B",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "grok-4-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 500000,
+        "cost": {
+            "cacheRead": 3250000000.0,
+            "cacheWrite": 0.0,
+            "input": 21000000000.0,
+            "output": 60000000000.0
+        },
+        "description": "xAI's Grok model for chat, coding, agentic tools, and lower hallucination risk",
+        "id": "grok-4-5",
+        "input": ["text", "image"],
+        "maxTokens": 500000,
+        "name": "Grok 4.5",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "grok-4-6": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 500000,
+        "cost": {
+            "cacheRead": 3250000000.0,
+            "cacheWrite": 0.0,
+            "input": 21000000000.0,
+            "output": 60000000000.0
+        },
+        "description": "xAI's frontier model for long-running agents, coding, knowledge work, and visual projects",
+        "id": "grok-4-6",
+        "input": ["text", "image"],
+        "maxTokens": 500000,
+        "name": "Grok 4.6",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "grok-imagine-image": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 16000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 228.38,
+            "output": 228.38
+        },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
+        "id": "grok-imagine-image",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 64000,
+        "name": "Grok Imagine Image",
+        "provider": "kenari",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "grok-imagine-image-2-0": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 8000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Image model for prompt-driven generation, editing, and visual design workflows",
+        "id": "grok-imagine-image-2-0",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "Grok Imagine Image 2.0",
+        "provider": "kenari",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "grok-imagine-image-quality": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 10.98,
+            "output": 4.68
+        },
+        "id": "grok-imagine-image-quality",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "grok-imagine-image-quality",
+        "provider": "kenari",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "hy3": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 270000000.0,
+            "cacheWrite": 0.0,
+            "input": 2700000000.0,
+            "output": 11000000000.0
+        },
+        "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
+        "id": "hy3",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Hy3",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "hy3:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 2700000000.0,
+            "cacheWrite": 0.0,
+            "input": 2700000000.0,
+            "output": 11000000000.0
+        },
+        "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
+        "id": "hy3:free",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Hy3 (Free)",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "hy4-preview": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 1200000000.0,
+            "cacheWrite": 0.0,
+            "input": 12000000000.0,
+            "output": 42000000000.0
+        },
+        "description": "A next-generation productivity model with significantly enhanced Agent and complex task execution capabilities.",
+        "id": "hy4-preview",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "Hy4 preview",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "kimi-k2-6": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 5000000000.0,
+            "cacheWrite": 0.0,
+            "input": 10000000000.0,
+            "output": 50000000000.0
+        },
+        "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
+        "id": "kimi-k2-6",
+        "input": ["text", "image", "video"],
+        "maxTokens": 262144,
+        "name": "Kimi K2.6",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "kimi-k2-7-code": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 2000000000.0,
+            "cacheWrite": 0.0,
+            "input": 10000000000.0,
+            "output": 50000000000.0
+        },
+        "description": "Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking",
+        "id": "kimi-k2-7-code",
+        "input": ["text", "image", "video"],
+        "maxTokens": 262144,
+        "name": "Kimi K2.7 Code",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "kimi-k3": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 3000000000.0,
+            "cacheWrite": 0.0,
+            "input": 30000000000.0,
+            "output": 150000000000.0
+        },
+        "description": "Multimodal Kimi model with 1M context and toggleable max-effort thinking for long-horizon agent work",
+        "id": "kimi-k3",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "Kimi K3",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "kokoro-tts": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "kokoro-tts",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "kokoro-tts",
+        "provider": "kenari",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "laguna-s-2-1:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 190000000.0,
+            "cacheWrite": 0.0,
+            "input": 1900000000.0,
+            "output": 3800000000.0
+        },
+        "id": "laguna-s-2-1:free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "laguna-s-2-1:free",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "laguna-xs-2-1:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 1200000000.0,
+            "cacheWrite": 0.0,
+            "input": 1200000000.0,
+            "output": 2500000000.0
+        },
+        "id": "laguna-xs-2-1:free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "laguna-xs-2-1:free",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "mimo-v2-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 60000000.0,
+            "cacheWrite": 0.0,
+            "input": 2900000000.0,
+            "output": 5800000000.0
+        },
+        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "id": "mimo-v2-5",
+        "input": ["text", "image", "audio", "video"],
+        "maxTokens": 131072,
+        "name": "MiMo-V2.5",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "mimo-v2-5-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 75000000.0,
+            "cacheWrite": 0.0,
+            "input": 9100000000.0,
+            "output": 18000000000.0
+        },
+        "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
+        "id": "mimo-v2-5-pro",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "MiMo-V2.5-Pro",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "mimo-v2-5-tts": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "mimo-v2-5-tts",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "mimo-v2-5-tts",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "mimo-v2-5:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 530000000.0,
+            "cacheWrite": 0.0,
+            "input": 2000000000.0,
+            "output": 5300000000.0
+        },
+        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "id": "mimo-v2-5:free",
+        "input": ["text", "image", "audio", "video"],
+        "maxTokens": 131072,
+        "name": "MiMo-V2.5 (Free)",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "minimax-m2-7": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 1200000000.0,
+            "cacheWrite": 0.0,
+            "input": 6300000000.0,
+            "output": 25000000000.0
+        },
+        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "id": "minimax-m2-7",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "MiniMax-M2.7",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "minimax-m2-7-highspeed": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 2000000000.0,
+            "cacheWrite": 0.0,
+            "input": 10400000000.0,
+            "output": 42000000000.0
+        },
+        "description": "Low-latency M2.7 variant for interactive coding plans and agent loops",
+        "id": "minimax-m2-7-highspeed",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "MiniMax-M2.7-highspeed",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "minimax-m3": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 1200000000.0,
+            "cacheWrite": 0.0,
+            "input": 6300000000.0,
+            "output": 25000000000.0
+        },
+        "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
+        "id": "minimax-m3",
+        "input": ["text", "image", "video"],
+        "maxTokens": 512000,
+        "name": "MiniMax-M3",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "minimax-speech-2-8-hd": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "minimax-speech-2-8-hd",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "minimax-speech-2-8-hd",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "minimax-speech-2-8-turbo": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "minimax-speech-2-8-turbo",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "minimax-speech-2-8-turbo",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "mistral-medium-3-5:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 31000000000.0,
+            "cacheWrite": 0.0,
+            "input": 31000000000.0,
+            "output": 150000000000.0
+        },
+        "description": "Balanced Mistral model for enterprise assistants, multilingual work, and tools",
+        "id": "mistral-medium-3-5:free",
+        "input": ["text", "image"],
+        "maxTokens": 262144,
+        "name": "Mistral Medium 3.5 (Free)",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "muse-spark-1-2": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 2000000000.0,
+            "cacheWrite": 0.0,
+            "input": 20000000000.0,
+            "output": 80000000000.0
+        },
+        "description": "Muse Spark 1.2 is a coding-focused update to Muse Spark 1.1 with improvements in code generation, complex debugging, codebase understanding, and end-to-end developer workflows.",
+        "id": "muse-spark-1-2",
+        "input": ["text", "image", "video", "audio"],
+        "maxTokens": 131072,
+        "name": "Muse Spark 1.2",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "muse-spark-1-2-contributor": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 40000000.0,
+            "cacheWrite": 0.0,
+            "input": 2000000000.0,
+            "output": 4000000000.0
+        },
+        "id": "muse-spark-1-2-contributor",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "muse-spark-1-2-contributor",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "muse-spark-1-3": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 2000000000.0,
+            "cacheWrite": 0.0,
+            "input": 20000000000.0,
+            "output": 80000000000.0
+        },
+        "description": "Muse Spark 1.3 is a multimodal reasoning model from Meta for long-running agentic, multi-agent, and coding workflows. It improves long-horizon agent collaboration, instruction following, and coding efficiency relative to Muse Spark 1.2.",
+        "id": "muse-spark-1-3",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "Muse Spark 1.3",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "muse-spark-1-3-contributor": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 40000000.0,
+            "cacheWrite": 0.0,
+            "input": 2000000000.0,
+            "output": 4000000000.0
+        },
+        "id": "muse-spark-1-3-contributor",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "muse-spark-1-3-contributor",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "muse-spark-1-3-contributor:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 2100000000.0,
+            "cacheWrite": 0.0,
+            "input": 2100000000.0,
+            "output": 4200000000.0
+        },
+        "id": "muse-spark-1-3-contributor:free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "muse-spark-1-3-contributor:free",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "nano-banana-2": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 176.64,
+            "output": 54.2
+        },
+        "id": "nano-banana-2",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "nano-banana-2",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "nano-banana-2-lite": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.2525,
+            "output": 1.5152
+        },
+        "id": "nano-banana-2-lite",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "nano-banana-2-lite",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "nano-banana-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 176.64,
+            "output": 54.2
+        },
+        "id": "nano-banana-pro",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "nano-banana-pro",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "nemotron-3-super-120b-a12b": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 170000000.0,
+            "cacheWrite": 0.0,
+            "input": 1700000000.0,
+            "output": 8400000000.0
+        },
+        "description": "Nemotron middle tier for collaborative agents and high-volume reasoning workloads",
+        "id": "nemotron-3-super-120b-a12b",
+        "input": ["text"],
+        "maxTokens": 262144,
+        "name": "Nemotron 3 Super 120B A12B",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "nemotron-3-super-120b-a12b:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 1600000000.0,
+            "output": 7700000000.0
+        },
+        "description": "Nemotron middle tier for collaborative agents and high-volume reasoning workloads",
+        "id": "nemotron-3-super-120b-a12b:free",
+        "input": ["text"],
+        "maxTokens": 262144,
+        "name": "Nemotron 3 Super 120B A12B (Free)",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "nemotron-3-ultra-550b-a55b": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 1200000000.0,
+            "cacheWrite": 0.0,
+            "input": 12000000000.0,
+            "output": 75000000000.0
+        },
+        "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
+        "id": "nemotron-3-ultra-550b-a55b",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Nemotron 3 Ultra 550B A55B",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "nemotron-3-ultra-550b-a55b:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 4200000000.0,
+            "cacheWrite": 0.0,
+            "input": 12000000000.0,
+            "output": 75000000000.0
+        },
+        "description": "Largest Nemotron 3 model for maximum open-weight reasoning and agent accuracy",
+        "id": "nemotron-3-ultra-550b-a55b:free",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Nemotron 3 Ultra (free)",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "nex-n2-5-pro:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "nex-n2-5-pro:free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "nex-n2-5-pro:free",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "north-mini-code:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "north-mini-code:free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "north-mini-code:free",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "qwen3-7-plus": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 1300000000.0,
+            "cacheWrite": 0.0,
+            "input": 6700000000.0,
+            "output": 26000000000.0
+        },
+        "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
+        "id": "qwen3-7-plus",
+        "input": ["text", "image", "video"],
+        "maxTokens": 64000,
+        "name": "Qwen3.7 Plus",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "qwen3-8-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 300000000.0,
+            "cacheWrite": 0.0,
+            "input": 3000000000.0,
+            "output": 7500000000.0
+        },
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+        "id": "qwen3-8-flash",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "Qwen3.8 Flash",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "qwen3-8-max": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 5200000000.0,
+            "cacheWrite": 0.0,
+            "input": 42000000000.0,
+            "output": 120000000000.0
+        },
+        "description": "2.4-trillion-parameter MoE flagship for coding, professional work, multimodal understanding, and long-horizon agentic workflows",
+        "id": "qwen3-8-max",
+        "input": ["text", "image", "video", "pdf"],
+        "maxTokens": 131072,
+        "name": "Qwen3.8 Max",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "step-3-7-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 840000000.0,
+            "cacheWrite": 0.0,
+            "input": 4200000000.0,
+            "output": 24000000000.0
+        },
+        "description": "Newer StepFun flash model for faster agents, coding, and multimodal prompts",
+        "id": "step-3-7-flash",
+        "input": ["text", "image", "video"],
+        "maxTokens": 256000,
+        "name": "Step 3.7 Flash",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "step-3-7-flash:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 840000000.0,
+            "cacheWrite": 0.0,
+            "input": 4200000000.0,
+            "output": 24000000000.0
+        },
+        "description": "Newer StepFun flash model for faster agents, coding, and multimodal prompts",
+        "id": "step-3-7-flash:free",
+        "input": ["text", "image", "video"],
+        "maxTokens": 256000,
+        "name": "Step 3.7 Flash (Free)",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "veo-3.1-lite": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "veo-3.1-lite",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "veo-3.1-lite",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "whisper-large-v3-turbo": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 448,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Speech transcription model for accurate audio-to-text and captioning workflows",
+        "id": "whisper-large-v3-turbo",
+        "input": ["audio"],
+        "maxTokens": 448,
+        "name": "Whisper Large v3 Turbo",
+        "provider": "kenari",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    }
+}

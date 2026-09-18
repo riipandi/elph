@@ -337,7 +337,7 @@
         "name": "Safety GPT OSS 20B",
         "provider": "groq",
         "reasoning": true,
-        "releaseDate": "",
+        "releaseDate": "2025-10-29",
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",

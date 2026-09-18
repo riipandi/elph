@@ -56,7 +56,12 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
         "databyte" => Some(ProviderConfig {
             label: "DataByte",
             api_key_env_key: "DATABYTE_API_KEY",
-            default_model: "deepseek-v4-flash",
+            default_model: "MiniMax-M2.7",
+        }),
+        "kenari" => Some(ProviderConfig {
+            label: "Kenari",
+            api_key_env_key: "KENARI_API_KEY",
+            default_model: "gpt-5-6-luna",
         }),
         "cline" => Some(ProviderConfig {
             label: "Cline",
@@ -390,10 +395,26 @@ mod tests {
 
     #[test]
     fn resolve_databyte_from_settings() {
-        let (provider, model) = resolve_provider_and_model(None, None, Some("databyte"), Some("deepseek-v4-flash"))
-            .expect("resolve databyte");
+        let (provider, model) =
+            resolve_provider_and_model(None, None, Some("databyte"), Some("MiniMax-M2.7")).expect("resolve databyte");
         assert_eq!(provider, "databyte");
-        assert_eq!(model, "deepseek-v4-flash");
+        assert_eq!(model, "MiniMax-M2.7");
+    }
+
+    #[test]
+    fn kenari_is_a_known_provider() {
+        let cfg = provider_config("kenari").expect("kenari config");
+        assert_eq!(cfg.label, "Kenari");
+        assert_eq!(cfg.api_key_env_key, "KENARI_API_KEY");
+        assert!(elph_ai::get_builtin_model("kenari", cfg.default_model).is_some());
+    }
+
+    #[test]
+    fn resolve_kenari_from_settings() {
+        let (provider, model) =
+            resolve_provider_and_model(None, None, Some("kenari"), Some("gpt-5-6-luna")).expect("resolve kenari");
+        assert_eq!(provider, "kenari");
+        assert_eq!(model, "gpt-5-6-luna");
     }
 
     #[test]
@@ -550,6 +571,7 @@ mod tests {
             ("baseten", "Baseten", "BASETEN_API_KEY"),
             ("cerebras", "Cerebras", "CEREBRAS_API_KEY"),
             ("databyte", "DataByte", "DATABYTE_API_KEY"),
+            ("kenari", "Kenari", "KENARI_API_KEY"),
             ("cloudflare-ai-gateway", "Cloudflare AI Gateway", "CLOUDFLARE_API_KEY"),
             ("cloudflare-workers-ai", "Cloudflare Workers AI", "CLOUDFLARE_API_KEY"),
             ("cline", "Cline", "CLINE_API_KEY"),
@@ -621,6 +643,7 @@ mod tests {
             "cline-pass",
             "deepseek",
             "databyte",
+            "kenari",
             "fireworks",
             "github-copilot",
             "hetzner",

@@ -69,7 +69,7 @@ Additional data sources and provider-specific configurations:
 - **Provider Live `/models` Probes**:
   - Queried for active model discovery and live pricing.
   - _Public endpoints_: e.g. OpenCode (`/zen/v1/models`), OpenCode Go (`/zen/go/v1/models`), Hetzner, etc. (probed anonymously).
-  - _Authwalled endpoints_: e.g. OpenAI, xAI, Mistral, Hyper, Infron, Kilo, DataByte, etc. (probed with provider env keys when present).
+  - _Authwalled endpoints_: e.g. OpenAI, xAI, Mistral, Hyper, Infron, Kilo, DataByte, Kenari, etc. (probed with provider env keys when present).
 - **Dedicated Pricing Endpoints**:
   - e.g. Nara Router (`https://router.bynara.id/api/pricing`) provides official USD per million rates (`official_in_usd_m` / `official_out_usd_m`) since Nara's `/v1/models` endpoint exposes no pricing. Credit fields are ignored.
 - **Cline Model Directory** (`cline.rs`):
@@ -110,7 +110,7 @@ When updating model catalogs, follow this systematic procedure:
 
 - Query each provider's configured `/models` endpoint to discover the actual active model list.
 - **Public Endpoints**: Query directly (e.g., OpenCode, OpenCode Go, Hetzner, etc.).
-- **Authwalled Endpoints**: Check the environment for the required API key (`OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `HYPER_API_KEY`, `INFRON_API_KEY`, `KILO_API_KEY`, `DATABYTE_API_KEY`, `XAI_API_KEY`, etc.).
+- **Authwalled Endpoints**: Check the environment for the required API key (`OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `HYPER_API_KEY`, `INFRON_API_KEY`, `KILO_API_KEY`, `DATABYTE_API_KEY`, `KENARI_API_KEY`, `XAI_API_KEY`, etc.).
 - **Graceful Fallback**: If the required API key is absent or the endpoint is unreachable, fall back gracefully to the compiled models.dev catalog or previous disk snapshot.
 
 ### Step 2: Handle Incomplete Endpoint Metadata

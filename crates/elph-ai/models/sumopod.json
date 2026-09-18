@@ -12,15 +12,15 @@
             "cacheRead": 0.06,
             "cacheWrite": 0.375,
             "input": 0.6,
-            "output": 4.8
+            "output": 2.4
         },
-        "description": "High-speed MiniMax model for low-latency coding and agent workflows",
+        "description": "Low-latency M2.7 variant for interactive coding plans and agent loops",
         "id": "MiniMax-M2.7-highspeed",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "MiniMax-M2.7-highspeed",
         "provider": "sumopod",
-        "reasoning": false,
+        "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
@@ -38,12 +38,12 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 524288,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.06,
             "cacheWrite": 0.0,
-            "input": 0.3,
-            "output": 1.2
+            "input": 0.72,
+            "output": 2.88
         },
         "description": "MiniMax multimodal model for long-context coding, perception, and agent planning",
         "id": "MiniMax-M3",
@@ -78,16 +78,16 @@
         },
         "description": "Claude model for creative writing, analysis, and controlled agent workflows",
         "id": "claude-fable-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Fable 5",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -171,16 +171,16 @@
         },
         "description": "Top Claude Opus tier for the hardest reasoning, coding, and long-horizon agents",
         "id": "claude-opus-4-8",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.8",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -228,21 +228,21 @@
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 2.5,
-            "input": 3.0,
-            "output": 15.0
+            "input": 2.0,
+            "output": 10.0
         },
         "description": "Everyday Claude agent model for coding, planning, browsing, and general work",
         "id": "claude-sonnet-5",
-        "input": ["text", "image"],
-        "maxTokens": 64000,
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
         "name": "Claude Sonnet 5",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
-            "high": null,
-            "low": null,
+            "high": "high",
+            "low": "low",
             "max": "max",
-            "medium": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -257,14 +257,14 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0077,
+            "cacheRead": 0.0033,
             "cacheWrite": 0.0,
-            "input": 0.242,
-            "output": 0.726
+            "input": 0.165,
+            "output": 0.66
         },
-        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
+        "description": "DeepSeek V4.1 Flash model for reasoning and agentic coding",
         "id": "deepseek-v4-flash",
-        "input": ["text"],
+        "input": ["text", "image"],
         "maxTokens": 384000,
         "name": "DeepSeek V4 Flash",
         "provider": "sumopod",
@@ -357,7 +357,7 @@
         },
         "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
         "id": "gemini/gemini-3.1-flash-lite",
-        "input": ["text", "image", "audio"],
+        "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini 3.1 Flash Lite",
         "provider": "sumopod",
@@ -367,7 +367,7 @@
             "low": "low",
             "max": null,
             "medium": "medium",
-            "minimal": null,
+            "minimal": "minimal",
             "off": null,
             "xhigh": null
         }
@@ -538,14 +538,14 @@
         "cost": {
             "cacheRead": 0.26,
             "cacheWrite": 0.0,
-            "input": 0.86,
-            "output": 3.5
+            "input": 1.4,
+            "output": 4.4
         },
-        "description": "Flagship GLM model for hybrid reasoning, coding, and agentic engineering",
+        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
         "id": "glm-5.1",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "glm-5.1",
+        "name": "GLM-5.1",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -569,14 +569,14 @@
         "cost": {
             "cacheRead": 0.154,
             "cacheWrite": 0.0,
-            "input": 1.54,
-            "output": 4.84
+            "input": 1.4,
+            "output": 4.4
         },
         "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
         "id": "glm-5.2",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "GLM 5.2",
+        "name": "GLM-5.2",
         "provider": "sumopod",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -585,7 +585,7 @@
             "max": "max",
             "medium": null,
             "minimal": null,
-            "off": "off",
+            "off": null,
             "xhigh": null
         }
     },
@@ -1006,10 +1006,10 @@
             "input": 0.95,
             "output": 4.0
         },
-        "description": "Kimi multimodal agent model for visual understanding, coding, and planning",
+        "description": "Multimodal Kimi workhorse for agent loops, coding tasks, and visual context",
         "id": "kimi-k2.6",
         "input": ["text", "image", "video"],
-        "maxTokens": 32768,
+        "maxTokens": 262144,
         "name": "Kimi K2.6",
         "provider": "sumopod",
         "reasoning": true,
@@ -1153,17 +1153,17 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 991000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0169,
             "cacheWrite": 0.21125,
-            "input": 0.17,
-            "output": 1.01
+            "input": 0.188,
+            "output": 1.133
         },
-        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
+        "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
         "id": "qwen3.6-flash",
         "input": ["text", "image", "video"],
-        "maxTokens": 64000,
+        "maxTokens": 65536,
         "name": "Qwen3.6 Flash",
         "provider": "sumopod",
         "reasoning": true,
@@ -1184,17 +1184,17 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 991000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0282,
             "cacheWrite": 0.3525,
-            "input": 0.28,
-            "output": 1.69
+            "input": 0.3,
+            "output": 1.8
         },
-        "description": "Multimodal reasoning model for visual analysis, planning, and tool use",
+        "description": "Earlier Qwen multimodal workhorse for million-token agent and document tasks",
         "id": "qwen3.6-plus",
         "input": ["text", "image", "video"],
-        "maxTokens": 64000,
+        "maxTokens": 65536,
         "name": "Qwen3.6 Plus",
         "provider": "sumopod",
         "reasoning": true,
@@ -1219,13 +1219,13 @@
         "cost": {
             "cacheRead": 0.169,
             "cacheWrite": 2.1125,
-            "input": 2.5,
-            "output": 7.5
+            "input": 1.8,
+            "output": 5.3
         },
         "description": "Qwen frontier model tuned for agent frameworks, coding assistants, and long tasks",
         "id": "qwen3.7-max",
         "input": ["text"],
-        "maxTokens": 64000,
+        "maxTokens": 65536,
         "name": "Qwen3.7 Max",
         "provider": "sumopod",
         "reasoning": true,
@@ -1246,16 +1246,16 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 991000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0564,
             "cacheWrite": 0.3525,
-            "input": 0.282,
-            "output": 1.128
+            "input": 0.285,
+            "output": 1.15
         },
         "description": "Multimodal Qwen workhorse for long-context agents, visual inputs, and coding",
         "id": "qwen3.7-plus",
-        "input": ["text"],
+        "input": ["text", "image", "video"],
         "maxTokens": 64000,
         "name": "Qwen3.7 Plus",
         "provider": "sumopod",

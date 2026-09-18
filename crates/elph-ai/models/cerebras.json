@@ -1,38 +1,5 @@
 {
     "$schema": "https://elph.space/provider-schema.json",
-    "gemma-4-31b": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.cerebras.ai/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.99,
-            "output": 1.49
-        },
-        "description": "Largest Gemma 4 instruction model for open, self-hosted chat and reasoning",
-        "id": "gemma-4-31b",
-        "input": ["text", "image"],
-        "knowledgeCutoff": "",
-        "maxTokens": 40960,
-        "name": "Gemma 4 31B IT",
-        "provider": "cerebras",
-        "reasoning": true,
-        "releaseDate": "",
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": null
-        }
-    },
     "gpt-oss-120b": {
         "api": "openai-completions",
         "baseUrl": "https://api.cerebras.ai/v1",
@@ -63,6 +30,35 @@
             "medium": "medium",
             "minimal": null,
             "off": null,
+            "xhigh": null
+        }
+    },
+    "qwen-3.8-27b": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cerebras.ai/v1",
+        "contextWindow": 65536,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.99,
+            "output": 1.49
+        },
+        "description": "Dense 27B vision-language model for coding, agent tasks, and image and video understanding",
+        "id": "qwen-3.8-27b",
+        "input": ["text", "image"],
+        "knowledgeCutoff": "",
+        "maxTokens": 32768,
+        "name": "Qwen3.8 27B",
+        "provider": "cerebras",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
             "xhigh": null
         }
     }

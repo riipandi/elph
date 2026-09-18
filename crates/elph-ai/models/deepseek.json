@@ -1,5 +1,34 @@
 {
     "$schema": "https://elph.space/provider-schema.json",
+    "deepseek-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.deepseek.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.003,
+            "cacheWrite": 0.0,
+            "input": 0.15,
+            "output": 0.6
+        },
+        "description": "DeepSeek V4.1 Flash model for reasoning and agentic coding",
+        "id": "deepseek-flash",
+        "input": ["text", "image"],
+        "knowledgeCutoff": "",
+        "maxTokens": 384000,
+        "name": "DeepSeek V4.1 Flash",
+        "provider": "deepseek",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "deepseek-v4-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.deepseek.com",
@@ -11,14 +40,14 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0028,
+            "cacheRead": 0.003,
             "cacheWrite": 0.0,
-            "input": 0.14,
-            "output": 0.28
+            "input": 0.15,
+            "output": 0.6
         },
-        "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
+        "description": "DeepSeek V4.1 Flash model for reasoning and agentic coding",
         "id": "deepseek-v4-flash",
-        "input": ["text"],
+        "input": ["text", "image"],
         "knowledgeCutoff": "2025-05",
         "maxTokens": 384000,
         "name": "DeepSeek V4 Flash",
@@ -40,12 +69,12 @@
         "baseUrl": "https://api.deepseek.com",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0028,
+            "cacheRead": 0.003,
             "cacheWrite": 0.0,
-            "input": 0.14,
-            "output": 0.28
+            "input": 0.15,
+            "output": 0.6
         },
-        "description": "Experimental multimodal DeepSeek V4 Flash model for image understanding, coding, and agentic work",
+        "description": "DeepSeek V4.1 Flash model for reasoning and agentic coding",
         "id": "deepseek-v4-flash-vision-exp",
         "input": ["text", "image"],
         "knowledgeCutoff": "",
