@@ -566,6 +566,24 @@ pub fn nvidia_provider() -> Provider {
     })
 }
 
+/// Netra Runtime — OpenAI-compatible gateway (https://netraruntime.com).
+/// Model list comes from `https://api.netraruntime.com/v1/models` (Bearer `NETRA_API_KEY`).
+pub fn netra_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "netra".to_string(),
+        name: Some("Netra".to_string()),
+        base_url: Some("https://api.netraruntime.com/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Netra API key", vec!["NETRA_API_KEY"])),
+            oauth: None,
+        },
+        models: builtin_catalog("netra").as_ref().clone(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
 pub fn sumopod_provider() -> Provider {
     create_provider(CreateProviderOptions {
         id: "sumopod".to_string(),
@@ -697,6 +715,7 @@ pub fn builtin_providers() -> Vec<Provider> {
         mistral_provider(),
         neuralwatt_provider(),
         nvidia_provider(),
+        netra_provider(),
         simple_provider!(
             "ollama-cloud",
             "Ollama Cloud",

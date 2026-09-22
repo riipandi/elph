@@ -183,6 +183,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "NVIDIA_API_KEY",
             default_model: "meta/llama-3.1-70b-instruct",
         }),
+        "netra" => Some(ProviderConfig {
+            label: "Netra",
+            api_key_env_key: "NETRA_API_KEY",
+            default_model: "deepseek/deepseek-v4-flash-0731",
+        }),
         "ollama-cloud" => Some(ProviderConfig {
             label: "Ollama Cloud",
             api_key_env_key: "OLLAMA_API_KEY",
@@ -592,6 +597,7 @@ mod tests {
             ("moonshotai-cn", "Moonshot AI (China)", "MOONSHOT_API_KEY"),
             ("nara-router", "Nara Router", "NARA_API_KEY"),
             ("nvidia", "NVIDIA NIM", "NVIDIA_API_KEY"),
+            ("netra", "Netra", "NETRA_API_KEY"),
             ("orca-router", "OrcaRouter", "ORCAROUTER_API_KEY"),
             ("ollama-cloud", "Ollama Cloud", "OLLAMA_API_KEY"),
             ("openai-codex", "OpenAI Codex", "OPENAI_CODEX_OAUTH_TOKEN"),
@@ -663,6 +669,7 @@ mod tests {
             "nara-router",
             "neuralwatt",
             "nvidia",
+            "netra",
             "ollama-cloud",
             "openai",
             "openai-codex",
