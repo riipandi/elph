@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use rmcp::handler::client::ClientHandler;
 use rmcp::model::{
-    CancelledNotificationParam, ClientCapabilities, ClientInfo, ElicitRequestParams, ElicitResult, ElicitationAction,
+    CancelledNotificationParam, ClientCapabilities, ClientConfig, ElicitRequestParams, ElicitResult, ElicitationAction,
     ElicitationCapability, ErrorData as McpError, FormElicitationCapability, Implementation, ProgressNotificationParam,
     ResourceUpdatedNotificationParam, TASKS_EXTENSION_ID, TaskStatusNotificationParams,
 };
@@ -75,7 +75,7 @@ impl McpClientService {
         }
     }
 
-    fn elph_client_info() -> ClientInfo {
+    fn elph_client_info() -> ClientConfig {
         let mut caps = ClientCapabilities::default();
         // Advertise form elicitation so servers may attempt MRTR; policy decides accept/decline.
         caps.elicitation = Some(ElicitationCapability::new().with_form(FormElicitationCapability::new()));
@@ -84,7 +84,7 @@ impl McpClientService {
         extensions.insert(TASKS_EXTENSION_ID.to_string(), serde_json::Map::new());
         caps.extensions = Some(extensions);
 
-        ClientInfo::new(
+        ClientConfig::new(
             caps,
             Implementation::new("elph", env!("CARGO_PKG_VERSION"))
                 .with_title("Elph")
@@ -95,7 +95,7 @@ impl McpClientService {
 }
 
 impl ClientHandler for McpClientService {
-    fn get_info(&self) -> ClientInfo {
+    fn get_info(&self) -> ClientConfig {
         Self::elph_client_info()
     }
 
