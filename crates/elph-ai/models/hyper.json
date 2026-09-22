@@ -129,7 +129,7 @@
     "deepseek-v4.1-flash": {
         "api": "openai-completions",
         "baseUrl": "https://hyper.charm.land/v1",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.03,
             "cacheWrite": 0.0,
@@ -146,11 +146,11 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
-            "max": "max",
+            "max": null,
             "medium": null,
             "minimal": null,
             "off": null,
-            "xhigh": null
+            "xhigh": "xhigh"
         }
     },
     "gemma-4-26b-a4b-it": {

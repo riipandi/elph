@@ -3094,6 +3094,32 @@
             "xhigh": null
         }
     },
+    "swiss-ai/Apertus-70B-Instruct-2509": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "swiss-ai/Apertus-70B-Instruct-2509",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "swiss-ai/Apertus-70B-Instruct-2509",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
     "swiss-ai/Apertus-8B-Instruct-2509": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -3147,32 +3173,6 @@
             "xhigh": "xhigh"
         }
     },
-    "swiss-ai/Apertus-v1.5-8B": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.1,
-            "output": 0.2
-        },
-        "id": "swiss-ai/Apertus-v1.5-8B",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "swiss-ai/Apertus-v1.5-8B",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
     "tencent/Hy3": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -3193,6 +3193,33 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "low",
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "tencent/Hy4-preview": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.834,
+            "output": 2.501
+        },
+        "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
+        "id": "tencent/Hy4-preview",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "Hy4 preview",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
             "max": null,
             "medium": null,
             "minimal": null,
@@ -3295,33 +3322,6 @@
         "input": ["text"],
         "maxTokens": 64000,
         "name": "zai-org/GLM-4-32B-0414",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "zai-org/GLM-4.5": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 131072,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.6,
-            "output": 2.2
-        },
-        "description": "Hybrid-reasoning GLM release that made the 4.5 line broadly useful",
-        "id": "zai-org/GLM-4.5",
-        "input": ["text"],
-        "maxTokens": 98304,
-        "name": "GLM-4.5",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -3438,32 +3438,6 @@
         "input": ["text"],
         "maxTokens": 131072,
         "name": "GLM-4.6",
-        "provider": "huggingface",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "zai-org/GLM-4.6-FP8": {
-        "api": "openai-completions",
-        "baseUrl": "https://router.huggingface.co/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.0,
-            "cacheWrite": 0.0,
-            "input": 0.0,
-            "output": 0.0
-        },
-        "id": "zai-org/GLM-4.6-FP8",
-        "input": ["text"],
-        "maxTokens": 64000,
-        "name": "zai-org/GLM-4.6-FP8",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -3690,6 +3664,33 @@
         "input": ["text"],
         "maxTokens": 131072,
         "name": "GLM-5.1",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "zai-org/GLM-5.1-FP8": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "contextWindow": 202752,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 1.4,
+            "output": 4.4
+        },
+        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "id": "zai-org/GLM-5.1-FP8",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM 5.1",
         "provider": "huggingface",
         "reasoning": true,
         "thinkingLevelMap": {

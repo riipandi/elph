@@ -117,8 +117,8 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5.0,
-            "output": 25.0
+            "input": 2.5,
+            "output": 12.5
         },
         "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
         "headers": {
@@ -153,8 +153,8 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 2.5,
-            "output": 12.5
+            "input": 2.85,
+            "output": 14.25
         },
         "description": "High-end Claude for difficult coding, planning, and slower expert reasoning",
         "headers": {

@@ -261,6 +261,35 @@
             "xhigh": "xhigh"
         }
     },
+    "claude-opus-5-5@default": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 5.0,
+            "input": 4.0,
+            "output": 20.0
+        },
+        "description": "Claude model for long-running agentic coding and knowledge work",
+        "id": "claude-opus-5-5@default",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "",
+        "maxTokens": 128000,
+        "name": "Claude Opus 5.5",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "claude-opus-5@default": {
         "api": "google-vertex",
         "baseUrl": "https://aiplatform.googleapis.com",

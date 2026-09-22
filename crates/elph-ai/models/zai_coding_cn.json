@@ -180,6 +180,35 @@
             "xhigh": "xhigh"
         }
     },
+    "glm-4.6v-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "description": "Lightweight GLM vision model for visual reasoning, documents, and multimodal agents",
+        "id": "glm-4.6v-flash",
+        "input": ["text", "image", "video"],
+        "knowledgeCutoff": "",
+        "maxTokens": 32768,
+        "name": "GLM-4.6V-Flash",
+        "provider": "zai-coding-cn",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
     "glm-4.7": {
         "api": "openai-completions",
         "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
@@ -409,10 +438,10 @@
         "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.015,
+            "cacheRead": 0.03,
             "cacheWrite": 0.0,
-            "input": 0.075,
-            "output": 0.25
+            "input": 0.15,
+            "output": 0.5
         },
         "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
         "id": "glm-5.3-flash",
@@ -420,6 +449,35 @@
         "knowledgeCutoff": "",
         "maxTokens": 131072,
         "name": "GLM-5.3-Flash",
+        "provider": "zai-coding-cn",
+        "reasoning": true,
+        "releaseDate": "",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "glm-5.3-flashx": {
+        "api": "openai-completions",
+        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.075,
+            "cacheWrite": 0.0,
+            "input": 0.37,
+            "output": 1.25
+        },
+        "description": "High-speed GLM-5.3-Flash serving option for coding and agent workflows",
+        "id": "glm-5.3-flashx",
+        "input": ["text", "image", "video", "pdf"],
+        "knowledgeCutoff": "",
+        "maxTokens": 131072,
+        "name": "GLM-5.3-FlashX",
         "provider": "zai-coding-cn",
         "reasoning": true,
         "releaseDate": "",

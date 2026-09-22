@@ -1106,6 +1106,64 @@
             "xhigh": "xhigh"
         }
     },
+    "gpt-6-luna": {
+        "api": "openai-responses",
+        "baseUrl": "https://api.openai.com/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.01,
+            "cacheWrite": 0.125,
+            "input": 0.1,
+            "output": 0.5
+        },
+        "description": "OpenAI's most efficient model for focused, high-volume tasks",
+        "id": "gpt-6-luna",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-05-18",
+        "maxTokens": 128000,
+        "name": "GPT-6 Luna",
+        "provider": "openai",
+        "reasoning": true,
+        "releaseDate": "2026-09-22",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-6-sol": {
+        "api": "openai-responses",
+        "baseUrl": "https://api.openai.com/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 2.5,
+            "input": 2.0,
+            "output": 10.0
+        },
+        "description": "OpenAI model for complex coding and agentic workflows",
+        "id": "gpt-6-sol",
+        "input": ["text", "image", "pdf"],
+        "knowledgeCutoff": "2026-04-20",
+        "maxTokens": 128000,
+        "name": "GPT-6 Sol",
+        "provider": "openai",
+        "reasoning": true,
+        "releaseDate": "2026-09-22",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": "xhigh"
+        }
+    },
     "gpt-image-1": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",

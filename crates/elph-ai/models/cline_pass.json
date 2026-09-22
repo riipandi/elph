@@ -1,41 +1,14 @@
 {
     "$schema": "https://elph.space/provider-schema.json",
-    "cline-pass/deepseek-v4-flash": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.cline.bot/api/v1",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.009744,
-            "cacheWrite": 0.0,
-            "input": 0.04872,
-            "output": 0.09744
-        },
-        "description": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters, supporting a 1M-token context window. It is designed for fast inference and...",
-        "id": "cline-pass/deepseek-v4-flash",
-        "input": ["text"],
-        "maxTokens": 128000,
-        "name": "DeepSeek: DeepSeek V4 Flash 0423",
-        "provider": "cline-pass",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
     "cline-pass/deepseek-v4-pro": {
         "api": "openai-completions",
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.135,
+            "cacheRead": 0.07337,
             "cacheWrite": 0.0,
-            "input": 1.5999999999999999,
-            "output": 3.1999999999999997
+            "input": 0.88044,
+            "output": 1.76088
         },
         "description": "DeepSeek V4 Pro is a large-scale Mixture-of-Experts model from DeepSeek with 1.6T total parameters and 49B activated parameters, supporting a 1M-token context window. It is designed for advanced reasoning, coding,...",
         "id": "cline-pass/deepseek-v4-pro",
@@ -81,42 +54,15 @@
             "xhigh": "xhigh"
         }
     },
-    "cline-pass/glm-5.2": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.cline.bot/api/v1",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.10296000000000001,
-            "cacheWrite": 0.0,
-            "input": 0.5544,
-            "output": 1.7424
-        },
-        "description": "GLM 5.2 is a large-scale reasoning model from Z.ai. It supports text input and output with a 1M-token context window, and is suited for long-horizon agent workflows, project-level software engineering,...",
-        "id": "cline-pass/glm-5.2",
-        "input": ["text"],
-        "maxTokens": 128000,
-        "name": "Z.ai: GLM 5.2",
-        "provider": "cline-pass",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
     "cline-pass/glm-5.3": {
         "api": "openai-completions",
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1310720,
         "cost": {
-            "cacheRead": 0.16899999999999998,
+            "cacheRead": 0.12142000000000001,
             "cacheWrite": 0.0,
-            "input": 0.9099999999999999,
-            "output": 2.8600000000000003
+            "input": 0.6537999999999999,
+            "output": 2.0547999999999997
         },
         "description": "GLM-5.3 is a large-scale reasoning model from Z.ai, built for complex software engineering and long-horizon agent tasks. It supports text input and output with a 1M-token context window, and improves...",
         "id": "cline-pass/glm-5.3",
@@ -140,10 +86,10 @@
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1310720,
         "cost": {
-            "cacheRead": 0.018,
+            "cacheRead": 0.049999999999999996,
             "cacheWrite": 0.0,
-            "input": 0.09,
-            "output": 0.3
+            "input": 0.15,
+            "output": 0.5
         },
         "description": "GLM-5.3-Flash is a native multimodal model from Z.ai. It is suited for efficient coding and long-horizon agent tasks. Its hybrid sparse and linear attention architecture maintains accurate long-context behavior while...",
         "id": "cline-pass/glm-5.3-flash",
@@ -162,69 +108,15 @@
             "xhigh": null
         }
     },
-    "cline-pass/kimi-k2.6": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.cline.bot/api/v1",
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.16,
-            "cacheWrite": 0.0,
-            "input": 0.95,
-            "output": 4.0
-        },
-        "description": "Kimi K2.6 is Moonshot AI's next-generation multimodal model, designed for long-horizon coding, coding-driven UI/UX generation, and multi-agent orchestration. It handles complex end-to-end coding tasks across Python, Rust, and Go, and...",
-        "id": "cline-pass/kimi-k2.6",
-        "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "MoonshotAI: Kimi K2.6",
-        "provider": "cline-pass",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
-    "cline-pass/kimi-k2.7-code": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.cline.bot/api/v1",
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.18,
-            "cacheWrite": 0.0,
-            "input": 0.7062,
-            "output": 3.21
-        },
-        "description": "MoonshotAI: Kimi K2.7 Code is a coding-focused model in Moonshot AI's Kimi K2 family, built to complete end-to-end programming tasks reliably over long contexts. It uses a native multimodal mixture-of-experts...",
-        "id": "cline-pass/kimi-k2.7-code",
-        "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "MoonshotAI: Kimi K2.7 Code",
-        "provider": "cline-pass",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": "off",
-            "xhigh": "xhigh"
-        }
-    },
     "cline-pass/kimi-k3": {
         "api": "openai-completions",
         "baseUrl": "https://api.cline.bot/api/v1",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.2262,
+            "cacheRead": 0.3,
             "cacheWrite": 0.0,
-            "input": 1.95,
-            "output": 10.92
+            "input": 3.0,
+            "output": 15.0
         },
         "description": "Kimi K3 is a 2.8T parameter open-weight multimodal reasoning model from Moonshot AI. It is suited for complex coding, knowledge work, and long-horizon agentic workflows, and is particularly strong at...",
         "id": "cline-pass/kimi-k3",
@@ -295,6 +187,60 @@
             "minimal": null,
             "off": "off",
             "xhigh": "xhigh"
+        }
+    },
+    "cline-pass/mimo-v2.6-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "description": "MiMo-V2.6-Flash is an open-source foundation model developed by Xiaomi. Built on a Mixture-of-Experts architecture with 309B total parameters and 15B activated per token, it employs a hybrid attention mechanism for...",
+        "id": "cline-pass/mimo-v2.6-flash",
+        "input": ["text", "image", "video", "audio"],
+        "maxTokens": 128000,
+        "name": "Xiaomi: MiMo-V2.6-Flash",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "cline-pass/mimo-v2.6-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.cline.bot/api/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0036,
+            "cacheWrite": 0.0,
+            "input": 0.435,
+            "output": 0.87
+        },
+        "description": "MiMo-V2.6-Pro is the flagship foundation model developed by Xiaomi. Built at a scale of over 1T parameters, it is designed to push the ceiling of capability for the most demanding...",
+        "id": "cline-pass/mimo-v2.6-pro",
+        "input": ["text", "image", "video", "audio"],
+        "maxTokens": 128000,
+        "name": "Xiaomi: MiMo-V2.6-Pro",
+        "provider": "cline-pass",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
         }
     },
     "cline-pass/minimax-m3": {

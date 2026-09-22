@@ -106,5 +106,32 @@
             "off": "off",
             "xhigh": "xhigh"
         }
+    },
+    "mimo-v2.6-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.databyte.co.id/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "description": "MiMo Flash model for multimodal coding agents and long-context automation",
+        "id": "mimo-v2.6-flash",
+        "input": ["text", "image", "audio", "video", "pdf"],
+        "maxTokens": 131072,
+        "name": "MiMo-V2.6-Flash",
+        "provider": "databyte",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
     }
 }

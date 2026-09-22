@@ -17,7 +17,7 @@
         "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
         "id": "deepseek-v4-flash",
         "input": ["text"],
-        "maxTokens": 65536,
+        "maxTokens": 393216,
         "name": "DeepSeek V4 Flash",
         "provider": "neuralwatt",
         "reasoning": true,

@@ -197,5 +197,92 @@
             "off": null,
             "xhigh": null
         }
+    },
+    "mimo-v2.6-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.xiaomimimo.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "description": "MiMo Flash model for multimodal coding agents and long-context automation",
+        "id": "mimo-v2.6-flash",
+        "input": ["text", "image", "audio", "video", "pdf"],
+        "knowledgeCutoff": "2026-09-22",
+        "maxTokens": 131072,
+        "name": "MiMo-V2.6-Flash",
+        "provider": "xiaomi",
+        "reasoning": true,
+        "releaseDate": "2026-09-22",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "mimo-v2.6-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.xiaomimimo.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.0036,
+            "cacheWrite": 0.0,
+            "input": 0.435,
+            "output": 0.87
+        },
+        "description": "MiMo Pro model for multimodal coding agents and long-context automation",
+        "id": "mimo-v2.6-pro",
+        "input": ["text", "image", "audio", "video", "pdf"],
+        "knowledgeCutoff": "2026-09-22",
+        "maxTokens": 131072,
+        "name": "MiMo-V2.6-Pro",
+        "provider": "xiaomi",
+        "reasoning": true,
+        "releaseDate": "2026-09-22",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "mimo-v2.6-pro-ultraspeed": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.xiaomimimo.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.036,
+            "cacheWrite": 0.0,
+            "input": 4.35,
+            "output": 8.7
+        },
+        "description": "MiMo pro model for strong multimodal reasoning and agent execution",
+        "id": "mimo-v2.6-pro-ultraspeed",
+        "input": ["text", "image", "video", "audio"],
+        "knowledgeCutoff": "",
+        "maxTokens": 131072,
+        "name": "MiMo-V2.6-Pro-UltraSpeed",
+        "provider": "xiaomi",
+        "reasoning": true,
+        "releaseDate": "2026-09-21",
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

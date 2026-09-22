@@ -3,7 +3,7 @@
     "deepseek-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.deepseek.com",
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.003,
             "cacheWrite": 0.0,
@@ -14,7 +14,7 @@
         "id": "deepseek-flash",
         "input": ["text", "image"],
         "knowledgeCutoff": "",
-        "maxTokens": 384000,
+        "maxTokens": 393216,
         "name": "DeepSeek V4.1 Flash",
         "provider": "deepseek",
         "reasoning": true,
@@ -102,7 +102,7 @@
             "supportsStore": false,
             "thinkingFormat": "deepseek"
         },
-        "contextWindow": 1000000,
+        "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.003625,
             "cacheWrite": 0.0,
@@ -113,14 +113,14 @@
         "id": "deepseek-v4-pro",
         "input": ["text"],
         "knowledgeCutoff": "2025-05",
-        "maxTokens": 384000,
+        "maxTokens": 393216,
         "name": "DeepSeek V4 Pro",
         "provider": "deepseek",
         "reasoning": true,
         "releaseDate": "2026-04-24",
         "thinkingLevelMap": {
             "high": "high",
-            "low": null,
+            "low": "low",
             "max": "max",
             "medium": null,
             "minimal": null,

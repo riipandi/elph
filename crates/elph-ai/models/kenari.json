@@ -245,10 +245,10 @@
         "baseUrl": "https://kenari.id/v1",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 4000000.0,
+            "cacheRead": 500000.0,
             "cacheWrite": 0.0,
-            "input": 150000000.0,
-            "output": 300000000.0
+            "input": 20000000.0,
+            "output": 50000000.0
         },
         "description": "DeepSeek V4.1 Flash model for reasoning and agentic coding",
         "id": "deepseek-v4-1-flash",
@@ -319,33 +319,6 @@
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
-        }
-    },
-    "gemini-2-5-flash": {
-        "api": "openai-completions",
-        "baseUrl": "https://kenari.id/v1",
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 200000000.0,
-            "cacheWrite": 0.0,
-            "input": 2000000000.0,
-            "output": 15000000000.0
-        },
-        "description": "Fast Gemini workhorse for multimodal apps where latency and price matter",
-        "id": "gemini-2-5-flash",
-        "input": ["text", "image", "audio", "video", "pdf"],
-        "maxTokens": 65536,
-        "name": "Gemini 2.5 Flash",
-        "provider": "kenari",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": null,
-            "medium": "medium",
-            "minimal": null,
-            "off": null,
-            "xhigh": null
         }
     },
     "gemini-2-5-flash-lite": {
@@ -914,6 +887,58 @@
             "xhigh": null
         }
     },
+    "gpt-image-2-5-flare": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "gpt-image-2-5-flare",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "gpt-image-2-5-flare",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
+    "gpt-image-2-5-sunburst": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "gpt-image-2-5-sunburst",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "gpt-image-2-5-sunburst",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "off",
+            "xhigh": null
+        }
+    },
     "gpt-oss-120b": {
         "api": "openai-completions",
         "baseUrl": "https://kenari.id/v1",
@@ -1022,6 +1047,33 @@
             "xhigh": "xhigh"
         }
     },
+    "grok-4-7": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 500000,
+        "cost": {
+            "cacheRead": 3250000000.0,
+            "cacheWrite": 0.0,
+            "input": 21000000000.0,
+            "output": 60000000000.0
+        },
+        "description": "Grok model for agentic tool use, reasoning, coding, and live assistance",
+        "id": "grok-4-7",
+        "input": ["text", "image"],
+        "maxTokens": 500000,
+        "name": "Grok 4.7",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "grok-imagine-image": {
         "api": "openai-completions",
         "baseUrl": "https://kenari.id/v1",
@@ -1079,17 +1131,18 @@
     "grok-imagine-image-quality": {
         "api": "openai-completions",
         "baseUrl": "https://kenari.id/v1",
-        "contextWindow": 128000,
+        "contextWindow": 16000,
         "cost": {
             "cacheRead": 0.0,
             "cacheWrite": 0.0,
             "input": 10.98,
             "output": 4.68
         },
+        "description": "Higher-fidelity Grok Imagine image model for prompt-driven generation, editing, and visual design workflows",
         "id": "grok-imagine-image-quality",
-        "input": ["text"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
-        "name": "grok-imagine-image-quality",
+        "name": "Grok Imagine Image Quality",
         "provider": "kenari",
         "reasoning": false,
         "thinkingLevelMap": {
@@ -1175,12 +1228,12 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": "medium",
-            "minimal": "minimal",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
             "off": "off",
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "kimi-k2-6": {
@@ -1437,6 +1490,86 @@
         "input": ["text", "image", "audio", "video"],
         "maxTokens": 131072,
         "name": "MiMo-V2.5 (Free)",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "mimo-v2-6-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 300000000.0,
+            "cacheWrite": 0.0,
+            "input": 3000000000.0,
+            "output": 6000000000.0
+        },
+        "description": "MiMo Flash model for multimodal coding agents and long-context automation",
+        "id": "mimo-v2-6-flash",
+        "input": ["text", "image", "video", "audio"],
+        "maxTokens": 131072,
+        "name": "MiMo V2.6 Flash",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "mimo-v2-6-flash:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 2900000000.0,
+            "cacheWrite": 0.0,
+            "input": 2900000000.0,
+            "output": 5800000000.0
+        },
+        "id": "mimo-v2-6-flash:free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "mimo-v2-6-flash:free",
+        "provider": "kenari",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "mimo-v2-6-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://kenari.id/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 900000000.0,
+            "cacheWrite": 0.0,
+            "input": 9000000000.0,
+            "output": 18000000000.0
+        },
+        "description": "Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution",
+        "id": "mimo-v2-6-pro",
+        "input": ["text", "image", "video", "audio"],
+        "maxTokens": 131072,
+        "name": "MiMo V2.6 Pro",
         "provider": "kenari",
         "reasoning": true,
         "thinkingLevelMap": {

@@ -4122,10 +4122,10 @@
         "baseUrl": "https://ai-gateway.vercel.sh",
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.2,
-            "cacheWrite": 2.5,
-            "input": 2.0,
-            "output": 10.0
+            "cacheRead": 0.4,
+            "cacheWrite": 5.0,
+            "input": 4.0,
+            "output": 20.0
         },
         "description": "GPT model for general reasoning, writing, coding, and tool-assisted tasks",
         "id": "openai/gpt-5.6-sol",
@@ -5134,10 +5134,10 @@
             "input": 0.0,
             "output": 0.0
         },
-        "description": "GLM vision model for visual reasoning, documents, and multimodal agents",
+        "description": "Lightweight GLM vision model for visual reasoning, documents, and multimodal agents",
         "id": "zai/glm-4.6v-flash",
-        "input": ["text", "image", "pdf"],
-        "maxTokens": 24000,
+        "input": ["text", "image", "video"],
+        "maxTokens": 32768,
         "name": "GLM-4.6V-Flash",
         "provider": "vercel-ai-gateway",
         "reasoning": true,
